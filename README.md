@@ -1,0 +1,2 @@
+# bulletPattern
+FALさんのbulletHellの真似
