@@ -198,8 +198,9 @@ class BulletSystem{
 		this.bulletSpeedChange = 0;
 		this.bulletDirection = 0;
 		this.bulletDirectionVelocity = 0;
-		this.bulletBurstWaitCount = -1;
-		this.bulletBurstPattern = undefined;
+		this.bulletBurstWaitCount = -1; // burstするまでの時間
+		this.bulletBurstLimitCount = 0; // burstしてからのカウント、適宜減らし、0になったらvanish.
+		this.bulletBurstPattern = undefined; // burst中の設置弾丸のパターンについて
 		this.rotationAngle = 0;
 		this.rotationSpeed = toRad(2);
 		this.properFrameCount = 0;
@@ -217,7 +218,7 @@ class BulletSystem{
 		newBullet.setPosition(this.position.x, this.position.y);
 		newBullet.setPolar(this.bulletSpeed, this.bulletDirection);
 		newBullet.parent = this; // 親を設定する
-		newBullet.setBurst(this.bulletBurstWaitCount, this.bulletBurstPattern);
+		newBullet.setBurst(this.bulletBurstWaitCount, this.bulletBurstLimitCount, this.bulletBurstPattern);
 		newBullet.vanishFlag = false;
 		this.bulletSet.add(newBullet);
 	}
@@ -271,7 +272,7 @@ class Bullet{
 		this.position = createVector(0, 0);
 		this.velocity = createVector(0, 0);
 		this.properFrameCount = 0;
-		this.burst = {wait:-1, pattern:undefined};
+		this.burst = {waitCount:-1, limitCount:0, pattern:undefined};
 		this.vanishFlag = false; // まずフラグを立ててそれから別処理で破棄するようにしないと面倒が起きる。もうたくさん。
 	}
 	setPosition(x, y){
@@ -286,15 +287,17 @@ class Bullet{
 		this.direction = toRad(angle);
 		this.velocity.set(this.speed * Math.cos(this.direction), this.speed * Math.sin(this.direction));
 	}
-	setBurst(waitCount, _pattern){
+	setBurst(waitCount, limitCount, _pattern){
 		this.burst.waitCount = waitCount;
+		this.burst.limitCount = limitCount;
 		this.burst.pattern = _pattern;
 	}
 	update(){
 		this.properFrameCount++;
 		this.position.add(this.velocity);
 		if(this.properFrameCount === this.burst.waitCount){
-			this.burst.pattern(this); // バーストで弾丸を放出したのちフラグを立てる。
+			this.burst.pattern(this); // 弾丸を放出する。
+			// この中で適宜カウントを減らし、0になったらvanishFlagを立てる。
 		}
 		if(!this.isInFrame()){ this.vanishFlag = true; } // ここではフラグを立てるだけにする。直後に破棄する。
 	}
@@ -412,6 +415,7 @@ function menu5(_cannon){
 	_cannon.bulletDirection = 0;
 	_cannon.bulletDirectionVelocity = 2;
 	_cannon.bulletBurstWaitCount = 60;
+	_cannon.bulletBurstLimitCount = 0;
 	_cannon.bulletBurstPattern = burst1;
 	_cannon.pattern = pattern5;
 }
@@ -431,6 +435,7 @@ function menu7(_cannon){
 function menu8(_cannon){
 	_cannon.bulletSpeed = 5;
 	_cannon.bulletBurstWaitCount = 30;
+	_cannon.bulletBurstLimitCount = 0;
 	_cannon.bulletBurstPattern = burst2;
 	_cannon.pattern = pattern8;
 }
@@ -539,7 +544,7 @@ function pattern6(_cannon){
 	_cannon.angle += 2;
 	if(fc % 96 > 32){ return; } // 0, 4, 8, 12, 16, 20, 24, 28.
 	if(fc % 4 === 0){
-		_cannon.bulletDirection = toDeg(getPlayerDirection(_cannon.position));
+		_cannon.bulletDirection = getPlayerAimAngle(_cannon.position);
 		const initialSpeed = 5;
 		_cannon.bulletSpeed = initialSpeed;
 		const count = 7;
@@ -557,7 +562,7 @@ function pattern7(_cannon){
 	_cannon.angle -= 2;
 	if(fc % 96 < 48 || fc % 96 > 80){ return; } // 48, 52, etc...
 	if(fc % 4 === 0){
-		_cannon.bulletDirection = toDeg(getPlayerDirection(_cannon.position));
+		_cannon.bulletDirection = getPlayerAimAngle(_cannon.position);
 		const initialSpeed = 5;
 		_cannon.bulletSpeed = initialSpeed;
 		const count = 7;
@@ -574,7 +579,7 @@ function pattern7(_cannon){
 function pattern8(_cannon){
 	const fc = _cannon.properFrameCount;
 	if(fc % 30 === 0){
-		const pivotDirection = toDeg(getPlayerDirection(_cannon.position)) + 240 * Math.random() - 120;
+		const pivotDirection = getPlayerAimAngle(_cannon.position, 120);
 		const ways = 3;
 		const intervalAngle = 45;
 		let loopCount = ways;
@@ -615,19 +620,20 @@ function burst1(_bullet){
 		_bullet.parent.resumeBullet(_bullet.position, _bullet.speed, direction);
 		direction += intervalAngle;
 	}
-	_bullet.vanishFlag = true;
+	if(_bullet.burst.limitCount === 0){ _bullet.vanishFlag = true; }
 }
 
 function burst2(_bullet){
 	// スピードを0.5ずつ増しつつ24発・・？intervalFramesが2だから2フレームおき。
-	const direction = toDeg(getPlayerDirection(_bullet.position)) + 60 * Math.random() - 30;
+	// limitCountを24に設定して、properが2で割り切れるときだけ弾丸を作り、・・んー。
+	const direction = getPlayerAimAngle(_bullet.position, 30);
 	let speed = 5;
 	let loopCount = 24;
 	while(loopCount-- > 0){
 		_bullet.parent.resumeBullet(_bullet.position, speed, direction);
 		speed += 0.5;
 	}
-	_bullet.vanishFlag = true;
+	if(_bullet.burst.limitCount === 0){ _bullet.vanishFlag = true; }
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -726,4 +732,11 @@ function toDeg(radian){
 function getPlayerDirection(pos){
 	// posからplayer.positionに向かう方向角
 	return atan2(wholeSystem.player.position.y - pos.y, wholeSystem.player.position.x - pos.x);
+}
+
+function getPlayerAimAngle(pos, margin = 0){
+	// posは射出するユニットの位置(x:, y:)で、marginは振れ幅(Degree)、たとえば30とか120とか。
+	// 返す角度はDegreeで与えられる。
+  const aimAngle = atan2(wholeSystem.player.position.y - pos.y, wholeSystem.player.position.x - pos.x);
+	return (aimAngle * 180 / Math.PI) - Math.random() * 2 * margin + margin;
 }
