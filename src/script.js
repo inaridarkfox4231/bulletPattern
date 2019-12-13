@@ -16,6 +16,7 @@
 
 // テスト初めて使ったわ。bulletのeject処理が全然うまくいってない。やべぇ。
 // やっぱ逆走査しないとだめだよなぁ。
+// もっとテストコード活用しないとな・・まあ最終的には無くすけど。
 
 let bulletPool;
 let wholeSystem;
@@ -204,9 +205,6 @@ class BulletSystem{
 		this.bulletSpeedChange = 0;
 		this.bulletDirection = 0;
 		this.bulletDirectionVelocity = 0;
-		//this.bulletBurstWaitCount = -1; // burstするまでの時間
-		//this.bulletBurstLimitCount = 0; // burstしてからのカウント、適宜減らし、0になったらvanish.
-		//this.bulletBurstPattern = undefined; // burst中の設置弾丸のパターンについて
 		this.bulletPattern = defaultBulletPattern; // 必要に応じて変える。
 		this.rotationAngle = 0;
 		this.rotationSpeed = toRad(2);
@@ -236,7 +234,6 @@ class BulletSystem{
 		newBullet.setPosition(position.x, position.y);
     newBullet.setPolar(speed, direction);
 		newBullet.parent = this;
-		//newBullet.setBurst(wc, bp);
 		newBullet.setPattern(bulletPattern); // burstの廃止に伴い変更。burst以外にもパターンあるでしょ。
 		// もしくはコンポジットという手もあるな・・切り替わっても面白そうだ・・
 		newBullet.vanishFlag = false;
@@ -283,7 +280,6 @@ class Bullet{
 		this.position = createVector(0, 0);
 		this.velocity = createVector(0, 0);
 		this.properFrameCount = 0;
-		//this.burst = {waitCount:-1, limitCount:0, pattern:undefined};
 		this.pattern = undefined;
 		this.vanishFlag = false; // まずフラグを立ててそれから別処理で破棄するようにしないと面倒が起きる。もうたくさん。
 	}
@@ -302,21 +298,10 @@ class Bullet{
 	setPattern(newPattern){
 		this.pattern = newPattern;
 	}
-	setBurst(waitCount, limitCount, _pattern){
-		/* 廃止する */
-		this.burst.waitCount = waitCount;
-		this.burst.limitCount = limitCount;
-		this.burst.pattern = _pattern;
-	}
 	update(){
 		ejectedBulletUpdated(this);
 		this.properFrameCount++;
 		this.pattern(this);
-		//this.position.add(this.velocity);
-		//if(this.properFrameCount === this.burst.waitCount){
-		//	this.burst.pattern(this); // 弾丸を放出する。
-			// この中で適宜カウントを減らし、0になったらvanishFlagを立てる。
-		//}
 		if(!this.isInFrame()){ this.vanishFlag = true; } // ここではフラグを立てるだけにする。直後に破棄する。
 	}
 	check(){
@@ -658,36 +643,6 @@ function bulletPattern2(_bullet){
 		speed += 0.5;
 	}
 	_bullet.vanishFlag = true;
-}
-
-function burst0(_bullet){
-	_bullet.vanishFlag = true; // 何もしないで消滅！
-}
-
-function burst1(_bullet){
-	// 4つの方向にばーん
-	const ways = 4;
-	const intervalAngle = 12;
-	let direction = toDeg(_bullet.direction) - 0.5 * (ways - 1) * intervalAngle;
-	let loopCount = ways;
-	while(loopCount-- > 0){
-		_bullet.parent.resumeBullet(_bullet.position, _bullet.speed, direction);
-		direction += intervalAngle;
-	}
-	if(_bullet.burst.limitCount === 0){ _bullet.vanishFlag = true; }
-}
-
-function burst2(_bullet){
-	// スピードを0.5ずつ増しつつ24発・・？intervalFramesが2だから2フレームおき。
-	// limitCountを24に設定して、properが2で割り切れるときだけ弾丸を作り、・・んー。
-	const direction = getPlayerAimAngle(_bullet.position, 30);
-	let speed = 5;
-	let loopCount = 24;
-	while(loopCount-- > 0){
-		_bullet.parent.resumeBullet(_bullet.position, speed, direction);
-		speed += 0.5;
-	}
-	if(_bullet.burst.limitCount === 0){ _bullet.vanishFlag = true; }
 }
 
 // ---------------------------------------------------------------------------------------- //
