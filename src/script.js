@@ -11,6 +11,12 @@
 // その・・もっと洗練させて・・んー。
 // pushpopなくしたら速くなった。なんじゃい。
 
+// setBurstをなくして、burstの中にいろいろ書くようにするってこと。
+// defaultBulletPatternのところに別のパターンを入れちゃうってことね。
+
+// テスト初めて使ったわ。bulletのeject処理が全然うまくいってない。やべぇ。
+// やっぱ逆走査しないとだめだよなぁ。
+
 let bulletPool;
 let wholeSystem;
 let controller;
@@ -160,18 +166,18 @@ class System{
 	}
 	initialize(){
 		this.player.initialize();
-		this.cannonArray.every("initialize");
+		this.cannonArray.loop("initialize");
 		this.cannonArray.clear(); // cannon自体もなくす・・これでいい？
 	}
 	setting(program){
 		program(this);
 	}
 	update(){
-		this.cannonArray.every("update");
+		this.cannonArray.loop("update");
 		this.player.update();
 	}
 	draw(){
-		this.cannonArray.every("draw");
+		this.cannonArray.loop("draw");
 		this.player.draw();
 	}
 	getBulletCapacity(){
@@ -193,14 +199,15 @@ class BulletSystem{
 		this.initialize();
 	}
 	initialize(){
-		this.bulletSet.every("vanish"); // すべてのbulletを（あれば）Poolに戻す。
+		this.bulletSet.loopReverse("vanish"); // すべてのbulletを（あれば）Poolに戻す。
 		this.bulletSpeed = 0;
 		this.bulletSpeedChange = 0;
 		this.bulletDirection = 0;
 		this.bulletDirectionVelocity = 0;
-		this.bulletBurstWaitCount = -1; // burstするまでの時間
-		this.bulletBurstLimitCount = 0; // burstしてからのカウント、適宜減らし、0になったらvanish.
-		this.bulletBurstPattern = undefined; // burst中の設置弾丸のパターンについて
+		//this.bulletBurstWaitCount = -1; // burstするまでの時間
+		//this.bulletBurstLimitCount = 0; // burstしてからのカウント、適宜減らし、0になったらvanish.
+		//this.bulletBurstPattern = undefined; // burst中の設置弾丸のパターンについて
+		this.bulletPattern = defaultBulletPattern; // 必要に応じて変える。
 		this.rotationAngle = 0;
 		this.rotationSpeed = toRad(2);
 		this.properFrameCount = 0;
@@ -218,17 +225,20 @@ class BulletSystem{
 		newBullet.setPosition(this.position.x, this.position.y);
 		newBullet.setPolar(this.bulletSpeed, this.bulletDirection);
 		newBullet.parent = this; // 親を設定する
-		newBullet.setBurst(this.bulletBurstWaitCount, this.bulletBurstLimitCount, this.bulletBurstPattern);
+		newBullet.setPattern(this.bulletPattern); // パターンを決める。
 		newBullet.vanishFlag = false;
 		this.bulletSet.add(newBullet);
 	}
-	resumeBullet(position, speed, direction, wc = -1, bp = undefined){
+	resumeBullet(position, speed, direction, bulletPattern = defaultBulletPattern){
+		// 弾丸が親経由でbulletを作らせるときに使うメソッド
 		let newBullet = bulletPool.use();
 		newBullet.properFrameCount = 0;
 		newBullet.setPosition(position.x, position.y);
     newBullet.setPolar(speed, direction);
 		newBullet.parent = this;
-		newBullet.setBurst(wc, bp);
+		//newBullet.setBurst(wc, bp);
+		newBullet.setPattern(bulletPattern); // burstの廃止に伴い変更。burst以外にもパターンあるでしょ。
+		// もしくはコンポジットという手もあるな・・切り替わっても面白そうだ・・
 		newBullet.vanishFlag = false;
 		this.bulletSet.add(newBullet);
 	}
@@ -237,8 +247,9 @@ class BulletSystem{
 		this.position.y = this.radius * Math.sin(toRad(this.angle));
 		this.pattern(this); // インターバルの情報はpatternに含めてしまいましょう。
 		this.properFrameCount++;
-		this.bulletSet.every("update");
-		this.bulletSet.every("check");
+		this.bulletSet.loop("update");
+		this.bulletSet.loopReverse("check"); // ここで排除されるはず・・フラグが立っていれば。
+		ejectBulletFailed(this);
 		this.rotationAngle += this.rotationSpeed;
 	}
 	drawBody(){
@@ -253,7 +264,7 @@ class BulletSystem{
 		this.drawBody();
 		noStroke();
 		fill(0, 0, 255); // 弾丸の色を固定する場所は1ヵ所に。
-		this.bulletSet.every("draw");
+		this.bulletSet.loop("draw");
 	}
 }
 
@@ -272,7 +283,8 @@ class Bullet{
 		this.position = createVector(0, 0);
 		this.velocity = createVector(0, 0);
 		this.properFrameCount = 0;
-		this.burst = {waitCount:-1, limitCount:0, pattern:undefined};
+		//this.burst = {waitCount:-1, limitCount:0, pattern:undefined};
+		this.pattern = undefined;
 		this.vanishFlag = false; // まずフラグを立ててそれから別処理で破棄するようにしないと面倒が起きる。もうたくさん。
 	}
 	setPosition(x, y){
@@ -287,18 +299,24 @@ class Bullet{
 		this.direction = toRad(angle);
 		this.velocity.set(this.speed * Math.cos(this.direction), this.speed * Math.sin(this.direction));
 	}
+	setPattern(newPattern){
+		this.pattern = newPattern;
+	}
 	setBurst(waitCount, limitCount, _pattern){
+		/* 廃止する */
 		this.burst.waitCount = waitCount;
 		this.burst.limitCount = limitCount;
 		this.burst.pattern = _pattern;
 	}
 	update(){
+		ejectedBulletUpdated(this);
 		this.properFrameCount++;
-		this.position.add(this.velocity);
-		if(this.properFrameCount === this.burst.waitCount){
-			this.burst.pattern(this); // 弾丸を放出する。
+		this.pattern(this);
+		//this.position.add(this.velocity);
+		//if(this.properFrameCount === this.burst.waitCount){
+		//	this.burst.pattern(this); // 弾丸を放出する。
 			// この中で適宜カウントを減らし、0になったらvanishFlagを立てる。
-		}
+		//}
 		if(!this.isInFrame()){ this.vanishFlag = true; } // ここではフラグを立てるだけにする。直後に破棄する。
 	}
 	check(){
@@ -414,9 +432,10 @@ function menu5(_cannon){
 	_cannon.bulletSpeed = 2;
 	_cannon.bulletDirection = 0;
 	_cannon.bulletDirectionVelocity = 2;
-	_cannon.bulletBurstWaitCount = 60;
-	_cannon.bulletBurstLimitCount = 0;
-	_cannon.bulletBurstPattern = burst1;
+	//_cannon.bulletBurstWaitCount = 60;
+	//_cannon.bulletBurstLimitCount = 0;
+	//_cannon.bulletBurstPattern = burst1;
+	_cannon.bulletPattern = bulletPattern1;
 	_cannon.pattern = pattern5;
 }
 
@@ -434,9 +453,10 @@ function menu7(_cannon){
 
 function menu8(_cannon){
 	_cannon.bulletSpeed = 5;
-	_cannon.bulletBurstWaitCount = 30;
-	_cannon.bulletBurstLimitCount = 0;
-	_cannon.bulletBurstPattern = burst2;
+	//_cannon.bulletBurstWaitCount = 30;
+	//_cannon.bulletBurstLimitCount = 0;
+	//_cannon.bulletBurstPattern = burst2;
+	_cannon.bulletPattern = bulletPattern2;
 	_cannon.pattern = pattern8;
 }
 
@@ -601,10 +621,44 @@ function pattern17(_cannon){
 }
 
 // ---------------------------------------------------------------------------------------- //
-// Burst.
-// バーストパターン？
-// たとえばbulletに30フレームのあとでバースト1でバーストしてねってお願いすると
-// bulletのupdateで指定フレームに来たときにバースト処理（弾丸生成）してvanishするとかそんな感じ？
+// bulletPattern.
+// デフォルトは速度を加えるだけ。
+
+function defaultBulletPattern(_bullet){
+	_bullet.position.add(_bullet.velocity);
+}
+
+function bulletPattern1(_bullet){
+	// 4つの方向にばーん
+	_bullet.position.add(_bullet.velocity);
+	if(_bullet.properFrameCount < 60){ return; }
+	const ways = 4;
+	const intervalAngle = 12;
+	let direction = toDeg(_bullet.direction) - 0.5 * (ways - 1) * intervalAngle;
+	let loopCount = ways;
+	while(loopCount-- > 0){
+		_bullet.parent.resumeBullet(_bullet.position, _bullet.speed, direction);
+		direction += intervalAngle;
+	}
+	_bullet.vanishFlag = true;
+}
+
+function bulletPattern2(_bullet){
+	// スピードを0.5ずつ増しつつ24発・・？intervalFramesが2だから2フレームおき。
+	// limitCountを24に設定して、properが2で割り切れるときだけ弾丸を作り、・・んー。
+	// 31で実行されてる・・・？vanishFlagがtrueなのに排除されずにここに来てるね。
+	_bullet.position.add(_bullet.velocity);
+	if(_bullet.properFrameCount < 30){ return; }
+	const direction = getPlayerAimAngle(_bullet.position, 30);
+	let speed = 5;
+	//let loopCount = 24;
+	let loopCount = 6;
+	while(loopCount-- > 0){
+		_bullet.parent.resumeBullet(_bullet.position, speed, direction);
+		speed += 0.5;
+	}
+	_bullet.vanishFlag = true;
+}
 
 function burst0(_bullet){
 	_bullet.vanishFlag = true; // 何もしないで消滅！
@@ -708,10 +762,19 @@ class CrossReferenceArray extends Array{
     let index = this.indexOf(element, 0);
     this.splice(index, 1); // elementを配列から排除する
   }
-  every(methodName){
+  loop(methodName){
 		if(this.length === 0){ return; }
     // methodNameには"update"とか"display"が入る。まとめて行う処理。
-    this.forEach((obj) => { obj[methodName](); });
+		for(let i = 0; i < this.length; i++){
+			this[i][methodName]();
+		}
+  }
+	loopReverse(methodName){
+		if(this.length === 0){ return; }
+    // 逆から行う。排除とかこうしないとエラーになる。もうこりごり。
+		for(let i = this.length - 1; i >= 0; i--){
+			this[i][methodName]();
+		}
   }
 	clear(){
 		this.length = 0;
@@ -739,4 +802,21 @@ function getPlayerAimAngle(pos, margin = 0){
 	// 返す角度はDegreeで与えられる。
   const aimAngle = atan2(wholeSystem.player.position.y - pos.y, wholeSystem.player.position.x - pos.x);
 	return (aimAngle * 180 / Math.PI) - Math.random() * 2 * margin + margin;
+}
+
+// ---------------------------------------------------------------------------------------- //
+// test.
+// いろんなテスト。
+
+// bulletがフラグ立ってるのにupdateを実行しちゃうとまずいからそこら辺のテスト
+function ejectedBulletUpdated(_bullet){
+	if(_bullet.vanishFlag){ console.log("ejected bullet updated!"); }
+	return;
+}
+
+// bulletSystemがcheckしたあとに排除フラグの立っているbulletがあればエラーを返す感じ。
+function ejectBulletFailed(_cannon){
+	for(let i = 0; i < _cannon.bulletSet.length; i++){
+		if(_cannon.bulletSet[i].vanishFlag){ console.log("eject bullet failed!"); break; }
+	}
 }
