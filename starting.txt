@@ -1,0 +1,84 @@
+/*
+- endless:
+  - loop:
+      count: 2
+      pattern:
+        - shot_velocity: [set, 3 + math.random(3), math.random(360)]
+        - fire:
+  - wait: 1
+自分なりの解釈
+endress:エンドレス。
+loop:ここから下を繰り返す。
+count:繰り返しは2回。
+shot_velocity: 3～6の速さでいずれかの方向。
+fire:そういうbulletを1発だけ発射する。
+wait:たぶん最初にこれを減らして0になるたびに実行している気がする
+ので、これで毎フレームっていう意味になってる気がする。
+で、結果的に毎フレーム勝手な二つの方向に発射してるから1秒あたり120発って感じなのかな・・？
+*/
+
+// だいぶわかってきた・・3つめの4は文字通りの意味で良さそうね。
+// しかしここからが大変だぞ・・どうするのよ。
+// パターンの変え方を研究するのかどうするのかって感じね。
+
+// loopのあとのcountはloopの内部を繰り返す回数だと思う。
+// patternが分かりそうで分からない・・
+// patternでsettingしている？
+// fireで弾丸を作っているようだ？？
+// shotとfireの違いが分からないんだけどね。。
+
+// パターン1の作り方。
+
+// this.fireInterval = 1;
+// this.pattern = () => {
+//   let loopCount = 2;
+//	 while(loopCount-- > 0){
+//		 this.bulletSpeed = 3 + random(3);
+//		 this.bulletDirection = random(360);
+//		 this.createBullet();
+//	 }
+// }
+
+// loopでcountが2のとき
+// let loopCount = $loop;
+// while(loopCount-- > 0){
+//   shot_velocityのspeedとdirectionにあたるのがあれとあれで
+//   そのあとのfireがあれ。いいんじゃないかと。
+// }
+// endlessの中身をupdateで実行する
+// waitは0なら一定の数を足す、正なら減らす、0なら実行するみたいな感じでよい？
+// いいよ別に。
+
+// const mainLoop = patterns.main.endless;
+// this.loopInterval = mainLoop.wait;
+// const loopContent = mainLoop.loop;
+// this.act = () => {
+//   let loopCount = loopContent.count;
+//   while(loopCount-- > 0){
+//     execute(loopContent.pattern, this); // もうこれでいいんじゃね？
+//   }
+// }
+
+// 再帰かなぁ・・ていうか、こうするしかないのでは。なんだexecute・・execute??
+// patternの中身を調べて順に実行する？waitは？
+// executeの中身でwaitでproperを割るとか・・
+// waitの入れ子だとできないけど。
+
+// waitが見つかったところで処理を終了してカウントの後続きから？
+
+// loopとwait
+
+// patterns = {};
+// patterns.main = {};
+// patterns.main.endless = {}; // これを繰り返す感じ
+// patterns.main.endless.loop = {count:2, pattern:{次}};
+// 次・・shot_velocity:[], fireって感じの。fireはcreateBulletでいいと思う。
+// patterns.main.endless.wait = 1; endlessの中身を毎フレーム実行する
+
+// mainの他にradial_sweepってあってそれを読み込んでいるからそういう感じなのかなと。
+// 呼び出して当てはめるんだねきっと。
+
+// patternには何が？loopの後に来るのはcount(実行回数)とpatternだけ。
+// patternの中身をcountだけ実行するのがloop.
+// その外側にあるのはそれ以外の部分の処理だから事前に実行して固定するんだろうね。
+// patternの後に来るのはshot_speed, shot_velocity, shot_directionのsetとadd, さらに・・
