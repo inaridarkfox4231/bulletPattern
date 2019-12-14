@@ -417,9 +417,6 @@ function menu5(_cannon){
 	_cannon.bulletSpeed = 2;
 	_cannon.bulletDirection = 0;
 	_cannon.bulletDirectionVelocity = 2;
-	//_cannon.bulletBurstWaitCount = 60;
-	//_cannon.bulletBurstLimitCount = 0;
-	//_cannon.bulletBurstPattern = burst1;
 	_cannon.bulletPattern = bulletPattern1;
 	_cannon.pattern = pattern5;
 }
@@ -438,11 +435,16 @@ function menu7(_cannon){
 
 function menu8(_cannon){
 	_cannon.bulletSpeed = 5;
-	//_cannon.bulletBurstWaitCount = 30;
-	//_cannon.bulletBurstLimitCount = 0;
-	//_cannon.bulletBurstPattern = burst2;
 	_cannon.bulletPattern = bulletPattern2;
 	_cannon.pattern = pattern8;
+}
+
+function menu9(_cannon){
+	_cannon.bulletSpeed = 6;
+	_cannon.bulletDirection = 0;
+	_cannon.bulletDirectionVelocity = 15;
+	_cannon.bulletPattern = bulletPattern3;
+	_cannon.pattern = pattern9;
 }
 
 function menu16(_cannon){
@@ -596,6 +598,18 @@ function pattern8(_cannon){
 	}
 }
 
+// 7つの方向に射出、そのあと2WAYで分裂を3回くりかえしたのち直進
+function pattern9(_cannon){
+	const fc = _cannon.properFrameCount;
+	if(fc % 48 === 0){
+		//ここで7つの方向に1発だけ弾を発射するみたい。32フレーム後に消滅する。
+		// というかあのコードだとその場にとどめる？それが4フレームおきに8発？スピード6？
+		// ある程度進む→2方向にスプリット→ある程度進む→2方向にスプリット・・
+		// 最後は直進する弾
+		// とりあえず真下で作ってみてそれから7方向にするとか。
+		_cannon.bulletDirection += _cannon.bulletDirectionVelocity; /* 15 */ }
+}
+
 function pattern17(_cannon){
 	const fc = _cannon.properFrameCount;
 	_cannon.angle += -3;
@@ -634,15 +648,34 @@ function bulletPattern2(_bullet){
 	// 31で実行されてる・・・？vanishFlagがtrueなのに排除されずにここに来てるね。
 	_bullet.position.add(_bullet.velocity);
 	if(_bullet.properFrameCount < 30){ return; }
-	const direction = getPlayerAimAngle(_bullet.position, 30);
-	let speed = 5;
-	//let loopCount = 24;
-	let loopCount = 6;
-	while(loopCount-- > 0){
-		_bullet.parent.resumeBullet(_bullet.position, speed, direction);
-		speed += 0.5;
+	if(_bullet.properFrameCount === 30){
+		_bullet.burst = {count:24, interval:2, pattern:burst2, speed:5};
+		_bullet.burst.speedChange = 0.5;
+		_bullet.burst.direction = getPlayerAimAngle(_bullet.position, 30);
+		_bullet.setPolar(0, _bullet.burst.direction);
 	}
-	_bullet.vanishFlag = true;
+	if((_bullet.properFrameCount - 30) % _bullet.burst.interval === 0){
+		_bullet.burst.pattern(_bullet);
+		_bullet.burst.count--;
+		if(_bullet.burst.count === 0){
+			_bullet.vanishFlag = true;
+			delete _bullet.burst;
+    }
+	}
+	// burstの中でcountを減らして0になったらvanishFlag=true.
+}
+
+function bulletPattern3(_bullet){
+
+}
+
+// ---------------------------------------------------------------------------------------- //
+// burst.
+// burst = {count:24, interval:2, pattern:...}
+
+function burst2(_bullet){
+	_bullet.parent.resumeBullet(_bullet.position, _bullet.burst.speed, _bullet.burst.direction);
+	_bullet.burst.speed += _bullet.burst.speedChange;
 }
 
 // ---------------------------------------------------------------------------------------- //
