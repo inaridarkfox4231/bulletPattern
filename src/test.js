@@ -1,11 +1,25 @@
 "use strict";
 
+const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
+
+let isLoop = true;
+
 function setup(){
   createCanvas(480, 640);
 }
 
 function draw(){
   background(220);
+}
+
+// ---------------------------------------------------------------------------------------- //
+// KeyAction.
+
+function keyTyped(){
+  if(key === 'p'){
+    if(isLoop){ noLoop(); isLoop = false; return; }
+    else{ loop(); isLoop = true; return; }
+  }
 }
 
 // ---------------------------------------------------------------------------------------- //
