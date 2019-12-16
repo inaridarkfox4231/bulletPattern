@@ -1,0 +1,2 @@
+STEP1:サイズを480x640に指定
+STEP2:ObjectPoolとCrossReferenceArrayを用意する
