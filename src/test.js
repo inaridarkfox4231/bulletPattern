@@ -3,13 +3,18 @@
 const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
 
 let isLoop = true;
+let player;
 
 function setup(){
   createCanvas(480, 640);
+  angleMode(DEGREES);
+  player = new SelfUnit();
 }
 
 function draw(){
   background(220);
+  player.update();
+  player.draw();
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -21,6 +26,49 @@ function keyTyped(){
     else{ loop(); isLoop = true; return; }
   }
 }
+
+// ---------------------------------------------------------------------------------------- //
+// Player.
+
+class SelfUnit{
+	constructor(){
+		this.position = createVector(0, 0);
+		this.initialize();
+	}
+	initialize(){
+		this.position.set(width / 2, height * 7 / 8);
+		this.speed = 4;
+		this.rotationAngle = 0;
+		this.rotationSpeed = 2;
+	}
+	setPosition(x, y){
+		this.position.set(x, y);
+	}
+	update(){
+		this.rotationAngle += this.rotationSpeed;
+	  if(keyIsDown(LEFT_ARROW)){ this.position.x -= this.speed; }
+		else if(keyIsDown(RIGHT_ARROW)){ this.position.x += this.speed; }
+		else if(keyIsDown(UP_ARROW)){ this.position.y -= this.speed; }
+		else if(keyIsDown(DOWN_ARROW)){ this.position.y += this.speed; }
+	  this.frameIn();
+	}
+	frameIn(){
+		this.position.x = constrain(this.position.x, 0, width);
+		this.position.y = constrain(this.position.y, 0, height);
+	}
+	draw(){
+		const {x, y} = this.position;
+		const c = cos(this.rotationAngle) * 16;
+		const s = sin(this.rotationAngle) * 16;
+		stroke(0);
+		noFill();
+		strokeWeight(2);
+		quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
+		strokeWeight(4);
+		point(x, y);
+	}
+}
+
 
 // ---------------------------------------------------------------------------------------- //
 // ObjectPool.
