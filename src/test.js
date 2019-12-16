@@ -12,13 +12,16 @@ function setup(){
   angleMode(DEGREES);
   bulletPool = new ObjectPool(() => { return new Bullet(); }, 600);
   entity = new System();
-  // pattern作成
-  let ptn0 = {initialize:setParam(width / 2, height / 4, 9, 90), execute:brakeAccell(60, 0.05, 0.1)};
-  registBullet(ptn0);
 }
 
 function draw(){
   background(220, 220, 255);
+  if(frameCount % 10 === 0){
+    for(let i = 0; i < 11; i++){
+      let ptn = {initialize:setParam(width / 2, height / 4, 4, 65 + 5 * i), execute:go};
+      registBullet(ptn);
+    }
+  }
   entity.update();
   entity.draw();
 }
