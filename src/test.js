@@ -22,13 +22,6 @@ function setup(){
 
 function draw(){
   background(220, 220, 255);
-  if(frameCount % 10 === 0){
-    const initialAngle = (frameCount % 360) * 10;
-    for(let i = 0; i < 30; i++){
-      let ptn = {initialize:setParam(width / 2, height / 4, 4, initialAngle + i * 12), execute:go};
-      registBullet(ptn);
-    }
-  }
 	const updateStart = performance.now(); // 時間表示。
   entity.update();
   const updateEnd = performance.now();
@@ -101,7 +94,7 @@ class System{
   }
 }
 
-function registBullet(pattern){
+function createBullet(pattern){
   let newBullet = bulletPool.use();
   newBullet.setPattern(pattern);
   entity.bulletArray.add(newBullet);
@@ -302,8 +295,28 @@ class CrossReferenceArray extends Array{
 // ---------------------------------------------------------------------------------------- //
 // Utility.
 
+function getPlayerDirection(pos){
+  const {x, y} = entity.player.position;
+  return atan2(y - pos.y, x - pos.x);
+}
+
+// ---------------------------------------------------------------------------------------- //
+// Initialize.
+// 多分これじゃいけないんだろう
+// たとえば(x, y).
+// 同じ位置、ちょっと離す、とか。
+// 方向は打ち出す側が決めてそれ使うとか・・？
+
 function setParam(x, y, speed, direction){
   return (_bullet) => { _bullet.setPosition(x, y); _bullet.setVelocity(speed, direction); }
+}
+
+function aim(x, y, speed, margin = 0){
+  return (_bullet) => {
+    _bullet.setPosition(x, y);
+    const direction = getPlayerDirection(_bullet.position) + margin * random(-1, 1);
+    _bullet.setVelocity(speed, direction);
+  }
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -342,6 +355,20 @@ function brakeAccell(threshold, friction, accelleration){
       _bullet.speed *= (1 - friction);
     }else{
       _bullet.speed += accelleration;
+    }
+    _bullet.setVelocity(_bullet.speed, _bullet.direction);
+    _bullet.position.add(_bullet.velocity);
+  }
+}
+
+function wave(period, angleChange){
+  // periodで方向が元に戻る感じ。
+  return (_bullet) => {
+    const checkFC = _bullet.properFrameCount % period;
+    if(checkFC < (period / 4) || checkFC >= (period * 3 / 4)){
+      _bullet.direction += angleChange;
+    }else{
+      _bullet.direction -= angleChange;
     }
     _bullet.setVelocity(_bullet.speed, _bullet.direction);
     _bullet.position.add(_bullet.velocity);

@@ -34,3 +34,26 @@ nwayとline. lineはnwayの速さバージョン。
 ていうかjsonだかyamlだか知らないけどあれをあれにするのめちゃ面倒な気がする・・・
 だから自分はArray方式でいいです。楽譜方式で。その方が楽でしょ、多分。
 ・・・・
+
+if(frameCount % 10 === 0){
+  const initialAngle = (frameCount % 360) * 10;
+  for(let i = 0; i < 30; i++){
+    let ptn = {initialize:setParam(width / 2, height / 4, 4, initialAngle + i * 12), execute:go};
+    createBullet(ptn);
+  }
+}
+
+・・今作ったのはradial12の速さ4でさらにangleChangeが毎フレーム+10でさらに
+これが10フレームに1回だからつまり角度は100ずつずれている感じ。
+これを、Cannonにやらせる？？
+
+if(frameCount % 8 === 0){
+  for(let diff = -10; diff <= 10; diff += 10){
+    const pos = {x:width / 2, y:height / 4};
+    const dir = getPlayerDirection(pos);
+    let ptn = {initialize:setParam(pos.x, pos.y, 9, dir + diff), execute:brakeAccell(60, 0.05, 0.1)};
+    createBullet(ptn);
+  }
+}
+
+aim作ったけどこれでいい気がするしよくわかんないな。setParamで足りるだろ。
