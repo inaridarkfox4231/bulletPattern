@@ -13,7 +13,7 @@ function setup(){
   bulletPool = new ObjectPool(() => { return new Bullet(); }, 600);
   entity = new System();
   // pattern作成
-  let ptn0 = {initialize:setParam(width / 2, height / 2, 3, 90), execute:go};
+  let ptn0 = {initialize:setParam(width / 2, height / 4, 9, 90), execute:brakeAccell(60, 0.05, 0.1)};
   registBullet(ptn0);
 }
 
@@ -269,14 +269,41 @@ function setParam(x, y, speed, direction){
 
 // ---------------------------------------------------------------------------------------- //
 // Behavior.
+// 遊びはこのくらいにして
 
 function go(_bullet){
+  // 普通に進む
   _bullet.position.add(_bullet.velocity);
 }
 
-function accell(accelleration){
+function accellerate(accelleration){
+  // 加速する
   return (_bullet) => {
     _bullet.speed += accelleration;
+    _bullet.setVelocity(_bullet.speed, _bullet.direction);
+    _bullet.position.add(_bullet.velocity);
+  }
+}
+
+function decelerate(friction, terminalSpeed){
+  // (1-f)倍していってterminalになったら等速
+  return (_bullet) => {
+    if(_bullet.speed > terminalSpeed){
+      _bullet.speed *= (1 - friction);
+      _bullet.setVelocity(_bullet.speed, _bullet.direction);
+    }
+    _bullet.position.add(_bullet.velocity);
+  }
+}
+
+function brakeAccell(threshold, friction, accelleration){
+  // thresholdフレームだけ(1-f)倍していってそのあとで加速する
+  return (_bullet) => {
+    if(_bullet.properFrameCount < threshold){
+      _bullet.speed *= (1 - friction);
+    }else{
+      _bullet.speed += accelleration;
+    }
     _bullet.setVelocity(_bullet.speed, _bullet.direction);
     _bullet.position.add(_bullet.velocity);
   }
