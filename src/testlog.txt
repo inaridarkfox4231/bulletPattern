@@ -3,3 +3,13 @@ STEP2:ObjectPoolとCrossReferenceArrayを用意する
 STEP3:ObjectPool用のダミーオブジェクトを用意する
 STEP4:Pキーでポーズ/解除できるようにする
 STEP5:プレイヤーをおいて動かしてみる（成功）
+STEP6:entityを用意してplayerはそれ経由でいろいろやる。
+あと、bulletはすべてここに持たせることにする。めんどうだから。
+
+hide:一定時間速度の方向に進むが見えない、よって当たり判定もない。終わるとshowする
+wait:一定時間速度の方向に進む。終わると次の処理。
+vanish:自分を消す、Poolに戻すのと配列から無くすのと両方やる必要が。
+
+bulletのふるまい
+cannonのふるまい
+おわり。

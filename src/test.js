@@ -3,18 +3,19 @@
 const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
 
 let isLoop = true;
-let player;
+
+let entity;
 
 function setup(){
   createCanvas(480, 640);
   angleMode(DEGREES);
-  player = new SelfUnit();
+  entity = new System();
 }
 
 function draw(){
   background(220);
-  player.update();
-  player.draw();
+  entity.update();
+  entity.draw();
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -24,6 +25,31 @@ function keyTyped(){
   if(key === 'p'){
     if(isLoop){ noLoop(); isLoop = false; return; }
     else{ loop(); isLoop = true; return; }
+  }
+}
+
+// ---------------------------------------------------------------------------------------- //
+// System.
+// とりあえずplayerを持たせるだけ
+
+class System{
+	constructor(){
+		this.player = new SelfUnit();
+    // this.bulletArray = ...
+    // this.cannonArray = ...
+	}
+	initialize(){
+		this.player.initialize();
+	}
+	update(){
+		this.player.update();
+	}
+	draw(){
+		this.player.draw();
+	}
+  getCapacity(){
+    // return this.bulletArray.length;
+    return 0;
   }
 }
 
