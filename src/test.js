@@ -3,6 +3,11 @@
 const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
 
 let isLoop = true;
+let showInfo = true;
+
+let drawTimeSum = 0;
+let drawTimeAverage = 0;
+const AVERAGE_CALC_SPAN = 30;
 
 let bulletPool;
 let entity;
@@ -10,6 +15,7 @@ let entity;
 function setup(){
   createCanvas(480, 640);
   angleMode(DEGREES);
+  textSize(16);
   bulletPool = new ObjectPool(() => { return new Bullet(); }, 600);
   entity = new System();
 }
@@ -17,13 +23,41 @@ function setup(){
 function draw(){
   background(220, 220, 255);
   if(frameCount % 10 === 0){
-    for(let i = 0; i < 11; i++){
-      let ptn = {initialize:setParam(width / 2, height / 4, 4, 65 + 5 * i), execute:go};
+    const initialAngle = (frameCount % 360) * 10;
+    for(let i = 0; i < 30; i++){
+      let ptn = {initialize:setParam(width / 2, height / 4, 4, initialAngle + i * 12), execute:go};
       registBullet(ptn);
     }
   }
+	const updateStart = performance.now(); // 時間表示。
   entity.update();
+  const updateEnd = performance.now();
+	const drawStart = performance.now(); // 時間表示。
   entity.draw();
+  const drawEnd = performance.now();
+	if(showInfo){ showPerformanceInfo(updateEnd - updateStart, drawEnd - drawStart); }
+}
+
+// ---------------------------------------------------------------------------------------- //
+// PerformanceInfomation.
+
+function showPerformanceInfo(updateTime, drawTime){
+	fill(0);
+	text("using:" + entity.getCapacity(), 40, 40);
+  const updateTimeStr = updateTime.toPrecision(4);
+  const updateInnerText = `${updateTimeStr}ms`;
+  text("updateTime:" + updateInnerText, 40, 80);
+  const drawTimeStr = drawTime.toPrecision(4);
+  const drawInnerText = `${drawTimeStr}ms`;
+  text("drawTime:" + drawInnerText, 40, 120);
+	drawTimeSum += drawTime;
+	if(frameCount % AVERAGE_CALC_SPAN === 0){
+		drawTimeAverage = drawTimeSum / AVERAGE_CALC_SPAN;
+		drawTimeSum = 0;
+	}
+	const drawTimeAverageStr = drawTimeAverage.toPrecision(4);
+  const drawTimeAverageInnerText = `${drawTimeAverageStr}ms`;
+  text("drawTimeAverage:" + drawTimeAverageInnerText, 40, 160);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -33,6 +67,9 @@ function keyTyped(){
   if(key === 'p'){
     if(isLoop){ noLoop(); isLoop = false; return; }
     else{ loop(); isLoop = true; return; }
+  }else if(key === 'i'){
+    if(showInfo){ showInfo = false; return; }
+    else{ showInfo = true; return; }
   }
 }
 
@@ -60,8 +97,7 @@ class System{
     this.bulletArray.loop("draw");
 	}
   getCapacity(){
-    // return this.bulletArray.length;
-    return 0;
+    return this.bulletArray.length;
   }
 }
 
