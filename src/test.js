@@ -4,16 +4,21 @@ const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェ�
 
 let isLoop = true;
 
+let bulletPool;
 let entity;
 
 function setup(){
   createCanvas(480, 640);
   angleMode(DEGREES);
+  bulletPool = new ObjectPool(() => { return new Bullet(); }, 600);
   entity = new System();
+  // pattern作成
+  let ptn0 = {initialize:setParam(width / 2, height / 2, 3, 90), execute:go};
+  registBullet(ptn0);
 }
 
 function draw(){
-  background(220);
+  background(220, 220, 255);
   entity.update();
   entity.draw();
 }
@@ -35,7 +40,7 @@ function keyTyped(){
 class System{
 	constructor(){
 		this.player = new SelfUnit();
-    // this.bulletArray = ...
+    this.bulletArray = new CrossReferenceArray();
     // this.cannonArray = ...
 	}
 	initialize(){
@@ -43,14 +48,24 @@ class System{
 	}
 	update(){
 		this.player.update();
+    this.bulletArray.loop("update");
+    this.bulletArray.loopReverse("eject");
 	}
 	draw(){
 		this.player.draw();
+    fill(0, 0, 255);
+    this.bulletArray.loop("draw");
 	}
   getCapacity(){
     // return this.bulletArray.length;
     return 0;
   }
+}
+
+function registBullet(pattern){
+  let newBullet = bulletPool.use();
+  newBullet.setPattern(pattern);
+  entity.bulletArray.add(newBullet);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -92,9 +107,67 @@ class SelfUnit{
 		quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
 		strokeWeight(4);
 		point(x, y);
+    noStroke();
 	}
 }
 
+// ---------------------------------------------------------------------------------------- //
+// Bullet.
+
+class Bullet{
+	constructor(){
+		this.direction = 0;
+		this.speed = 0;
+		this.position = createVector(0, 0);
+		this.velocity = createVector(0, 0);
+		this.properFrameCount = 0;
+		this.pattern = undefined;
+		this.vanishFlag = false; // まずフラグを立ててそれから別処理で破棄
+	}
+	setPosition(x, y){
+		this.position.set(x, y);
+	}
+	setVelocity(speed, angle){
+		// angleはdegree指定
+		this.speed = speed;
+		this.direction = angle;
+		this.velocity.set(this.speed * cos(this.direction), this.speed * sin(this.direction));
+	}
+	setPattern(pattern){
+    this.properFrameCount = 0;
+		this.pattern = pattern;
+    this.pattern.initialize(this);
+    this.vanishFlag = false;
+	}
+	update(){
+		this.properFrameCount++;
+    this.pattern.execute(this);
+		if(!this.isInFrame()){ this.vanishFlag = true; } // ここではフラグを立てるだけ。直後に破棄。
+	}
+	eject(){
+		if(this.vanishFlag){ this.vanish(); }
+	}
+	vanish(){
+		// 自分をPoolに戻した後で自分を親から排除する
+		this.belongingArray.remove(this);
+		bulletPool.recycle(this);
+	}
+	draw(){
+		// push/popは遅いのでやめる
+		// とりあえず三角形だけど別のバージョンも考えたい、あと色とか変えたいな。
+		const x = this.position.x;
+		const y = this.position.y;
+		const c = cos(this.direction);
+		const s = sin(this.direction);
+		triangle(x + 6 * c, y + 6 * s, x - 6 * c + 3 * s, y - 6 * s - 3 * c, x - 6 * c - 3 * s, y - 6 * s + 3 * c);
+	}
+	isInFrame(){
+		// フレーム外に出たときの排除処理
+		if(this.position.x < -10 || this.position.x > width + 10){ return false; }
+		if(this.position.y < -10 || this.position.y > height + 10){ return false; }
+		return true;
+	}
+}
 
 // ---------------------------------------------------------------------------------------- //
 // ObjectPool.
@@ -185,4 +258,26 @@ class CrossReferenceArray extends Array{
 	clear(){
 		this.length = 0;
 	}
+}
+
+// ---------------------------------------------------------------------------------------- //
+// Utility.
+
+function setParam(x, y, speed, direction){
+  return (_bullet) => { _bullet.setPosition(x, y); _bullet.setVelocity(speed, direction); }
+}
+
+// ---------------------------------------------------------------------------------------- //
+// Behavior.
+
+function go(_bullet){
+  _bullet.position.add(_bullet.velocity);
+}
+
+function accell(accelleration){
+  return (_bullet) => {
+    _bullet.speed += accelleration;
+    _bullet.setVelocity(_bullet.speed, _bullet.direction);
+    _bullet.position.add(_bullet.velocity);
+  }
 }
