@@ -184,7 +184,7 @@ class Bullet{
 	setPattern(_pattern){
     this.properFrameCount = 0;
 		this.pattern = _pattern;
-    const {x, y, speed, direction} = _pattern;
+    const {x, y, speed, direction} = _pattern.set;
     this.setPosition(x, y);
     this.setVelocity(speed, direction);
     this.vanishFlag = false;
@@ -231,6 +231,19 @@ class Cannon{
   setPosition(x, y){
     this.position.set(x, y);
   }
+  config(param){
+    // 速さとか方向の変化とか加えるのとか全部ここで出来る感じ
+    switch(param.type){
+      case "set":
+        if(param.hasOwnProperty("speed"){ this.bulletSpeed = param.speed; }
+        if(param.hasOwnProperty("direction"){ this.bulletDirection = param.direction; }
+        break;
+      case "add":
+        if(param.hasOwnProperty("speed"){ this.bulletSpeed += param.speed; }
+        if(param.hasOwnProperty("direction"){ this.bulletDirection += param.direction; }
+        break;
+    }
+  }
 	initialize(){
 		// これはbodyに関する情報
 		this.rotationAngle = 0;
@@ -248,6 +261,15 @@ class Cannon{
     this.setPosition(x, y);
     if(bulletSpeed !== undefined){ this.bulletSpeed = bulletSpeed; }
     if(bulletDirection !== undefined){ this.bulletDirection = bulletDirection }
+  }
+  fire(diff = {}){
+    let ptn = {};
+    // diffでズレを表現する。デフォルトはCannonの位置、速度も設定されたものを使う感じ・・
+    ptn.set = {x:this.position.x, y:this.position.y, speed:this.bulletSpeed, direction:this.bulletDirection};
+    ["x", "y", "speed", "direction"].forEach((name) => {
+      if(diff.hasOwnProperty(name)){ ptn.set[name] += diff[name]; }
+    })
+
   }
 	update(){
     this.pattern.execute(this); // この中でfireするんだけど。
@@ -372,88 +394,103 @@ function go(_bullet){
   _bullet.position.add(_bullet.velocity);
 }
 
-function accellerate(accelleration){
+function accellerate(param){
   // 加速する
+  // acceleration:毎フレームの加速度
   return (_bullet) => {
-    _bullet.speed += accelleration;
+    _bullet.speed += param.accelleration;
 		_bullet.velocityUpdate();
     _bullet.position.add(_bullet.velocity);
   }
 }
 
-function decelerate(friction, terminalSpeed){
+function decelerate(param){
   // (1-f)倍していってterminalになったら等速
+  // friction:毎フレームの減速度合い、terminalSpeed:終端速度
   return (_bullet) => {
-    if(_bullet.speed > terminalSpeed){
-      _bullet.speed *= (1 - friction);
+    if(_bullet.speed > param.terminalSpeed){
+      _bullet.speed *= (1 - param.friction);
 		_bullet.velocityUpdate();
     }
     _bullet.position.add(_bullet.velocity);
   }
 }
 
-function brakeAccell(threshold, friction, accelleration, aim = false, margin = 0){
+function brakeAccell(param){
   // thresholdフレームだけ(1-f)倍していってそのあとで加速する
   // aimがtrueの場合はカウント消費後に自機狙いになる
+  // threshold:減速してる時間、friction:減速の度合い、accelleration:減速後の加速度、
+  // aim:デフォルトはfalse, 減速後にエイムするかどうか、margin:エイムの余地、デフォルトは0
+  const aim = (param.hasOwnProperty("aim") ? param.aim : false);
+  const margin = (param.hasOwnProperty("margin") ? param.margin : 0);
   return (_bullet) => {
-    if(_bullet.properFrameCount < threshold){
-      _bullet.speed *= (1 - friction);
-    }else if(_bullet.properFrameCount === threshold){
+    if(_bullet.properFrameCount < param.threshold){
+      _bullet.speed *= (1 - param.friction);
+    }else if(_bullet.properFrameCount === param.threshold){
       if(aim){ _bullet.direction = getPlayerDirection(_bullet.position, margin); }
     }else{
-      _bullet.speed += accelleration;
+      _bullet.speed += param.accelleration;
     }
 		_bullet.velocityUpdate();
     _bullet.position.add(_bullet.velocity);
   }
 }
 
-function curving(angleChange){
+function curving(param){
   // 一定の角度ずつカーブしていく
+  // directionChange: 方向変化
   return (_bullet) => {
-    _bullet.direction += angleChange;
+    _bullet.direction += param.directionChange;
 		_bullet.velocityUpdate();
     _bullet.position.add(_bullet.velocity);
   }
 }
 
-function waving(friction){
+function waving(param){
   // 一定の範囲内で微妙に角度を変えながら進む
+  // friction:ゆれ
   return (_bullet) => {
-    _bullet.direction += friction * random(-1, 1);
+    _bullet.direction += param.friction * random(-1, 1);
 		_bullet.velocityUpdate();
     _bullet.position.add(_bullet.velocity);
   }
 }
 
-function arcGun(threshold, diffAngle, margin = 0){
+function arcGun(param){
   // 普通に放ってから自機狙いに切り替える感じ
+  // threshold:曲がるまでの進んでる時間、diffAngle:本来の方向に対するずれ、margin:aimのずれ
+  // やっぱり元の方向に戻すようにするか。で、aimと分ける感じで。aim:デフォルトはfalse.
+  const aim = (param.hasOwnProperty("aim") ? param.aim : false);
+  const margin = (param.hasOwnProperty("margin") ? param.margin : 0);
   return (_bullet) => {
     if(_bullet.properFrameCount === 0){
-      _bullet.direction += diffAngle;
-    }else if(_bullet.properFrameCount === threshold){
-      _bullet.direction = getPlayerDirection(_bullet.position, margin);
+      _bullet.direction += param.diffAngle;
+    }else if(_bullet.properFrameCount === param.threshold){
+      if(aim){ _bullet.direction = getPlayerDirection(_bullet.position, margin); }
+      else{ _bullet.direction -= param.diffAngle; }
     }
 		_bullet.velocityUpdate();
     _bullet.position.add(_bullet.velocity);
   }
 }
 
-function homing(friction, terminalSpeed, life, margin = 0){
+function homing(param){
   // スピードが落ち着いてから自機狙いで向かってきてある程度のところで消える感じ
+  // friction:減速の度合い、terminalSpeed:終端速度、life:消えるまでの時間、margin:ホーミング精度でデフォルト0
+  const margin = (param.hasOwnProperty("margin") ? param.margin : 0);
   return (_bullet) => {
-    if(_bullet.speed > terminalSpeed){
-      _bullet.speed *= (1 - friction);
+    if(_bullet.speed > param.terminalSpeed){
+      _bullet.speed *= (1 - param.friction);
     }else{
       _bullet.direction = getPlayerDirection(_bullet.position, margin);
     }
     _bullet.velocityUpdate();
     _bullet.position.add(_bullet.velocity);
-    if(_bullet.properFrameCount === life){ _bullet.vanishFlag = true; }
+    if(_bullet.properFrameCount === param.life){ _bullet.vanishFlag = true; }
   }
 }
 
 // あとはプレイヤーが近付くとバーストするとか面白そう（いい加減にしろ）
 
 // ---------------------------------------------------------------------------------------- //
-// Composite. loopとかいろいろ。ユーティリティ。
+// shotPattern.

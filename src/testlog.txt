@@ -237,3 +237,25 @@ if(frameCount % 4 === 0){
   let ptn = {x:width / 2, y:height / 4, speed:6, direction, execute:go};
   createBullet(ptn);
 }
+
+arcGun使えばみつまたのやりが簡単に作れる（FALさんのアレみたいなショットが作れる）
+
+// 今現在のバリエーションはこちら：
+if(frameCount % 30 === 0){
+  let ptn;
+  ptn.set = {x:width / 2, y:height / 4, speed:8, direction:90};
+  //ptn.execute = go;
+  //ptn.execute = accellerate({accelleration:0.1});
+  //ptn.execute = decelerate({friction:0.02, terminalSpeed:3});
+  //ptn.execute = brakeAccell({threshold:60, friction:0.02, accelleration:0.2, aim:true, margin:10});
+  //ptn.execute = curving({directionChange:0.4});
+  //ptn.execute = waving({friction:2});
+  //ptn.execute = arcGun({threshold:20, diffAngle:20, aim:true, margin:10});
+  ptn.execute = homing({friction:0.05, terminalSpeed:3, life:180});
+  createBullet(ptn);
+}
+
+// ようやくjsonというかオブジェクト1個からbulletを生成する目途が立った気がする
+let data = {name:"accellerate", set:{x:width / 2, y:height / 4, speed:6, direction:90}, param:{accelleration:0.2}};
+let ptn2 = {set:data.set, execute:window[data.name](data.param)};
+createBullet(ptn2);
