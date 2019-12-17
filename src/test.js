@@ -23,17 +23,10 @@ function setup(){
   let ptn = {x:width / 2, y:height / 4, execute:()=>{}};
   createCannon(ptn);
   testCannon = entity.cannonArray[0];
-  testCannon.config({type:"set", speed:6, direction:90})
 }
 
 function draw(){
   background(220, 220, 255);
-  if(frameCount % 4 === 0){
-    testCannon.fire({name:"go"});
-    testCannon.fire({name:"accellerate", param:{accelleration:0.2}});
-    testCannon.fire({name:"decelerate", param:{friction:0.05, terminalSpeed:2}});
-    testCannon.fire({name:"curving", param:{directionChange:1}});
-  }
 	const updateStart = performance.now(); // 時間表示。
   entity.update();
   const updateEnd = performance.now();
@@ -400,6 +393,25 @@ function getPlayerDirection(pos, margin = 0){
   return atan2(y - pos.y, x - pos.x) + margin * random(-1, 1);
 }
 
+function randomRange(dataArray){
+	// a以上b以下のfloatをランダムで返す(a<b前提)
+	// i刻みで値を出すこともできる(たとえば3,6,1なら3,4,5のどれかみたいな)
+	// [2]なら2を返す。
+	// [3, 5]なら3以上5未満のどれかの実数を返す。
+	// [4, 9, 0.2]なら4, 4.2, 4.4, 4.6, ... (9未満)のどれかの実数を返す。
+  switch(dataArray.length){
+		case 1:
+		  return dataArray[0];
+		case 2:
+		  return dataArray[0] + Math.random() * (dataArray[1] - dataArray[0]);
+		case 3:
+		  const a = dataArray[0];
+			const b = dataArray[1];
+			const step = dataArray[2];
+			return a + Math.floor(Math.random() * (b - a) / i) * i;
+	}
+}
+
 // ---------------------------------------------------------------------------------------- //
 // Behavior.
 // 遊びはこのくらいにして
@@ -502,6 +514,15 @@ function homing(param){
     _bullet.velocityUpdate();
     _bullet.position.add(_bullet.velocity);
     if(_bullet.properFrameCount === param.life){ _bullet.vanishFlag = true; }
+  }
+}
+
+function delayGun(param){
+  // その場である程度とどまり、そのあとで直進する
+  // delay:とどまる時間
+  return (_bullet) => {
+    if(_bullet.properFrameCount < param.delay){ return; }
+    _bullet.position.add(_bullet.velocity);
   }
 }
 

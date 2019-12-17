@@ -277,3 +277,32 @@ if(frameCount % 4 === 0){
   //testCannon.fire({name:"decelerate", param:{friction:0.05, terminalSpeed:2}});
   //testCannon.fire({name:"curving", param:{directionChange:1}});
 }
+
+// diffのところに{direction:~~~}って書いて5WAYGUN作ってみました。いけてるね。
+if(frameCount % 4 === 0){
+  const count = 5;
+  const interval = 10;
+  for(let i = 0; i < count; i++){
+    testCannon.fire({name:"go"}, {direction:(-(count - 1) / 2 + i) * interval});
+  }
+}
+
+// だからこれでループ生成と組み合わせれば、っていうか・・まあ、いける？
+
+// 最初の例できたかも
+if(frameCount % 1 === 0){
+  for(let i = 0; i < 2; i++){
+    testCannon.config({type:"set", speed:randomRange([3, 6]), direction:randomRange([0, 360])});
+    testCannon.fire({name:"go"});
+  }
+}
+// これをexecuteに落とせばいいのね。3フレームに1回で
+{count:2, funcArray:[{name:"config", param:{speed:[3, 6], direction:[0, 360]}}, {name:"fire", data:{name:"go"}}]}とか？
+これでこの内容を毎フレームやることになればいいんだけど。
+で、やったあとにたとえば2フレーム間を置きたい場合は、wait:2とかそういうのが要る？
+{count:2, funcArray:[...], wait:2}
+でいいんじゃない・・わかんないけど。executeに関数が入る、その関数を決める、んだけど。
+nameは_cannonの実行する関数・・んー。
+
+ということは基本的にconfigとfireだけで記述していくことになる？
+まあ他に要るかと言ったら・・
