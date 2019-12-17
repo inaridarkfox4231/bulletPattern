@@ -112,5 +112,23 @@ function wave(period, angleChange){
   }
 }
 
+// curving. カーブ。これと発射台の移動を組み合わせると面白い軌道になる。
+if(frameCount % 4 === 0){
+  let ptn = {initialize:setParam(width / 2, height / 4, 6, 90), execute:curving(0.5)};
+  createBullet(ptn);
+}
+// waving. 揺れながら進む。発射方向をいじると面白そう（90のところ）
+if(frameCount % 4 === 0){
+  let ptn = {initialize:setParam(width / 2, height / 4, 6, 90), execute:waving(2)};
+  createBullet(ptn);
+}
+// レフトアークガン。もういいでしょ。
+if(frameCount % 4 === 0){
+  let ptn = {initialize:setParam(width / 2, height / 4, 6, 90), execute:arcGun(10, 30, 10)};
+  createBullet(ptn);
+}
+
 // 思い出した。んーと、何か出した後で、waitするってやつ。パターンの中に含めるんじゃないかと。
 // loopもある意味コンポジット・・同じことを繰り返し。
+
+cannonにとりかかる。

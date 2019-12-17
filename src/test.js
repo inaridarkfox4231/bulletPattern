@@ -22,6 +22,7 @@ function setup(){
 
 function draw(){
   background(220, 220, 255);
+
 	const updateStart = performance.now(); // 時間表示。
   entity.update();
   const updateEnd = performance.now();
@@ -163,8 +164,11 @@ class Bullet{
 		// angleはdegree指定
 		this.speed = speed;
 		this.direction = angle;
-		this.velocity.set(this.speed * cos(this.direction), this.speed * sin(this.direction));
+		this.velocityUpdate();
 	}
+  velocityUpdate(){
+		this.velocity.set(this.speed * cos(this.direction), this.speed * sin(this.direction));
+  }
 	setPattern(pattern){
     this.properFrameCount = 0;
 		this.pattern = pattern;
@@ -172,8 +176,8 @@ class Bullet{
     this.vanishFlag = false;
 	}
 	update(){
-		this.properFrameCount++;
     this.pattern.execute(this);
+    this.properFrameCount++;
 		if(!this.isInFrame()){ this.vanishFlag = true; } // ここではフラグを立てるだけ。直後に破棄。
 	}
 	eject(){
@@ -332,7 +336,7 @@ function accellerate(accelleration){
   // 加速する
   return (_bullet) => {
     _bullet.speed += accelleration;
-    _bullet.setVelocity(_bullet.speed, _bullet.direction);
+		_bullet.velocityUpdate();
     _bullet.position.add(_bullet.velocity);
   }
 }
@@ -342,7 +346,7 @@ function decelerate(friction, terminalSpeed){
   return (_bullet) => {
     if(_bullet.speed > terminalSpeed){
       _bullet.speed *= (1 - friction);
-      _bullet.setVelocity(_bullet.speed, _bullet.direction);
+		_bullet.velocityUpdate();
     }
     _bullet.position.add(_bullet.velocity);
   }
@@ -359,7 +363,38 @@ function brakeAccell(threshold, friction, accelleration, aim = false, margin = 0
     }else{
       _bullet.speed += accelleration;
     }
-    _bullet.setVelocity(_bullet.speed, _bullet.direction);
+		_bullet.velocityUpdate();
     _bullet.position.add(_bullet.velocity);
   }
 }
+
+function curving(angleChange){
+  return (_bullet) => {
+    _bullet.direction += angleChange;
+		_bullet.velocityUpdate();
+    _bullet.position.add(_bullet.velocity);
+  }
+}
+
+function waving(friction){
+  return (_bullet) => {
+    _bullet.direction += friction * random(-1, 1);
+		_bullet.velocityUpdate();
+    _bullet.position.add(_bullet.velocity);
+  }
+}
+
+function arcGun(threshold, diffAngle, margin = 0){
+  return (_bullet) => {
+    if(_bullet.properFrameCount === 0){
+      _bullet.direction = getPlayerDirection(_bullet.position) + diffAngle;
+    }else if(_bullet.properFrameCount === threshold){
+      _bullet.direction = getPlayerDirection(_bullet.position, margin);
+    }
+		_bullet.velocityUpdate();
+    _bullet.position.add(_bullet.velocity);
+  }
+}
+
+// ---------------------------------------------------------------------------------------- //
+// Composite. loopとかいろいろ。ユーティリティ。
