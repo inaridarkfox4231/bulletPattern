@@ -56,4 +56,61 @@ if(frameCount % 8 === 0){
   }
 }
 
+// waveパターンはこれでいいだろ。打ち出し方向の変化。まあいろいろあるだろうけど。
+if(frameCount % 4 === 0 && frameCount % 80 < 60){
+  const direction = getPlayerDirection({x:width / 2, y:height / 4}) + sin(frameCount * 4) * 30;
+  let ptn = {initialize:setParam(width / 2, height / 4, 6, direction), execute:go};
+  createBullet(ptn);
+}
+
+// ブレーキアクセル。エイム機能を付けてみたよ。
+if(frameCount % 16 === 0){
+  for(let direction = 90 - 30; direction <= 90 + 30; direction += 10){
+    let ptn = {};
+    ptn.initialize = setParam(width / 2, height / 4, 12, direction)
+    ptn.execute = brakeAccell(60, 0.05, 0.2, true, 15);
+    createBullet(ptn);
+  }
+}
+
 aim作ったけどこれでいい気がするしよくわかんないな。setParamで足りるだろ。
+
+bulletにセットするpatternがなんかinitializeとexecute持ってて
+executeをupdateで実行しているのね。initializeはセットするときに発動していますね。ほーう。
+
+今作ってるのは弾丸の基本的な挙動ですね、これからいろいろ・・んー。
+nway(基本方向に対してintervalごとn発), radial(基本方向を含む円形放射状), sweep(基本方向に方向を変えながら一定時間),
+sweepにはnoiseを使ったものと普通に正弦波を使ったものとあって片側までで終わるのとか
+そういうのってパターンありきだから関数でいう所の1段階上っていうか高級みたいな感じ。
+まあ基本はgoだけど。goのnway, goの・・・
+
+// Destinyのような何か。これもbulletPatternの差し替えできるからある意味コンポジットの高級なのよね多分。
+// 3WAYとかとも組み合わせられそうな。
+if(frameCount % 60 === 0){
+  let direction = getPlayerDirection({x:width / 2, y:height / 4});
+  for(let i = 0; i < 64; i++){
+    let distance = random(160);
+    let angle = random(360);
+    let x = width / 2 + cos(angle) * distance, y = height / 4 + sin(angle) * distance;
+    let ptn = {initialize:setParam(x, y, 12, direction), execute:brakeAccell(30, 0.05, 0.2)};
+    createBullet(ptn);
+  }
+}
+
+// 要らないかな・・
+function wave(period, angleChange){
+  // periodで方向が元に戻る感じ。
+  return (_bullet) => {
+    const checkFC = _bullet.properFrameCount % period;
+    if(checkFC < (period / 4) || checkFC >= (period * 3 / 4)){
+      _bullet.direction += angleChange;
+    }else{
+      _bullet.direction -= angleChange;
+    }
+    _bullet.setVelocity(_bullet.speed, _bullet.direction);
+    _bullet.position.add(_bullet.velocity);
+  }
+}
+
+// 思い出した。んーと、何か出した後で、waitするってやつ。パターンの中に含めるんじゃないかと。
+// loopもある意味コンポジット・・同じことを繰り返し。

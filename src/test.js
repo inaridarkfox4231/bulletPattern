@@ -295,9 +295,9 @@ class CrossReferenceArray extends Array{
 // ---------------------------------------------------------------------------------------- //
 // Utility.
 
-function getPlayerDirection(pos){
+function getPlayerDirection(pos, margin = 0){
   const {x, y} = entity.player.position;
-  return atan2(y - pos.y, x - pos.x);
+  return atan2(y - pos.y, x - pos.x) + margin * random(-1, 1);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -314,7 +314,7 @@ function setParam(x, y, speed, direction){
 function aim(x, y, speed, margin = 0){
   return (_bullet) => {
     _bullet.setPosition(x, y);
-    const direction = getPlayerDirection(_bullet.position) + margin * random(-1, 1);
+    const direction = getPlayerDirection(_bullet.position, margin);
     _bullet.setVelocity(speed, direction);
   }
 }
@@ -348,27 +348,16 @@ function decelerate(friction, terminalSpeed){
   }
 }
 
-function brakeAccell(threshold, friction, accelleration){
+function brakeAccell(threshold, friction, accelleration, aim = false, margin = 0){
   // thresholdフレームだけ(1-f)倍していってそのあとで加速する
+  // aimがtrueの場合はカウント消費後に自機狙いになる
   return (_bullet) => {
     if(_bullet.properFrameCount < threshold){
       _bullet.speed *= (1 - friction);
+    }else if(_bullet.properFrameCount === threshold){
+      if(aim){ _bullet.direction = getPlayerDirection(_bullet.position, margin); }
     }else{
       _bullet.speed += accelleration;
-    }
-    _bullet.setVelocity(_bullet.speed, _bullet.direction);
-    _bullet.position.add(_bullet.velocity);
-  }
-}
-
-function wave(period, angleChange){
-  // periodで方向が元に戻る感じ。
-  return (_bullet) => {
-    const checkFC = _bullet.properFrameCount % period;
-    if(checkFC < (period / 4) || checkFC >= (period * 3 / 4)){
-      _bullet.direction += angleChange;
-    }else{
-      _bullet.direction -= angleChange;
     }
     _bullet.setVelocity(_bullet.speed, _bullet.direction);
     _bullet.position.add(_bullet.velocity);
