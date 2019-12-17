@@ -127,8 +127,113 @@ if(frameCount % 4 === 0){
   let ptn = {initialize:setParam(width / 2, height / 4, 6, 90), execute:arcGun(10, 30, 10)};
   createBullet(ptn);
 }
+// decelerateのあとホーミングになり一定フレームでvanish
+// 失敗作感がすごい
+if(frameCount % 8 === 0 && frameCount % 100 < 40){
+  let ptn = {initialize:setParam(width / 2, height / 4, 9, 90), execute:homing(0.05, 3, 180, 30)};
+  createBullet(ptn);
+}
 
 // 思い出した。んーと、何か出した後で、waitするってやつ。パターンの中に含めるんじゃないかと。
 // loopもある意味コンポジット・・同じことを繰り返し。
 
 cannonにとりかかる。
+
+関数の無限ループ化っていうけど普通にセットしておけば普通にループになるから無意味。
+何のためにやるかって言ったら一連の流れを繰り返し行わせたいからそうするんでしょ・・。
+function endless(funcArray, count, wait){
+  funcArrayをすべて実行するのをcount回→waitだけおく→最初に戻る
+}
+function limited(funcArray, count, wait, loopCount){
+  loopCountだけやったら終了するんだけどそのあとどうしよう（詰）
+}
+たとえばここに
+- setSpeed:2
+ってかくとデフォルトを変更できる
+- endless
+  - loop
+    - count:2
+    - setSpeed:random(3, 6)
+    - setDirection:random(0, 360)
+    for example: - setPos("relative", random(20, 120), random(0, 360))
+    指示がなければspeedは1だしdirectionは0だしposは自分の位置になるよ(default)
+    - fire:"unit"
+
+cannonにとりかかりたいんですけど
+
+endlessは毎フレーム中身のfuncを実行するだよ。でもそれだと普通にfuncでいいじゃんね。
+
+4フレームに1回、accelerateを繰り出す、方向は90で固定、速さは3で固定・・？
+- setSpeed:3
+- setDirection:90
+- endless
+  - loop
+    - countのデフォルトは1.
+    - pattern
+      - type:"accelerate"
+      - acceleration:0.2
+      - wait:3
+
+毎回方向を変える場合
+- setSpeed:3
+- endless
+  - loop
+    - count:1
+    - setDirection:
+      - type:random
+      - range:[60, 120]
+    あるいは自機狙い
+      - type:"homing"
+      - margin:デフォルトは0
+    - pattern
+      - type:"accelerate"
+      - acceleration:0.2
+      - wait:3
+
+方向が変化する場合
+DirectionChangeがある場合はそれを足すみたいなやつ。デフォルトは0.
+- setSpeed:3
+- setDirection:60
+- endless
+  - fArray:[setDirectionChange(2), "sweep", setDirectionChange(-2), "sweep"}]
+  文字列の場合は親[文字列]が関数になってるのでそれを見てね
+- sweep
+  - loop
+    - count:12
+    - pattern
+      - type:"go"
+      -wait:3
+  - wait:12
+
+  思うんだけどこの-をつなげるのってどう・・
+
+  (_cannon) => {
+    const fc = _cannon.properFrameCount;
+    if(fc % 4 === 0 && fc % 60 < (12 * (3 + 1))){
+      let ptn = {initialize:setParam(_cannon.position, _cannon.bulletSpeed, _cannon.bulletDirection), execute:go}
+    }
+  }
+  が、sweepに入ってる。
+  DirectionChangeはデフォルトが0でこれはupdateで毎回行うので問題ないです。
+  bulletの方にも、その要素があれば実行するように指示しておいて・・こういうのはリセット時に破棄したいね（delete使う）
+
+  バーストでちょっと使うだけだけど。
+
+  ・・・
+
+yamlっぽい書き方にこだわる必要はないことが分かった。あれ相当やばいよ。やめとこう。
+とりあえずわかったのは-をつなげると配列になるらしいと。要するに配列じゃん。
+
+
+go と goを1発だけ発射するメソッド っていうのは分けないといけないので・・
+
+bulletに設定するptnっていうのはxとyとspeedとdirectionとexecute関数の他にあとなんか・・んー。option?
+optionプロパティがあるならそれを実行するみたいな。
+
+// waveガトリング。ごめんなさい記法が変わりました。
+// まあsetParam関数を無くしただけだけどね・・
+if(frameCount % 4 === 0){
+  let direction = noise(frameCount / 16) * 60 + 60;
+  let ptn = {x:width / 2, y:height / 4, speed:6, direction, execute:go};
+  createBullet(ptn);
+}

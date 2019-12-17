@@ -18,6 +18,8 @@ function setup(){
   textSize(16);
   bulletPool = new ObjectPool(() => { return new Bullet(); }, 600);
   entity = new System();
+  let ptn = {x:width / 2, y:height / 4, execute:()=>{}};
+  createCannon(ptn);
 }
 
 function draw(){
@@ -75,13 +77,16 @@ class System{
 	constructor(){
 		this.player = new SelfUnit();
     this.bulletArray = new CrossReferenceArray();
-    // this.cannonArray = ...
+    this.cannonArray = new CrossReferenceArray();
 	}
 	initialize(){
 		this.player.initialize();
+    this.bulletArray.loopReverse("vanish");
+    this.cannonArray.clear();
 	}
 	update(){
 		this.player.update();
+    this.cannonArray.loop("update");
     this.bulletArray.loop("update");
     this.bulletArray.loopReverse("eject");
 	}
@@ -89,6 +94,7 @@ class System{
 		this.player.draw();
     fill(0, 0, 255);
     this.bulletArray.loop("draw");
+    this.cannonArray.loop("draw");
 	}
   getCapacity(){
     return this.bulletArray.length;
@@ -99,6 +105,12 @@ function createBullet(pattern){
   let newBullet = bulletPool.use();
   newBullet.setPattern(pattern);
   entity.bulletArray.add(newBullet);
+}
+
+function createCannon(pattern){
+  let newCannon = new Cannon();
+  newCannon.setPattern(pattern);
+  entity.cannonArray.add(newCannon);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -169,10 +181,12 @@ class Bullet{
   velocityUpdate(){
 		this.velocity.set(this.speed * cos(this.direction), this.speed * sin(this.direction));
   }
-	setPattern(pattern){
+	setPattern(_pattern){
     this.properFrameCount = 0;
-		this.pattern = pattern;
-    this.pattern.initialize(this);
+		this.pattern = _pattern;
+    const {x, y, speed, direction} = _pattern;
+    this.setPosition(x, y);
+    this.setVelocity(speed, direction);
     this.vanishFlag = false;
 	}
 	update(){
@@ -202,6 +216,51 @@ class Bullet{
 		if(this.position.x < -10 || this.position.x > width + 10){ return false; }
 		if(this.position.y < -10 || this.position.y > height + 10){ return false; }
 		return true;
+	}
+}
+
+// ---------------------------------------------------------------------------------------- //
+// Cannon.
+// 何をする？bulletを作る。bulletは何を作る？bulletを作る。
+
+class Cannon{
+  constructor(){
+		this.position = createVector();
+		this.initialize();
+	}
+  setPosition(x, y){
+    this.position.set(x, y);
+  }
+	initialize(){
+		// これはbodyに関する情報
+		this.rotationAngle = 0;
+		this.rotationSpeed = 2;
+		// フレームカウント
+		this.properFrameCount = 0;
+		// 弾丸の発射の仕方について
+		this.pattern = undefined;
+    this.bulletSpeed = 1;
+    this.bulletDirection = 0;
+	}
+  setPattern(_pattern){
+    this.pattern = _pattern;
+    const {x, y, bulletSpeed, bulletDirection} = _pattern;
+    this.setPosition(x, y);
+    if(bulletSpeed !== undefined){ this.bulletSpeed = bulletSpeed; }
+    if(bulletDirection !== undefined){ this.bulletDirection = bulletDirection }
+  }
+	update(){
+    this.pattern.execute(this); // この中でfireするんだけど。
+    this.properFrameCount++;
+    // bullet関連のupdate.
+		this.rotationAngle += this.rotationSpeed; // 本体の回転
+	}
+	draw(){
+		const {x, y} = this.position;
+		const c = cos(this.rotationAngle) * 20;
+		const s = sin(this.rotationAngle) * 20;
+		fill(120);
+		quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
 	}
 }
 
@@ -305,25 +364,6 @@ function getPlayerDirection(pos, margin = 0){
 }
 
 // ---------------------------------------------------------------------------------------- //
-// Initialize.
-// 多分これじゃいけないんだろう
-// たとえば(x, y).
-// 同じ位置、ちょっと離す、とか。
-// 方向は打ち出す側が決めてそれ使うとか・・？
-
-function setParam(x, y, speed, direction){
-  return (_bullet) => { _bullet.setPosition(x, y); _bullet.setVelocity(speed, direction); }
-}
-
-function aim(x, y, speed, margin = 0){
-  return (_bullet) => {
-    _bullet.setPosition(x, y);
-    const direction = getPlayerDirection(_bullet.position, margin);
-    _bullet.setVelocity(speed, direction);
-  }
-}
-
-// ---------------------------------------------------------------------------------------- //
 // Behavior.
 // 遊びはこのくらいにして
 
@@ -369,6 +409,7 @@ function brakeAccell(threshold, friction, accelleration, aim = false, margin = 0
 }
 
 function curving(angleChange){
+  // 一定の角度ずつカーブしていく
   return (_bullet) => {
     _bullet.direction += angleChange;
 		_bullet.velocityUpdate();
@@ -377,6 +418,7 @@ function curving(angleChange){
 }
 
 function waving(friction){
+  // 一定の範囲内で微妙に角度を変えながら進む
   return (_bullet) => {
     _bullet.direction += friction * random(-1, 1);
 		_bullet.velocityUpdate();
@@ -385,9 +427,10 @@ function waving(friction){
 }
 
 function arcGun(threshold, diffAngle, margin = 0){
+  // 普通に放ってから自機狙いに切り替える感じ
   return (_bullet) => {
     if(_bullet.properFrameCount === 0){
-      _bullet.direction = getPlayerDirection(_bullet.position) + diffAngle;
+      _bullet.direction += diffAngle;
     }else if(_bullet.properFrameCount === threshold){
       _bullet.direction = getPlayerDirection(_bullet.position, margin);
     }
@@ -395,6 +438,22 @@ function arcGun(threshold, diffAngle, margin = 0){
     _bullet.position.add(_bullet.velocity);
   }
 }
+
+function homing(friction, terminalSpeed, life, margin = 0){
+  // スピードが落ち着いてから自機狙いで向かってきてある程度のところで消える感じ
+  return (_bullet) => {
+    if(_bullet.speed > terminalSpeed){
+      _bullet.speed *= (1 - friction);
+    }else{
+      _bullet.direction = getPlayerDirection(_bullet.position, margin);
+    }
+    _bullet.velocityUpdate();
+    _bullet.position.add(_bullet.velocity);
+    if(_bullet.properFrameCount === life){ _bullet.vanishFlag = true; }
+  }
+}
+
+// あとはプレイヤーが近付くとバーストするとか面白そう（いい加減にしろ）
 
 // ---------------------------------------------------------------------------------------- //
 // Composite. loopとかいろいろ。ユーティリティ。
