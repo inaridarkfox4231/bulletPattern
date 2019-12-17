@@ -259,3 +259,21 @@ if(frameCount % 30 === 0){
 let data = {name:"accellerate", set:{x:width / 2, y:height / 4, speed:6, direction:90}, param:{accelleration:0.2}};
 let ptn2 = {set:data.set, execute:window[data.name](data.param)};
 createBullet(ptn2);
+
+// でも連続パターンがまだだ・・・・
+
+let ptn = {x:width / 2, y:height / 4, execute:()=>{}};
+createCannon(ptn);
+testCannon = entity.cannonArray[0];
+testCannon.config({type:"set", speed:5, direction:90})
+
+executeはそのうち何とかする予定。
+testCannonでfireのtestをしています。
+
+// こんな感じ、fireに引数渡すだけでいろいろあれできるじゃんね。diff使ってみる。
+if(frameCount % 4 === 0){
+  //testCannon.fire({name:"go"});
+  //testCannon.fire({name:"accellerate", param:{accelleration:0.2}});
+  //testCannon.fire({name:"decelerate", param:{friction:0.05, terminalSpeed:2}});
+  //testCannon.fire({name:"curving", param:{directionChange:1}});
+}

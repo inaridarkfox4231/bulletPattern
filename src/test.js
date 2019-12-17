@@ -12,6 +12,8 @@ const AVERAGE_CALC_SPAN = 30;
 let bulletPool;
 let entity;
 
+let testCannon;
+
 function setup(){
   createCanvas(480, 640);
   angleMode(DEGREES);
@@ -20,11 +22,18 @@ function setup(){
   entity = new System();
   let ptn = {x:width / 2, y:height / 4, execute:()=>{}};
   createCannon(ptn);
+  testCannon = entity.cannonArray[0];
+  testCannon.config({type:"set", speed:6, direction:90})
 }
 
 function draw(){
   background(220, 220, 255);
-
+  if(frameCount % 4 === 0){
+    testCannon.fire({name:"go"});
+    testCannon.fire({name:"accellerate", param:{accelleration:0.2}});
+    testCannon.fire({name:"decelerate", param:{friction:0.05, terminalSpeed:2}});
+    testCannon.fire({name:"curving", param:{directionChange:1}});
+  }
 	const updateStart = performance.now(); // 時間表示。
   entity.update();
   const updateEnd = performance.now();
@@ -233,14 +242,17 @@ class Cannon{
   }
   config(param){
     // 速さとか方向の変化とか加えるのとか全部ここで出来る感じ
+    // {type:"set", speed:2} で「速さを2にする」
+    // {type:"add", direction:4} で「角度を+4する」
+    // あとは掛け算かな・・必要かどうか微妙だけど
     switch(param.type){
       case "set":
-        if(param.hasOwnProperty("speed"){ this.bulletSpeed = param.speed; }
-        if(param.hasOwnProperty("direction"){ this.bulletDirection = param.direction; }
+        if(param.hasOwnProperty("speed")){ this.bulletSpeed = param.speed; }
+        if(param.hasOwnProperty("direction")){ this.bulletDirection = param.direction; }
         break;
       case "add":
-        if(param.hasOwnProperty("speed"){ this.bulletSpeed += param.speed; }
-        if(param.hasOwnProperty("direction"){ this.bulletDirection += param.direction; }
+        if(param.hasOwnProperty("speed")){ this.bulletSpeed += param.speed; }
+        if(param.hasOwnProperty("direction")){ this.bulletDirection += param.direction; }
         break;
     }
   }
@@ -262,14 +274,17 @@ class Cannon{
     if(bulletSpeed !== undefined){ this.bulletSpeed = bulletSpeed; }
     if(bulletDirection !== undefined){ this.bulletDirection = bulletDirection }
   }
-  fire(diff = {}){
+  fire(data, diff = {}){
     let ptn = {};
     // diffでズレを表現する。デフォルトはCannonの位置、速度も設定されたものを使う感じ・・
     ptn.set = {x:this.position.x, y:this.position.y, speed:this.bulletSpeed, direction:this.bulletDirection};
     ["x", "y", "speed", "direction"].forEach((name) => {
       if(diff.hasOwnProperty(name)){ ptn.set[name] += diff[name]; }
     })
-
+    // data.name:関数名、data.param:パラメータ
+    // goは引数とらないので普通に・・
+    ptn.execute = (data.name === "go" ? go : window[data.name](data.param));
+    createBullet(ptn);
   }
 	update(){
     this.pattern.execute(this); // この中でfireするんだけど。
