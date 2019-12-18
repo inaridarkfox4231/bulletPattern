@@ -20,9 +20,20 @@ function setup(){
   textSize(16);
   bulletPool = new ObjectPool(() => { return new Bullet(); }, 600);
   entity = new System();
-  let ptn = {x:width / 2, y:height / 4, execute:()=>{}};
+
+  // たとえば
+  let func = (_cannon) => {
+      const fc = _cannon.properFrameCount;
+      for(let i = 0; i < 2; i++){
+        _cannon.config({type:"set", speed:randomRange([3, 6]), direction:randomRange([0, 360])});
+        _cannon.fire({name:"go"});
+      }
+    };
+
+  let ptn = {x:width / 2, y:height / 4, execute:func};
   createCannon(ptn);
   testCannon = entity.cannonArray[0];
+
 }
 
 function draw(){

@@ -306,3 +306,62 @@ nameは_cannonの実行する関数・・んー。
 
 ということは基本的にconfigとfireだけで記述していくことになる？
 まあ他に要るかと言ったら・・
+
+burstで4WAYとか作れるの？
+基本的なburst, というかbulletがbulletを作る機構について。どうも種類くらいあるようで。
+まずその場で消滅して何かしらのパターンに基づいてbulletを作る場合。これは、paramの中にそこら辺の
+情報が詰まってて場合によってはそれを利用してとかそういう流れ。
+
+behaviorリストの考え方を使って画面外で消滅のくだりをbehavior化してとかそういうのはたやすいし
+時間が経ったら消えるのとかあるいはCannonの移動に関する挙動もそれで出来るのはいいんだけど
+burstもそれでやる場合例えば{trigger:~~~, pattern:~~~}のpatternで速度とかどうするんだって話になるのよ。
+triggerに含める？bullet用のbulletSpeedやbulletDirectionについてのあれこれを。
+もしくは、ああそうか、bulletの場合はCannonと違って独自の速度があるから基本的にそれ使って、
+つまりCannonのbulletSpeedやbulletDirectionの代わりにそれ使って、diffだけ指定すればいいかな・・
+diffが無ければ同じものを使うようにすればすっきりしそう。
+一番小さいかたまりでないとexecuteに入れられない
+あそこに実行内容の配列とか入れても仕方ないでしょ。
+{
+  name:"loop",
+  count:2,
+  funcArray:[{name:"config", param:{type:"set", speed:[3, 6], direction:[0, 360]},
+             {name:"fire", data:{name:"go"}}],
+}
+
+{name:"endless",
+  actArray:[{うえのやつ}, {name:"wait", count:3}]
+}
+[{}, {name:"wait", count:3, limit:8}, {name:"wait", count:24}]
+ ってやると、
+ (_cannon) => {
+   const fc = _cannon.properFrameCount;
+   if(fc % 4 === 0){
+     for(let i = 0; i < 2; i++){
+       _cannon.config({speed:randomRange([3, 6]), direction:randomRange([0, 360])});
+       _cannon.fire({name:"go"});
+     }
+   }
+ }
+ ができる？executeにはこれを入れる。
+ 別の考え方。
+ executeには二つの関数が入る可能性がある。
+ 1つ目：
+ (_cannon) => {
+   const fc = _cannon.properFrameCount;
+   for(let i = 0; i < 2; i++){
+     _cannon.config({type:"set", speed:randomRange([3, 6]), direction:randomRange([0, 360])});
+     _cannon.fire({name:"go"});
+   }
+   _cannon.waitCount = 3;
+   _cannon.next();
+ }
+ 2つ目：
+ (_cannon) => {
+   if(_cannon.waitCount > 0){ _cannon.waitCount--; }
+   if(_cannon.waitCount === 0){
+     _cannon.next();
+   }
+ }
+ この二つが切り替わる感じになる。f0, f1と名付けて・・[f0, f1]
+ f0終了時に判定
+ waitCountに3を設定して次
