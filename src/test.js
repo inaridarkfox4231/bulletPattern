@@ -14,30 +14,37 @@ let entity;
 
 let testCannon;
 
+function preload(){
+  /* NOTHING */
+}
+
 function setup(){
   createCanvas(480, 640);
   angleMode(DEGREES);
   textSize(16);
+  //preparePattern(); // jsonからあれこれするみたい(?)
   bulletPool = new ObjectPool(() => { return new Bullet(); }, 600);
   entity = new System();
-
-  // たとえば
+  let fireData = {
+    formation:{type:"frontVertical", distance:60, count:2, interval:20},
+    radial:{count:12},
+    name:"go"
+  };
+  let fireFunc = createFirePattern(fireData);
   let func = (_cannon) => {
-      const fc = _cannon.properFrameCount;
-      for(let i = 0; i < 2; i++){
-        _cannon.config({type:"set", speed:randomRange([3, 6]), direction:randomRange([0, 360])});
-        _cannon.fire({name:"go"});
-      }
-    };
-
-  let ptn = {x:width / 2, y:height / 4, execute:func};
+    const fc = _cannon.properFrameCount;
+    if(fc % 4 === 0){
+      _cannon.config({type:"add", direction:5});
+      fireFunc(_cannon);
+    }
+  }
+  let ptn = {x:width / 2, y:height / 4, bulletSpeed:4, bulletDirection:90, execute:func};
   createCannon(ptn);
-  testCannon = entity.cannonArray[0];
-
 }
 
 function draw(){
   background(220, 220, 255);
+
 	const updateStart = performance.now(); // 時間表示。
   entity.update();
   const updateEnd = performance.now();
@@ -180,6 +187,7 @@ class Bullet{
 		this.velocity = createVector(0, 0);
 		this.properFrameCount = 0;
 		this.pattern = undefined;
+    this.delay = 0; // ディレイ。
 		this.vanishFlag = false; // まずフラグを立ててそれから別処理で破棄
 	}
 	setPosition(x, y){
@@ -191,18 +199,23 @@ class Bullet{
 		this.direction = angle;
 		this.velocityUpdate();
 	}
+  setDelay(delayCount){
+    this.delay = delayCount;
+  }
   velocityUpdate(){
 		this.velocity.set(this.speed * cos(this.direction), this.speed * sin(this.direction));
   }
 	setPattern(_pattern){
     this.properFrameCount = 0;
 		this.pattern = _pattern;
-    const {x, y, speed, direction} = _pattern.set;
+    const {x, y, speed, direction, delay} = _pattern;
     this.setPosition(x, y);
     this.setVelocity(speed, direction);
+    if(delay !== undefined){ this.setDelay(delay); }else{ this.setDelay(0); }
     this.vanishFlag = false;
 	}
 	update(){
+    if(this.delay > 0){ this.delay--; return; }
     this.pattern.execute(this);
     this.properFrameCount++;
 		if(!this.isInFrame()){ this.vanishFlag = true; } // ここではフラグを立てるだけ。直後に破棄。
@@ -278,7 +291,11 @@ class Cannon{
     if(bulletSpeed !== undefined){ this.bulletSpeed = bulletSpeed; }
     if(bulletDirection !== undefined){ this.bulletDirection = bulletDirection }
   }
-  fire(data, diff = {}){
+  fire(param){
+    const data = param.data;
+    // dataにはnameとparamが入っててこれはbulletのパターンを作るのに使う。
+    const diff = (param.hasOwnProperty("diff") ? param.diff : {});
+    // diffは発射直前に位置とかそういうのいじりたいときに指定する。
     let ptn = {};
     // diffでズレを表現する。デフォルトはCannonの位置、速度も設定されたものを使う感じ・・
     ptn.set = {x:this.position.x, y:this.position.y, speed:this.bulletSpeed, direction:this.bulletDirection};
@@ -288,6 +305,8 @@ class Cannon{
     // data.name:関数名、data.param:パラメータ
     // goは引数とらないので普通に・・
     ptn.execute = (data.name === "go" ? go : window[data.name](data.param));
+    // パターン作っちゃったらもう引き返せないんだよな。
+    // diffやめてそれも含めちゃうんといいんじゃないかと思ったりして。
     createBullet(ptn);
   }
 	update(){
@@ -528,16 +547,133 @@ function homing(param){
   }
 }
 
-function delayGun(param){
-  // その場である程度とどまり、そのあとで直進する
-  // delay:とどまる時間
-  return (_bullet) => {
-    if(_bullet.properFrameCount < param.delay){ return; }
-    _bullet.position.add(_bullet.velocity);
-  }
-}
-
 // あとはプレイヤーが近付くとバーストするとか面白そう（いい加減にしろ）
 
 // ---------------------------------------------------------------------------------------- //
-// shotPattern.
+
+function getFormation(param){
+  let ptnArray = [];
+  switch(param.type){
+    case "default":
+      // その場に1個
+      ptnArray.push({x:0, y:0});
+      break;
+    case "frontVertical":
+      // 射出方向に横一列
+      for(let i = 0; i < param.count; i++){
+        ptnArray.push({x:param.distance, y:(i - (param.count - 1) / 2) * param.interval});
+      }
+      break;
+    case "frontHorizontal":
+      // 射出方向に縦一列
+      for(let i = 0; i < param.count; i++){
+        ptnArray.push({x:param.distance + i * param.interval, y:0});
+      }
+      break;
+    case "wedge":
+      // 射出方向のどこかから対称にV字(2n+1個)
+      ptnArray.push({x:param.distance, y:0});
+      for(let i = 1; i < param.count; i++){
+        ptnArray.push({x:param.distance + i * param.diffX, y:i * param.diffY});
+        ptnArray.push({x:param.distance + i * param.diffX, y:-i * param.diffY});
+      }
+      break;
+    case "randomCircle":
+      // 中心から一定の円形の範囲内でランダムにいくつか
+      for(let i = 0; i < param.count; i++){
+        let r = random(0, param.radius);
+        let theta = random(0, 360);
+        ptnArray.push({x:r * cos(theta), y:r * sin(theta)});
+      }
+      break;
+  }
+  return ptnArray;
+}
+
+function fitting(posArray, direction){
+  // posArrayをすべてdirectionだけ回転させる
+  posArray.forEach((pos) => {
+    const {x, y} = pos;
+    pos.x = x * cos(direction) - y * sin(direction);
+    pos.y = y * cos(direction) + x * sin(direction);
+  })
+}
+
+// いわゆるnway.
+// countが個数、intervalは角度のインターバル。
+function createNWay(param, ptnArray){
+  let newArray = [];
+  // x, yは指定角度だけ回転させる、あとdirectionも。
+  ptnArray.forEach((ptn) => {
+    for(let i = 0; i < param.count; i++){
+      const diffAngle = (i - (param.count - 1) / 2) * param.interval;
+      const {x, y, direction} = ptn;
+      let newPtn = {speed:ptn.speed};
+      newPtn.x = x * cos(diffAngle) - y * sin(diffAngle);
+      newPtn.y = y * cos(diffAngle) + x * sin(diffAngle);
+      newPtn.direction = direction + diffAngle;
+      newArray.push(newPtn);
+    }
+  })
+  return newArray;
+}
+
+// いわゆるradial.
+// countが角度の個数.
+function createRadial(param, ptnArray){
+  let newArray = [];
+  // diffAngleに360/param.countを使うだけ。
+  ptnArray.forEach((ptn) => {
+    for(let i = 0; i < param.count; i++){
+      const diffAngle = 360 * i / param.count;
+      const {x, y, direction} = ptn;
+      let newPtn = {speed:ptn.speed};
+      newPtn.x = x * cos(diffAngle) - y * sin(diffAngle);
+      newPtn.y = y * cos(diffAngle) + x * sin(diffAngle);
+      newPtn.direction = direction + diffAngle;
+      newArray.push(newPtn);
+    }
+  })
+  return newArray;
+}
+
+// この関数をたとえば4フレームに1回とかすることでいろいろ実現できるよって感じのあれ。
+// data.formation:{}フォーメーションを決める
+//   type:default・・普通に真ん中に1個
+//   type:frontVertical・・
+// data.delay:{}準備中
+// data.nwayやらdata.radialやら存在するならそれを考慮・・準備中。
+// data.name:ショットの種類
+// data.param:{}ショットに付随する追加パラメータ
+function createFirePattern(data){
+  return (_cannon) => {
+    // dataはjson形式、これを解釈することで、1フレームにCannonがbulletを発射する関数を作る。
+    let patternSeed = getFormation(data.formation);
+    // 必要ならdata.delayに基づいてディレイ
+    // この時点で[{x:~~, y:~~}]の列ができている。回転させて正面にもってくる。
+    fitting(patternSeed, _cannon.bulletDirection);
+    // 速度を設定
+    patternSeed.forEach((ptn) => {
+      ptn.speed = _cannon.bulletSpeed;
+      ptn.direction = _cannon.bulletDirection;
+    })
+    // nwayとかradialとかする(data.decorateに情報が入っている)
+    if(data.hasOwnProperty("nway")){
+      patternSeed = createNWay(data.nway, patternSeed); // とりあえずnway.
+    }
+    if(data.hasOwnProperty("radial")){
+      patternSeed = createRadial(data.radial, patternSeed); // とりあえずradial.
+    }
+    // positionを設定
+    patternSeed.forEach((ptn) => {
+      ptn.x += _cannon.position.x;
+      ptn.y += _cannon.position.y;
+    })
+    // data.nameはショットの種類、data.paramは設定するパラメータの内容
+    patternSeed.forEach((ptn) => {
+      ptn.execute = (data.name === "go" ? go : window[data.name](data.param));
+      createBullet(ptn);
+    })
+    // お疲れさまでした。
+  }
+}

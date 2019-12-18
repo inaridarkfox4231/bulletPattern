@@ -325,8 +325,25 @@ diffが無ければ同じものを使うようにすればすっきりしそう�
   name:"loop",
   count:2,
   funcArray:[{name:"config", param:{type:"set", speed:[3, 6], direction:[0, 360]},
-             {name:"fire", data:{name:"go"}}],
+             {name:"fire", param:{data:{name:"go"}}}],
+  wait:3
 }
+
+_cannonが持っている引数をparamとする関数を色々実行するのを指定回数だけ行うってやつ
+
+function createLoop(obj){
+  return (_cannon){
+    if(frameCount % obj.wait > 0){ return; }
+    for(let i = 0; i < obj.count; i++){
+      obj.funcArray.forEach((obj) => {
+        _cannon[obj.name](obj.param);
+      })
+    }
+  }
+}
+
+// あーそうか、fireでこれこれこういうのを一発撃ちますっていう話なのか。3wayとかそういうのは・・ね。
+
 
 {name:"endless",
   actArray:[{うえのやつ}, {name:"wait", count:3}]
@@ -365,3 +382,129 @@ diffが無ければ同じものを使うようにすればすっきりしそう�
  この二つが切り替わる感じになる。f0, f1と名付けて・・[f0, f1]
  f0終了時に判定
  waitCountに3を設定して次
+
+ // radialって発射位置の相対位置もずらすんだ？たとえば本体から右下でこれを3radialするなら
+ その位置ベクトルも回転させないとおかしなことになる、directionベクトルだけじゃだめってことね。なるほどー。
+ 難しいね。でも発射位置のベクトルずらすだけなら簡単そう。diffは・・diffもradiusとdirectionに分けるべき？うん。
+ やめとこうか・・・んー
+
+// delayGunやめてdelayをプロパティにした。その方がすっきりする。
+// 横一列に並べて一気に向かってくる感じ。
+if(frameCount % 4 === 0 && frameCount % 720 < 360){
+  let x = Math.floor((frameCount % 720) / 4) * 4 + 60
+  let ptn = {x:x, y:120, speed:12, direction:90, delay:60,
+             execute:homing({friction:0.05, terminalSpeed:2, life:180, margin:0})};
+  createBullet(ptn);
+}
+
+ 一度に発射する感じのパターンをいくつも組み合わせるっていうのを今考えてるんだけどなんかうまくいかない。
+
+ とりあえず今んとこ作ったパターンから、とりあえず一定間隔で発射するやつだけ作る・・
+ なんかもうそれ作るだけで精一杯やー。
+
+ nway, directionに回転かけるだけだと思ってたけど、diffにもかけたほうがいいよね・・radialもそうすべき。
+ // ということはdiffはdiffRadiusとdiffDirectionからなるって感じですかね。
+ nway, radius, lineはそういうパターンの複製を行うものと認識してる。あとburstとか。これも、
+ 全体に付与するからそういうの。
+
+ formationでしょ、diffって。円形と扇形とラインくらいしか思いつかないけど。ラインは横、縦。間隔。
+
+ 順序。
+ まず速度を決めます（speedとdirection）
+ 次にフォーメーションを決めます（自分の所に1個、円形に8個、みたいなやつ）
+ ここで位置を相対位置として決めておいて一番最後にCannonの位置を足し算する感じですかね。それでxとyが決まる。
+ (ディレイがある場合はここで設定。用意しない場合もあるけど。
+ たとえば横一列に並べて中心ほど早くするとかそういうの。
+ やり方は線型ディレイとかそんな感じでオプションを考えて順番を考慮するだけ)
+ (同心円状に並べて外側程早くする（言ってみただけ(それradial組み合わせればできるやん)）)
+ 次に位置と速度についてのnwayやらradialやらlineやらのオプションを決めて適宜bulletを増やします
+ （nway:角度を適宜回転、diffDirectionも適宜回転して複製。
+   radial:角度についてそれをn分割の方向にして複製、diffDirectionも同じく。それを角bulletに行う。
+   line:各bulletについて速さをある程度等間隔に増やしながら複製、etc...）
+ bulletPatternが出そろったのでCannonの位置座標からxとyをまとめて全部最終的に決定します。
+ まとめて弾丸の挙動パターン関数(execute)を指定します。
+ 複製の時は元のやつを破棄して新しく必要個数のオブジェクトを作るのでプロパティは少ない方がいいよね。
+ 次に発射の間隔を決めます。
+ 完成！！
+ これだと途中で分裂する弾が撃てない？知らん！！！
+ ある程度連射した後のwaitが命令できない？waitCount増やせばできるでしょ。「完」
+ 複数のパターンを併用したい？もう配列にして毎フレーム実行しちゃえ！！！「完」
+
+ この辺をjsonに落としてCannonにぶち込むのがひとつ。
+ そして実行に関しては完成した・・あー・・・なんかおかしい？
+
+ そうか、これ1回の間に実行するやつだ。これでひとかたまり。
+ また、最初の速度指定の所でCannonのbulletSpeedとbulletDirectionを使うんですね分かります。
+ さらに毎フレーム実行する方向変化のオプションとか組み合わせてノイズや回転を表現できる。OK!
+ つまりパターン定義のjsonとは別にCannonのふるまいを決めるjsonを作るのね。それはいいんだけど・・・
+
+ あー、じゃあ発射間隔とかそういうのは別の話になるかな・・毎フレームのあれとかそういうのも含めて。
+ たとえば毎フレームランダムに変わるのとかそういうのとか。
+ じゃあとりあえずそこらへん作ろう。
+
+ 1.フォーメーションで相対位置を指定しつつ配置（デフォルトは0,0に1個だけ）
+ 1.5 bulletDirectionでフォーメーションを回転させて撃ちだす方向に合わせる感じ。
+ 2.あればディレイ
+ 3.同じ速度を設定
+ 4.あればnwayやらなんやらで複製
+ 5.まとめてCannonの位置を加えてパターン完成
+ 6.まとめてexecute関数を設定
+ 7.まとめてcreateBulletに放り込む。以上。
+ これらの情報をjsonに落としてloopに埋め込んだらOK.
+
+ set:{}の{}を作るのが5までで、そのあとそれをsetに落として6,7を実行すると。
+
+ これでできるのは
+ (_cannon) => {なんかいろいろやってそのあとcreateBullet}っていう関数ですね。
+ その前にsetとかaddでbulletDirectionとかいろいろ変化する感じ。
+ だからまずはjsonで書かれたこのレシピを関数にする関数が必要で、
+ さらにそのjsonが埋め込まれた行動ルーチンを表現するjsonを
+ (_cannon) => {いろいろやろう}
+ って感じに解釈する関数が必要なのね。
+
+ ・・よくわかんないけど、番号の付け方にパターンを付ければいい・・
+ 今色々考えても仕方ないじゃん。とにかく作らないと始まらないよ～～
+ 右から順番とか左から順番とか真ん中から・・とかそういうの。で、あとは等差数列・・
+ 一般化等差数列：floor((an+b)/c) + d
+ どうも中心から外側に向かって9, 8, 8, 7, 7, 6, 6, 5, 5, みたいにdelayを掛けたいらしい。
+
+ さてと
+
+ setやめよう。普通に{x:y:speed:direction:delay:execute:}でいいよ。
+
+
+// 遊び過ぎた（（
+ let fireData = {
+   formation:{type:"frontVertical", distance:30, count:4, interval:20},
+   name:"go"
+ };
+ let fireFunc = createFirePattern(fireData);
+ let func = (_cannon) => {
+   const fc = _cannon.properFrameCount;
+   _cannon.setPosition(240 + 120 * sin(fc), 160);
+   if(fc % 4 === 0){
+     _cannon.config({type:"set", direction:noise(fc / 8) * 30 + 75});
+     fireFunc(_cannon);
+   }
+ }
+ let ptn = {x:width / 2, y:height / 4, bulletSpeed:12, bulletDirection:90, execute:func};
+ createCannon(ptn);
+}
+
+// 回転しながらばんばん
+// よけられねぇ・・・
+let fireData = {
+  formation:{type:"frontVertical", distance:60, count:2, interval:20},
+  radial:{count:12},
+  name:"go"
+};
+let fireFunc = createFirePattern(fireData);
+let func = (_cannon) => {
+  const fc = _cannon.properFrameCount;
+  if(fc % 4 === 0){
+    _cannon.config({type:"add", direction:5});
+    fireFunc(_cannon);
+  }
+}
+let ptn = {x:width / 2, y:height / 4, bulletSpeed:4, bulletDirection:90, execute:func};
+createCannon(ptn);
