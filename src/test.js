@@ -28,13 +28,14 @@ function setup(){
   let fireData = {
     formation:{type:"frontVertical", distance:60, count:2, interval:20},
     radial:{count:12},
-    name:"go"
+    name:"brakeAccell",
+    param:{threshold:60, friction:0.02, accelleration:0.2}
   };
   let fireFunc = createFirePattern(fireData);
   let func = (_cannon) => {
     const fc = _cannon.properFrameCount;
     if(fc % 4 === 0){
-      _cannon.config({type:"add", direction:5});
+      //_cannon.config({type:"add", direction:5});
       fireFunc(_cannon);
     }
   }

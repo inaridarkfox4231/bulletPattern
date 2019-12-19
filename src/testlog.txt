@@ -508,3 +508,76 @@ let func = (_cannon) => {
 }
 let ptn = {x:width / 2, y:height / 4, bulletSpeed:4, bulletDirection:90, execute:func};
 createCannon(ptn);
+
+[{count:1, name:"fire0"}, {count:4, name:"wait"}, {count:Infinity, next:[{count:1, name:"fire0"}, {count:4, name:"wait"}]}]
+ってやって先頭から順に、
+まずfire0を実行してcountを1減らして0なのでさらに次行ってnameがあるので関数をwaitで置き換えてcountを1減らして
+正なので抜ける
+次にwaitを実行して3-1で2で正なので抜ける
+ていうかnameがあればその関数を実行するでいいやね
+waitの場合は何もしないけど関数名の場合はその関数を実行する感じ
+fire0:なんか実行関数（今作ってるブレットの発射パターンみたいなやつ）
+2-1で1>0
+1-0で0になったので外す。nextがあるので内容を頭から順にshift0していく,これ逆の方がいいんかな・・
+countはコピーしてそれ以外はそのまま。objectCopyだとこっちまで0になってしまうので。
+Infinityも1減らす、正なので抜ける。
+
+じゃあ逆で。
+流れ。
+1.先頭のobjを取得
+2.nameがwaitなら何もしない、nextならその内容を順にpushしていく、ただしcount含めて新しいobjにする
+  普通のプロパティごとのコピーでいい、困るのはcountだけだから。
+3.countを1減らす、0になった場合はpopして新しいobjを取得し最初に戻る。
+4.正の場合は抜ける。
+この一連を毎フレーム実行する感じ。どう？
+
+createFireFunctionで作った関数はbulletにも適用できるけどbulletSpeedとbulletDirectionを持ってないといけない、
+逆に言うとposition, bulletSpeed, bulletDirectionさえ持っていれば何にでも適用できるね・・
+nameが"wait":何もしない
+nameが存在しない：やはり何もしない
+nameが"wait"以外：その名前の所にある関数を実行する
+{fire0:なんか関数}
+
+endless:{[{name:"fire"}, {wait:4}]}
+っていうブロックがアレになるイメージ。
+まずwaitプロパティがある場合は自動的に{name:"wait"のcount:4}になる
+ない場合はnameを参照してcountは1に設定
+その後ろにアレが付く。
+loop:{[{name:"fire"}, {wait:4}], count:8}
+ってやると4フレームに1回のあれを8回ループする感じになる。
+loop:{[{name:"fire"}], count:2}
+だと同じターンにfireを2回やることになる感じ。
+endless:{}
+
+endlessは対象となる配列をすべてそのまま、値渡しでオブジェクトごと複製し、それをnextとしcountをInfinity
+としてそういう{}を後ろに付け加える操作。loopはInfinityが定められたcount数になってるだけであとは同じ。
+だからまず・・再帰ですかね・・loopとendlessしかないんでしょ結局。
+{count:1, name:"config", param:{type:"add", direction:4}}
+とかも入るんでしょ、count1だから普通に実行して次へ進む。こういうのもcount含めて値渡しで複製。
+nameを見て・・・
+"wait"・・何もしない。
+_cannonが持つ関数名・・paramを引数に取り実行する
+それ以外・・patternオブジェクトの中に入ってるそれを実行する
+
+prop(プロパティ名文字列) in obj(クラスのインスタンス) ってやるとその名前の関数というか
+プロパティを持つかどうか調べられるみたい。これを使ってconfigなりいろいろ出せばいいみたいね。
+面倒だからundefinedでいいよ・・
+
+1.waitかどうか・・waitなら何もしない
+2.持ってる関数かどうか・・持ってるならparam引数で実行
+3.それ以外・・同じ名前の関数がpatternに登録されてるのでそれを実行する（引数は_cannonのみ）
+
+{execute:{endless:[{name:"fire"}, {wait:4}]},
+ fire:{定義オブジェクト}}
+解釈するにはまず、loopかendlessを持つ場合とそうでない場合に分ける感じ・・？
+
+Cannonのupdateにexecuteって書かなければいいんだよね、要するに。で、
+bulletが似たようなことし始める場合にはbulletの方にもpatternが何か持つかどうか調べて・・
+どうせupdateそれほどあれしないから増やしても問題ないはずだし。
+Cannonのexecuteに相当するところを廃止して例のオブジェクト操作でおきかえればいい。はい。さて、次。
+{endless:
+  [{loop:[{name:"fire"}, {name:"config", param:{type:"add", direction:5}}, {wait:4}], count:8}, {wait:32},
+  {loop:[{name:"fire"}, {name:"config", param:{type:"add", direction:-5}}, {wait:4}], count:8}, {wait:32}]
+}
+これをパース。要は、このloopプロパティとかendlessプロパティがあるかないか見て、
+あるなら時間切れ。
