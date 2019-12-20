@@ -26,20 +26,17 @@ function setup(){
   bulletPool = new ObjectPool(() => { return new Bullet(); }, 600);
   entity = new System();
   let fireData = {
-    formation:{type:"frontVertical", distance:60, count:2, interval:20},
-    radial:{count:12},
-    name:"brakeAccell",
-    param:{threshold:60, friction:0.02, accelleration:0.2}
+    radial:{count:16},
   };
   let fireFunc = createFirePattern(fireData);
   let func = (_cannon) => {
     const fc = _cannon.properFrameCount;
     if(fc % 4 === 0){
-      //_cannon.config({type:"add", direction:5});
+      _cannon.config({type:"add", direction:5 * (frameCount % 60 < 30 ? 1 : -1)});
       fireFunc(_cannon);
     }
   }
-  let ptn = {x:width / 2, y:height / 4, bulletSpeed:4, bulletDirection:90, execute:func};
+  let ptn = {x:width / 2, y:height / 4, bulletSpeed:8, bulletDirection:90, execute:func};
   createCannon(ptn);
 }
 
@@ -253,6 +250,7 @@ class Bullet{
 class Cannon{
   constructor(){
 		this.position = createVector();
+    // this.delay = 0; // delayあった方がいいかなって思って
 		this.initialize();
 	}
   setPosition(x, y){
@@ -293,6 +291,7 @@ class Cannon{
     if(bulletDirection !== undefined){ this.bulletDirection = bulletDirection }
   }
   fire(param){
+    // 無くす予定. もうこのメソッドでbulletを作ることはないので。
     const data = param.data;
     // dataにはnameとparamが入っててこれはbulletのパターンを作るのに使う。
     const diff = (param.hasOwnProperty("diff") ? param.diff : {});
@@ -638,9 +637,13 @@ function createRadial(param, ptnArray){
   return newArray;
 }
 
+// いわゆるline.
+// 速さを増しながら複数用意する感じ
+function createLine(param, ptnArray){ /* 工事中 */ }
+
 // この関数をたとえば4フレームに1回とかすることでいろいろ実現できるよって感じのあれ。
 // data.formation:{}フォーメーションを決める
-//   type:default・・普通に真ん中に1個
+//   type:default・・普通に真ん中に1個（formation未指定の場合はこれになる）
 //   type:frontVertical・・
 // data.delay:{}準備中
 // data.nwayやらdata.radialやら存在するならそれを考慮・・準備中。
@@ -649,7 +652,12 @@ function createRadial(param, ptnArray){
 function createFirePattern(data){
   return (_cannon) => {
     // dataはjson形式、これを解釈することで、1フレームにCannonがbulletを発射する関数を作る。
-    let patternSeed = getFormation(data.formation);
+    // formationの取得。なお、formationプロパティが無い時は自動的にデフォルトになる。
+    let patternSeed = [];
+    if(data.hasOwnProperty("formation")){
+      patternSeed = getFormation(data.formation);
+    }else{
+      patternSeed = [{x:0, y:0}]; }
     // 必要ならdata.delayに基づいてディレイ
     // この時点で[{x:~~, y:~~}]の列ができている。回転させて正面にもってくる。
     fitting(patternSeed, _cannon.bulletDirection);
@@ -672,7 +680,11 @@ function createFirePattern(data){
     })
     // data.nameはショットの種類、data.paramは設定するパラメータの内容
     patternSeed.forEach((ptn) => {
-      ptn.execute = (data.name === "go" ? go : window[data.name](data.param));
+      if(data.hasOwnProperty("name")){
+        ptn.execute = window[data.name](data.param);
+      }else{
+        ptn.execute = go;
+      }
       createBullet(ptn);
     })
     // お疲れさまでした。
