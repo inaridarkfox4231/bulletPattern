@@ -38,6 +38,12 @@ function setup(){
   }
   let ptn = {x:width / 2, y:height / 4, bulletSpeed:8, bulletDirection:90, execute:func};
   createCannon(ptn);
+  // さて・・
+  let seed = {x:240, y:320, bulletSpeed:6, bulletDirection:90, action:{loop:[{loop:[{name:"config", param:{type:"set", bulletSpeed:[3, 6], bulletDirection:[0, 360]}}, {name:"fire"}], count:2}], count:Infinity}, arsenal:{fire:{}}};
+  // どうする？？
+  let newPtn = parsePatternSeed(seed);
+  // これを・・ね。
+  // 得られたpatternをcreateCannonに放り込んでupdateで実行させる。
 }
 
 function draw(){
@@ -548,6 +554,9 @@ function homing(param){
 }
 
 // あとはプレイヤーが近付くとバーストするとか面白そう（いい加減にしろ）
+// 画面の端で3回反射するまで動き続けるとか面白そう。
+// 放物軌道とか・・
+// 画面の端を走って下まで行って直進してプレイヤーと縦で重なると2倍速でぎゅーんって真上に（以下略）
 
 // ---------------------------------------------------------------------------------------- //
 
@@ -679,6 +688,7 @@ function createFirePattern(data){
       ptn.y += _cannon.position.y;
     })
     // data.nameはショットの種類、data.paramは設定するパラメータの内容
+    // name指定がない場合は自動的にgoになる。
     patternSeed.forEach((ptn) => {
       if(data.hasOwnProperty("name")){
         ptn.execute = window[data.name](data.param);
@@ -690,3 +700,95 @@ function createFirePattern(data){
     // お疲れさまでした。
   }
 }
+
+// パース関数
+// 配列を返すやつと本体と二つ必要なんですよね。
+// sample:{x:~~, y:~~, bulletSpeed:~~(あれば), bulletDirection, action:~~, あればfire:~~みたいな。}
+// x, y, bulletSpeed, bulletDirectionのところはそのままコピーする感じでOK.
+// fireとかはまあ名前が付いてるんだけど、それぞれcreateFirePatternで関数にしておく。
+// 最後にactionの内容を別の関数を再帰的に適用してアクションブロックの配列にする。
+// arsenal:{fire1:~~, fire2:~~}を見て、これの中身を見て、fire1:関数、fire2:関数、・・ってやればいい。
+// arsenal:武器庫みたいな意味。
+function parsePatternSeed(seed){
+  let pattern = {};
+  const {x, y, bulletSpeed, bulletDirection} = seed;
+  pattern.x = x;
+  pattern.y = y;
+  if(bulletSpeed !== undefined){ pattern.bulletSpeed = bulletSpeed; }
+  // action(行動パターン).
+  pattern.action = getActionArray(seed.action); // recursion.
+  // arsenal(武器庫).
+  if(seed.hasOwnProperty("arsenal")){
+    Object.keys(seed.arsenal).forEach((weaponName) => {
+      pattern[weaponName] = createFirePattern(seed.arsenal[weaponName]);
+    })
+  }
+  // って感じ？
+  return pattern;
+}
+
+/*
+  action:[{}, {}, {}, ..., {}]みたいな。
+  {loop:[{}, {}, ..., {}], count:~~} → [いっしょでいいでしょ。countを減らす感じでいいよね。]
+  action:[{loop:[{name:"fire"}, {wait:4}], count:Infinity}]って感じ。
+  arsenal:{fire:{radial:{count:4}}} 発射方向を含む4つの方向に弾丸を1発ずつ発射
+  というわけでサンプル。
+  {x:240, y:320, bulletSpeed:6, bulletDirection:90, action:A, arsenal:{fire:{}}}
+  A = {loop:[{loop:[{name:"config", param:{type:"set", bulletSpeed:[3, 6], bulletDirection:[0, 360]}}, {name:"fire"}], count:2}], count:Infinity}
+  今のところはInfinityが1個だけって感じだけど・・最後にvanishするとかそういう話になってくるとやっぱ基本・・
+  まあ配列がデフォの方が何かといいかなって。
+*/
+
+/*
+  これだと同じターンに2回繰り返すことにならないな・・repeatで区別しよう。
+  repeatは同じ命令を繰り返す。これは配列をpopしないということ・・んー。
+  repeatは回数だけbackする、backに戻るインデックスの数が入ってて、たとえば2なら2つ戻る。
+  その場合配列を切ることはしない。
+  array.splice(0, n)で0番からn-1番までまるごとカットされる。repeatはこの処理をしないということ。
+  逆にループはこの処理を行う・・さらにインデックスも配列の長さだけ戻す感じですかね・・
+  そしてcountを1減らし正ならフレームを終了する。repeatはこれをしない。
+  loopはrepeatと違って繰り返すときに一旦処理を中断するけどrepeatはそれをしないで指定回数だけ同じターンに繰り返し実行する感じ。
+  A = {loop:B, count:Infinity};
+  B = [{repeat:C, count:2}];
+  C = [{name:"config", param:{type:"set", bulletSpeed:[3, 6], bulletDirection:[0, 360]}}, {name:"fire"}];
+*/
+
+// actionのところのオブジェクトから作る。
+// dataは最初は配列、それ以降はオブジェクトかもしれない。
+function getActionArray(data){
+  let actionArray = [];
+  if(data.hasOwnProperty("length")){
+    // lengthを持つ場合は各要素に適用してpush(...結果)していくだけ
+    data.forEach((element) => {
+      actionArray.push(...getActionArray(element));
+    })
+    return actionArray;
+  }
+  if(data.hasOwnProperty("wait")){
+    return [{wait:data.wait}];
+  }
+  if(data.hasOwnProperty("name")){
+    // ああそうか、全部コピーして。name:"config"の場合paramとかいろいろあるから。
+    // name:"fire"とかなら別にいいんだけど。
+    let newObj = {};
+    Object.assign(newObj, data); // 一つ下のプロパティをすべてコピーした別のオブジェクトを生成する
+    return [newObj];
+  }
+  if(data.hasOwnProperty("loop") || data.hasOwnProperty("repeat")){
+    // loopの中身は配列で、それを再帰でパースして取得して、別に作ったオブジェクトに・・
+    // data.countは繰り返しの回数。4なら4回で消える感じ。
+    // repeatもほぼ同じ処理だから同じように書く・・
+    // propNameはloopまたはrepeat. repeatはcount数だけ同じフレーム内で処理する、loopは繰り返すたびに処理を抜ける。
+    const propName = (data.hasOwnProperty("loop") ? "loop" : "repeat");
+    actionArray.push(...getActionArray(data[propName]));
+    let loopController = {};
+    loopController[propName] = [];
+    actionArray.forEach((element) => {loopController[propName].push(element);})
+    // ↑actionArrayを直接放り込むとこのあとactionArrayをいじるとき同時に変化してしまうのでダメ。
+    loopController.count = data.count;
+    actionArray.push(loopController);
+    return actionArray;
+  }
+}
+// 運用するときはloopの内容をコピーするんだけど、プロパティごとの複製になる。
+// だから新しく作るわけで、waitが減っても大丈夫・・のはず。
