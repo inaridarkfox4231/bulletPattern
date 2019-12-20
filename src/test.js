@@ -39,7 +39,7 @@ function setup(){
   let ptn = {x:width / 2, y:height / 4, bulletSpeed:8, bulletDirection:90, execute:func};
   createCannon(ptn);
   // さて・・
-  let seed = {x:240, y:320, bulletSpeed:6, bulletDirection:90, action:{loop:[{loop:[{name:"config", param:{type:"set", bulletSpeed:[3, 6], bulletDirection:[0, 360]}}, {name:"fire"}], count:2}], count:Infinity}, arsenal:{fire:{}}};
+  let seed = {x:240, y:320, bulletSpeed:6, bulletDirection:90, action:{loop:[{loop:[{name:"config", param:{type:"set", speed:[3, 6], direction:[0, 360]}}, {name:"fire"}], count:2}], count:Infinity}, arsenal:{fire:{}}};
   // どうする？？
   let newPtn = parsePatternSeed(seed);
   // これを・・ね。
@@ -265,6 +265,10 @@ class Cannon{
   config(param){
     // 速さとか方向の変化とか加えるのとか全部ここで出来る感じ
     // {type:"set", speed:2} で「速さを2にする」
+
+    // type:choiceで、配列のどれかからランダムに選ぶ、とか面白いかも。
+    // type:choice, direction:[0, 30, 60, 90]で、とか。
+
     // {type:"add", direction:4} で「角度を+4する」
     // あとは掛け算かな・・必要かどうか微妙だけど
     switch(param.type){
@@ -711,10 +715,11 @@ function createFirePattern(data){
 // arsenal:武器庫みたいな意味。
 function parsePatternSeed(seed){
   let pattern = {};
-  const {x, y, bulletSpeed, bulletDirection} = seed;
+  const {x, y, speed, direction} = seed;
   pattern.x = x;
   pattern.y = y;
-  if(bulletSpeed !== undefined){ pattern.bulletSpeed = bulletSpeed; }
+  if(speed !== undefined){ pattern.bulletSpeed = speed; }
+  if(direction !== undefined){pattern.bulletDirection = direction; }
   // action(行動パターン).
   pattern.action = getActionArray(seed.action); // recursion.
   // arsenal(武器庫).

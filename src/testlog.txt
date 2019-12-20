@@ -675,7 +675,51 @@ loop:[0, 0, 2]みたいな？で、該当部分のwaitまたはcountを復元す
 完成品（予想）
 {x:240, y:160, bulletSpeed:6, bulletDirection:90, action:A, fire:Func}
 Func = createFirePattern({})
-A = [{name:"config", param:{type:"set", bulletSpeed:[3, 6], bulletDirection:[0, 360]}}, {name:"fire"}, {repeat:[0, 0], count:2}, {loop:[0, 0, 2], count:Infinity}]
+A = [{name:"config", param:{type:"set", speed:[3, 6], direction:[0, 360]}}, {name:"fire"}, {repeat:[0, 0], count:2}, {loop:[0, 0, 2], count:Infinity}]
 って感じ。インデックスの推移：
 0→1→2→0→1→2→3「ターン終了」「インデックスを3つ戻して（3はloopに登録された配列の長さ）処理を抜ける」
 repeatでも同じ理由で2つインデックスを戻すがloopと違いそこで処理を抜けることはしない。
+
+// あれ、角度コロコロかえるやつ。
+... : {x:240, y:160, bulletSpeed:6, bulletDirection:90}
+{..., action:A, arsenal:{fire:{radial:{count:4}}}}
+A = {loop:B, count:Infinity}
+B = [{loop:C1, count:8}, {wait:32}, {loop:C2, count:8}, {wait:32}]
+C1 = [{name:"config", param:{type:"add", direction:5}}, {name:"fire"}, {wait:4}]
+C2 = [{name:"config", param:{type:"add", direction:-5}}, {name:"fire"}, {wait:4}]
+
+でも{wait:8}でいいよ・・ていうかcountだけだと区別つかないだろ。waitでしょ。
+復元の時は、waitを持ってる→その数を戻す、waitはないけどcountを持ってる→その数を戻す、どっちもないなら何もしない
+で、インデックスは配列の長さだけ戻す感じ（何もしないところは0が入っている）。
+
+・・あれから考えたんだけど、loopはインデックスを戻すだけにするべきよね、というか、
+入れ子やめよう。入れ子にしなくてもできる。インデックス使えるんだったら入れ子は必要ない。
+たとえばこんな感じ：
+action:[{name:"config", param:{type:"set", speed:[3,6], direction:[0,360]}}, {repeat:2, back:2}, {loop:Infinity, back:3}]
+ってやる。0やって1やって2のところでrepeatを1減らしてback:2だからってことで繰り返し数を（あれば）復元して（repeatや
+loopプロパティを元に戻す感じ、いくつ戻すかはbackupというプロパティを追加してそれで表現する）、repeatなので抜けずに
+2つ戻って0やって1やって2のところで1を0にして今度は0なので次行ってloopがInfinityだから1減らしても正、で、正なので
+back:3だから3つうしろまですべてのrepeatとloopプロパティを復元してインデックス3つ戻して今度はrepeatではなくloopなので
+抜ける。
+これで毎フレーム2回の攻撃になるよ。
+復元するのはrepeat, wait, loopがある場合でそれをすべて元に戻す感じ。
+あとたとえばjumpとか面白い。jump:5があったら5つとばす。
+純粋なback:4(4つ戻る)とかは考えづらい・・・フレーム抜けられなくなりそう。
+jumpなら例えば、いくつかwait込みのループ構造を用意しておき、waitの先にjumpをおいて、
+最初にどこかのスタートにjumpして（ランダムジャンプ）、一通りパターンを終えて、後ろの方にjumpして、そこで
+switchする、その、ループ数をすべて復元しつつどこかしらにバックするイメージ。で、その場合は抜ける。
+バック先がいくつかあるうちのどれかを選ぶランダム形式。
+
+
+・・・勘違いしてた。setやaddのあとってspeed, directionなのね。
+じゃあ最初の指定もseedはspeed, directionの方がいいやね。
+{x:240, y:160, speed:6, direction:90, action:[{name:"config", param:{type:"set", speed:[3, 6], direction:[0, 360]}}, {name:"fire"}, {repeat:2, back:2}, {loop:Infinity, back:3}], arsenal:{fire:{}}}
+でした。
+
+// ツイート用
+{x:240, y:160, speed:6, direction:90,
+action:[
+{name:"config", param:{type:"set", speed:[3, 6], direction:[0, 360]}}, {name:"fire"},
+{repeat:2, back:2},
+{loop:Infinity, back:3}
+],arsenal:{fire:{}}}
