@@ -723,3 +723,28 @@ action:[
 {repeat:2, back:2},
 {loop:Infinity, back:3}
 ],arsenal:{fire:{}}}
+で、一つ目の方：backup:[](復元するものはない)
+二つ目の方：backup:[{back:1, repeat:2}]（1つ後ろのオブジェクトのrepeatを2に戻せ）
+が付いてる感じ。
+
+{x:240, y:320, speed:2, direction:90,
+action:[
+{name:"config", param:{type:"add", direction:4}}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
+{name:"config", param:{type:"add", direction:-4}, "routine",
+{loop:Infinity, back:8}}],
+routine:[{name:"radial16"}, {wait:4}, {loop:8, back:2}, {wait:16}]
+arsenal:{radial16:{radial:{count:16}}}
+]}
+
+パターンをCannonに登録。
+x, y, speed, directionについては説明不要。
+actionの内容をupdateで実行。
+
+let continueFlag = true;
+while(continueFlag){
+  const currentIndex = this.pattern.index;
+  const currentAction = this.action[currentIndex];
+  continueFlag = execute(this, currentAction); // index増やすとかそういうのはいろいろここで。
+}
+trueを返すなら続けるし、falseを返すなら処理を抜ける。
+必ずfalseを返さないといけないから怖いけどね・・

@@ -39,9 +39,17 @@ function setup(){
   let ptn = {x:width / 2, y:height / 4, bulletSpeed:8, bulletDirection:90, execute:func};
   createCannon(ptn);
   // さて・・
-  let seed = {x:240, y:320, bulletSpeed:6, bulletDirection:90, action:{loop:[{loop:[{name:"config", param:{type:"set", speed:[3, 6], direction:[0, 360]}}, {name:"fire"}], count:2}], count:Infinity}, arsenal:{fire:{}}};
+  let seed = {x:240, y:320, speed:2, direction:90,
+  action:[
+  {name:"config", param:{type:"add", direction:4}}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
+  {name:"config", param:{type:"add", direction:-4}}, "routine",
+  {loop:Infinity, back:8}],
+  routine:[{name:"radial16"}, {wait:4}, {loop:8, back:2}, {wait:16}],
+  arsenal:{radial16:{radial:{count:16}}}
+  }
   // どうする？？
   let newPtn = parsePatternSeed(seed);
+  console.log(newPtn);
   // これを・・ね。
   // 得られたpatternをcreateCannonに放り込んでupdateで実行させる。
 }
@@ -563,6 +571,11 @@ function homing(param){
 // 画面の端を走って下まで行って直進してプレイヤーと縦で重なると2倍速でぎゅーんって真上に（以下略）
 
 // ---------------------------------------------------------------------------------------- //
+// createFirePattern.
+// 各種パターンの生成。そのうちdelayとかstealthとか実装したい。
+// delay:一定時間止まってからスタートする。
+// stealth:一定時間の間姿が見えない（当たり判定も存在しない）・・トラップみたいなのイメージしてる。
+// stealthとホーミングやディレイを組み合わせたら面白いものが出来そう。
 
 function getFormation(param){
   let ptnArray = [];
@@ -705,6 +718,11 @@ function createFirePattern(data){
   }
 }
 
+// ---------------------------------------------------------------------------------------- //
+// parse.
+// patternの核となるaction部分を作る、あるいは実行する処理。
+// 前半はパース部分、後半は各セグメントに対するexecute部分。
+
 // パース関数
 // 配列を返すやつと本体と二つ必要なんですよね。
 // sample:{x:~~, y:~~, bulletSpeed:~~(あれば), bulletDirection, action:~~, あればfire:~~みたいな。}
@@ -718,10 +736,21 @@ function parsePatternSeed(seed){
   const {x, y, speed, direction} = seed;
   pattern.x = x;
   pattern.y = y;
-  if(speed !== undefined){ pattern.bulletSpeed = speed; }
-  if(direction !== undefined){pattern.bulletDirection = direction; }
+  if(speed !== undefined){ pattern.speed = speed; }
+  if(direction !== undefined){pattern.direction = direction; }
   // action(行動パターン).
-  pattern.action = getActionArray(seed.action); // recursion.
+  // 先に省略形で書いた部分を展開する。
+  let actionArray = [];
+  for(let i = 0; i < seed.action.length; i++){
+    const action = seed.action[i];
+    if(typeof(action) === "string"){
+      actionArray.push(...seed[action]); // 省略先の配列を要素ごとに放り込む
+    }else{
+      actionArray.push(action);
+    }
+  }
+  // 展開してできたactionArrayのloopとrepeatにbackupInformationを付けて完成
+  pattern.action = addBackupInfo(actionArray); // recursion.
   // arsenal(武器庫).
   if(seed.hasOwnProperty("arsenal")){
     Object.keys(seed.arsenal).forEach((weaponName) => {
@@ -729,71 +758,101 @@ function parsePatternSeed(seed){
     })
   }
   // って感じ？
+  pattern.index = 0; // 配列実行時に使うcurrentIndex. これを付け加えて完成。
   return pattern;
 }
 
-/*
-  action:[{}, {}, {}, ..., {}]みたいな。
-  {loop:[{}, {}, ..., {}], count:~~} → [いっしょでいいでしょ。countを減らす感じでいいよね。]
-  action:[{loop:[{name:"fire"}, {wait:4}], count:Infinity}]って感じ。
-  arsenal:{fire:{radial:{count:4}}} 発射方向を含む4つの方向に弾丸を1発ずつ発射
-  というわけでサンプル。
-  {x:240, y:320, bulletSpeed:6, bulletDirection:90, action:A, arsenal:{fire:{}}}
-  A = {loop:[{loop:[{name:"config", param:{type:"set", bulletSpeed:[3, 6], bulletDirection:[0, 360]}}, {name:"fire"}], count:2}], count:Infinity}
-  今のところはInfinityが1個だけって感じだけど・・最後にvanishするとかそういう話になってくるとやっぱ基本・・
-  まあ配列がデフォの方が何かといいかなって。
-*/
+// 応用すれば、一定ターン移動するとかそういうのもbackupで表現できそう（waitの派生形）
 
-/*
-  これだと同じターンに2回繰り返すことにならないな・・repeatで区別しよう。
-  repeatは同じ命令を繰り返す。これは配列をpopしないということ・・んー。
-  repeatは回数だけbackする、backに戻るインデックスの数が入ってて、たとえば2なら2つ戻る。
-  その場合配列を切ることはしない。
-  array.splice(0, n)で0番からn-1番までまるごとカットされる。repeatはこの処理をしないということ。
-  逆にループはこの処理を行う・・さらにインデックスも配列の長さだけ戻す感じですかね・・
-  そしてcountを1減らし正ならフレームを終了する。repeatはこれをしない。
-  loopはrepeatと違って繰り返すときに一旦処理を中断するけどrepeatはそれをしないで指定回数だけ同じターンに繰り返し実行する感じ。
-  A = {loop:B, count:Infinity};
-  B = [{repeat:C, count:2}];
-  C = [{name:"config", param:{type:"set", bulletSpeed:[3, 6], bulletDirection:[0, 360]}}, {name:"fire"}];
-*/
+// 配列のloopとrepeatのところにbackupプロパティを付け加える処理
+function addBackupInfo(data){
+  // backupプロパティを追加して返すだけ。
+  for(let index = 0; index < data.length; index++){
+    let block = data[index];
+    if(block.hasOwnProperty("repeat") || block.hasOwnProperty("loop")){
+      block.backup = [];
+      for(let k = 1; k <= block.back; k++){
+        const eachBlock = data[index - k];
+        // 該当するindexだけ後ろのセグメントのどのプロパティをどんな値に復元するかのデータを登録する
+        ["repeat", "wait", "loop"].forEach((name) => {
+          if(eachBlock.hasOwnProperty(name)){
+            let obj = {};
+            // nameがないとどのプロパティを復元するのか分からないだろ・・
+            obj.back = k; obj.name = name; obj[name] = eachBlock[name];
+            block.backup.push(obj);
+          }
+        })
+      }
+    }
+  }
+  // オブジェクトをいじったものを返している。
+  return data;
+}
 
-// actionのところのオブジェクトから作る。
-// dataは最初は配列、それ以降はオブジェクトかもしれない。
-function getActionArray(data){
-  let actionArray = [];
-  if(data.hasOwnProperty("length")){
-    // lengthを持つ場合は各要素に適用してpush(...結果)していくだけ
-    data.forEach((element) => {
-      actionArray.push(...getActionArray(element));
-    })
-    return actionArray;
+// executeはここで。こうする、bulletにも適用したい・・
+// だからCannonのexecuteとかそこらへんは無くすかもね。
+function execute(_cannon, action){
+  if(action.hasOwnProperty("wait")){
+    // waitを減らすだけ。正なら抜ける。0なら次へ。
+    action.wait--;
+    if(action.wait > 0){ return false; }
+    else{
+      _cannon.pattern.index++;
+      return true;
+    }
   }
-  if(data.hasOwnProperty("wait")){
-    return [{wait:data.wait}];
+  if(action.hasOwnProperty("name")){
+    // nameの内容に応じた行動を実行して次へ。
+    executeEachAct(action, _cannon);
+    _cannon.pattern.index++;
+    return true;
   }
-  if(data.hasOwnProperty("name")){
-    // ああそうか、全部コピーして。name:"config"の場合paramとかいろいろあるから。
-    // name:"fire"とかなら別にいいんだけど。
-    let newObj = {};
-    Object.assign(newObj, data); // 一つ下のプロパティをすべてコピーした別のオブジェクトを生成する
-    return [newObj];
+  if(action.hasOwnProperty("repeat")){
+    // 同じターン内の繰り返し
+    action.repeat--;
+    if(action.repeat > 0){
+      recovery(action.backup, _cannon.pattern.action, _cannon.pattern.index);
+      _cannon.pattern.index -= action.back;
+    }else{
+      _cannon.pattern.index++;
+    }
+    return true;
   }
-  if(data.hasOwnProperty("loop") || data.hasOwnProperty("repeat")){
-    // loopの中身は配列で、それを再帰でパースして取得して、別に作ったオブジェクトに・・
-    // data.countは繰り返しの回数。4なら4回で消える感じ。
-    // repeatもほぼ同じ処理だから同じように書く・・
-    // propNameはloopまたはrepeat. repeatはcount数だけ同じフレーム内で処理する、loopは繰り返すたびに処理を抜ける。
-    const propName = (data.hasOwnProperty("loop") ? "loop" : "repeat");
-    actionArray.push(...getActionArray(data[propName]));
-    let loopController = {};
-    loopController[propName] = [];
-    actionArray.forEach((element) => {loopController[propName].push(element);})
-    // ↑actionArrayを直接放り込むとこのあとactionArrayをいじるとき同時に変化してしまうのでダメ。
-    loopController.count = data.count;
-    actionArray.push(loopController);
-    return actionArray;
+  if(action.hasOwnProperty("loop")){
+    // repeatと違ってループをさかのぼるときにターンを抜ける
+    action.loop--;
+    if(action.loop > 0){
+      recovery(action.backup, _cannon.pattern.action, _cannon.pattern.index);
+      _cannon.pattern.index -= action.back;
+      return false; // ここが違う。
+    }else{
+      _cannon.pattern.index++;
+      return true; // infinite loopの場合ここは存在しない
+    }
   }
 }
-// 運用するときはloopの内容をコピーするんだけど、プロパティごとの複製になる。
-// だから新しく作るわけで、waitが減っても大丈夫・・のはず。
+
+function executeEachAct(action, _cannon){
+  if(action.name === "config"){
+    // 今のところfire以外はconfigだけ
+    const param = action.param;
+    const {speed, direction} = param;
+    if(param.type === "set"){
+      if(speed !== undefined){ _cannon.bulletSpeed = speed; }
+      if(direction !== undefined){ _cannon.bulletDiretion = direction; }
+    }else if(param.type === "add"){
+      if(speed !== undefined){ _cannon.bulletSpeed += speed; }
+      if(direction !== undefined){ _cannon.bulletDirection += direction; }
+    }
+  }else{
+    _cannon.pattern[action.name](_cannon); // 各種ファイアパターン
+  }
+  // 他にも増やすかもだけど・・
+}
+
+// リピーションパラメータの復元
+function recovery(backup, action, pivotIndex){
+  backup.forEach((data) => {
+    action[pivotIndex - data.back][data.name] = data[data.name];
+  })
+}
