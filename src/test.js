@@ -41,12 +41,12 @@ function setup(){
   // さて・・
   let seed = {x:240, y:320, speed:2, direction:90,
   action:[
-  {name:"config", param:{type:"add", direction:4}}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
-  {name:"config", param:{type:"add", direction:-4}}, "routine",
+  {type:"config", param:{type:"add", direction:4}}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
+  {type:"config", param:{type:"add", direction:-4}}, "routine",
   {loop:Infinity, back:8}],
-  routine:[{name:"radial16"}, {wait:4}, {loop:8, back:2}, {wait:16}],
-  arsenal:{radial16:{radial:{count:16}}}
-  }
+  routine:[{type:"fire", name:"radial16"}, {wait:4}, {loop:8, back:2}, {wait:16}],
+  fire:{radial16:{radial:{count:16}}}
+  };
   // どうする？？
   let newPtn = parsePatternSeed(seed);
   console.log(newPtn);
@@ -725,12 +725,12 @@ function createFirePattern(data){
 
 // パース関数
 // 配列を返すやつと本体と二つ必要なんですよね。
-// sample:{x:~~, y:~~, bulletSpeed:~~(あれば), bulletDirection, action:~~, あればfire:~~みたいな。}
-// x, y, bulletSpeed, bulletDirectionのところはそのままコピーする感じでOK.
-// fireとかはまあ名前が付いてるんだけど、それぞれcreateFirePatternで関数にしておく。
-// 最後にactionの内容を別の関数を再帰的に適用してアクションブロックの配列にする。
-// arsenal:{fire1:~~, fire2:~~}を見て、これの中身を見て、fire1:関数、fire2:関数、・・ってやればいい。
-// arsenal:武器庫みたいな意味。
+// sample:{x:~~, y:~~, speed:~~(あれば), direction, action:~~, あればfire:~~みたいな。}
+// x, y, speed, directionのところはそのままコピーする感じでOK.
+// fire:{名前:seed}みたいな感じにしようね。
+// type:"fire"とかtype:"config"とかしたいの。
+// たとえば type:"fire", name:"random_2_1"みたいな感じ
+// fire.random_2_1:関数
 function parsePatternSeed(seed){
   let pattern = {};
   const {x, y, speed, direction} = seed;
@@ -740,6 +740,7 @@ function parsePatternSeed(seed){
   if(direction !== undefined){pattern.direction = direction; }
   // action(行動パターン).
   // 先に省略形で書いた部分を展開する。
+  // ここは再帰を使って下位区分までstringを配列に出来るように工夫する必要があるね。
   let actionArray = [];
   for(let i = 0; i < seed.action.length; i++){
     const action = seed.action[i];
@@ -751,10 +752,12 @@ function parsePatternSeed(seed){
   }
   // 展開してできたactionArrayのloopとrepeatにbackupInformationを付けて完成
   pattern.action = addBackupInfo(actionArray); // recursion.
-  // arsenal(武器庫).
-  if(seed.hasOwnProperty("arsenal")){
-    Object.keys(seed.arsenal).forEach((weaponName) => {
-      pattern[weaponName] = createFirePattern(seed.arsenal[weaponName]);
+  // fire(各種発射メソッド). 関数に変換する。
+  // fireの中の名前のキーに対して関数を登録する感じ。
+  pattern.fire = {}; // これを用意しておかないとエラーになる
+  if(seed.hasOwnProperty("fire")){
+    Object.keys(seed.fire).forEach((weaponName) => {
+      pattern.fire[weaponName] = createFirePattern(seed.fire[weaponName]);
     })
   }
   // って感じ？
@@ -801,7 +804,7 @@ function execute(_cannon, action){
       return true;
     }
   }
-  if(action.hasOwnProperty("name")){
+  if(action.hasOwnProperty("type")){
     // nameの内容に応じた行動を実行して次へ。
     executeEachAct(action, _cannon);
     _cannon.pattern.index++;
@@ -833,7 +836,7 @@ function execute(_cannon, action){
 }
 
 function executeEachAct(action, _cannon){
-  if(action.name === "config"){
+  if(action.type === "config"){
     // 今のところfire以外はconfigだけ
     const param = action.param;
     const {speed, direction} = param;
@@ -844,8 +847,8 @@ function executeEachAct(action, _cannon){
       if(speed !== undefined){ _cannon.bulletSpeed += speed; }
       if(direction !== undefined){ _cannon.bulletDirection += direction; }
     }
-  }else{
-    _cannon.pattern[action.name](_cannon); // 各種ファイアパターン
+  }else if(action.type === "fire"){
+    _cannon.pattern.fire[action.name](_cannon); // 各種firePattern関数を実行する
   }
   // 他にも増やすかもだけど・・
 }

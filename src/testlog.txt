@@ -729,12 +729,12 @@ action:[
 
 {x:240, y:320, speed:2, direction:90,
 action:[
-{name:"config", param:{type:"add", direction:4}}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
-{name:"config", param:{type:"add", direction:-4}, "routine",
-{loop:Infinity, back:8}}],
-routine:[{name:"radial16"}, {wait:4}, {loop:8, back:2}, {wait:16}]
-arsenal:{radial16:{radial:{count:16}}}
-]}
+{type:"config", param:{type:"add", direction:4}}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
+{type:"config", param:{type:"add", direction:-4}}, "routine",
+{loop:Infinity, back:8}],
+routine:[{type:"fire", name:"radial16"}, {wait:4}, {loop:8, back:2}, {wait:16}],
+fire:{radial16:{radial:{count:16}}}
+};
 
 パターンをCannonに登録。
 x, y, speed, directionについては説明不要。
@@ -748,3 +748,6 @@ while(continueFlag){
 }
 trueを返すなら続けるし、falseを返すなら処理を抜ける。
 必ずfalseを返さないといけないから怖いけどね・・
+
+
+変更点いろいろ。とりあえずfireにして。わかるでしょ。fireにして。
