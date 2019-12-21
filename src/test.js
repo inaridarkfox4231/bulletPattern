@@ -44,7 +44,7 @@ function setup(){
   {type:"config", param:{type:"add", direction:2}}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
   {type:"config", param:{type:"add", direction:-2}}, "routine",
   {loop:Infinity, back:10}],
-  routine:[{type:"fire", name:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}],
+  short:{routine:[{type:"fire", name:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}]},
   fire:{radial16:{radial:{count:16}}}
   };
   // どうする？？
@@ -757,24 +757,7 @@ function parsePatternSeed(seed){
   if(direction !== undefined){pattern.direction = direction; }
   // action(行動パターン).
   // 先に省略形で書いた部分を展開する。
-  // ここは再帰を使って下位区分までstringを配列に出来るように工夫する必要があるね。
-  // 名前空間・・seed.shortに入れておいて逐次置き換える感じ。
-  let actionArray = [];
-  // ここから
-  for(let i = 0; i < seed.action.length; i++){
-    const action = seed.action[i];
-    if(typeof(action) === "string"){
-      seed[action].forEach((obj) => {
-        let copyObj = {};
-        Object.assign(copyObj, obj);
-        actionArray.push(copyObj); // 省略先の配列を要素ごとに・・オブジェクトなので新しく作らないとだめ。
-      })
-      //actionArray.push(...seed[action]); // 省略先の配列を要素ごとに放り込む
-    }else{
-      actionArray.push(action);
-    }
-  }
-  // ここまで
+  let actionArray = getExpansion(seed.short, seed.action);
   // 展開してできたactionArrayのloopとrepeatにbackupInformationを付けて完成
   pattern.action = addBackupInfo(actionArray); // recursion.
   // fire(各種発射メソッド). 関数に変換する。
@@ -788,6 +771,32 @@ function parsePatternSeed(seed){
   // って感じ？
   pattern.index = 0; // 配列実行時に使うcurrentIndex. これを付け加えて完成。
   return pattern;
+}
+
+// 展開関数
+// ここは再帰を使って下位区分までstringを配列に出来るように工夫する必要がある。
+// 名前空間・・seed.shortに入れておいて逐次置き換える感じ。
+// seed.shortにはショートカット配列が入ってて、それを元にseed.actionの内容を展開して
+// 一本の配列を再帰的に構成する流れ。要はstringが出てくるたびにshortから引っ張り出してassignでクローンして
+// 放り込んでいくだけ。
+function getExpansion(shortcut, action){
+  let actionArray = [];
+  for(let i = 0; i < action.length; i++){
+    const segment = action[i];
+    if(typeof(segment) === "string"){
+      const segmentArray = getExpansion(shortcut, shortcut[segment]);
+      segmentArray.forEach((obj) => {
+        let copyObj = {};
+        Object.assign(copyObj, obj);
+        actionArray.push(copyObj);
+      })
+    }else{
+      let copyObj = {};
+      Object.assign(copyObj, segment);
+      actionArray.push(copyObj);
+    }
+  }
+  return actionArray;
 }
 
 // 応用すれば、一定ターン移動するとかそういうのもbackupで表現できそう（waitの派生形）
