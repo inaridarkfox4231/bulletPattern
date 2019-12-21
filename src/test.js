@@ -39,17 +39,20 @@ function setup(){
   let ptn = {x:width / 2, y:height / 4, bulletSpeed:8, bulletDirection:90, execute:func};
   //createCannon(ptn);
   // さて・・
-  let seed = {x:240, y:320, speed:2, direction:90,
+  let seed1 = {x:240, y:320, speed:2, direction:90,
   action:[
-  {type:"config", param:{type:"add", direction:2}}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
-  {type:"config", param:{type:"add", direction:-2}}, "routine",
+  {type:"config", mode:"add", direction:2}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
+  {type:"config", mode:"add", direction:-2}, "routine",
   {loop:Infinity, back:10}],
   short:{routine:[{type:"fire", name:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}]},
   fire:{radial16:{radial:{count:16}}}
   };
+  let seed2 = {x:240, y:160,
+  action:[{type:"config", mode:"set", speed:[3, 6], direction:[0, 360]}, {type:"fire", name:"u"}, {repeat:2, back:2}, {loop:Infinity, back:3}],
+  fire:{u:{}}
+  };
   // どうする？？
-  let newPtn = parsePatternSeed(seed);
-  console.log(newPtn);
+  let newPtn = parsePatternSeed(seed2);
   createCannon(newPtn);
   // これを・・ね。
   // 得られたpatternをcreateCannonに放り込んでupdateで実行させる。
@@ -271,28 +274,6 @@ class Cannon{
   setPosition(x, y){
     this.position.set(x, y);
   }
-  /*
-  config(param){
-    // 速さとか方向の変化とか加えるのとか全部ここで出来る感じ
-    // {type:"set", speed:2} で「速さを2にする」
-
-    // type:choiceで、配列のどれかからランダムに選ぶ、とか面白いかも。
-    // type:choice, direction:[0, 30, 60, 90]で、とか。
-
-    // {type:"add", direction:4} で「角度を+4する」
-    // あとは掛け算かな・・必要かどうか微妙だけど
-    switch(param.type){
-      case "set":
-        if(param.hasOwnProperty("speed")){ this.bulletSpeed = param.speed; }
-        if(param.hasOwnProperty("direction")){ this.bulletDirection = param.direction; }
-        break;
-      case "add":
-        if(param.hasOwnProperty("speed")){ this.bulletSpeed += param.speed; }
-        if(param.hasOwnProperty("direction")){ this.bulletDirection += param.direction; }
-        break;
-    }
-  }
-  */
 	initialize(){
 		// これはbodyに関する情報
 		this.rotationAngle = 0;
@@ -311,31 +292,7 @@ class Cannon{
     if(speed !== undefined){ this.bulletSpeed = speed; }
     if(direction !== undefined){ this.bulletDirection = direction }
   }
-  /*
-  fire(param){
-    // 無くす予定. もうこのメソッドでbulletを作ることはないので。
-    const data = param.data;
-    // dataにはnameとparamが入っててこれはbulletのパターンを作るのに使う。
-    const diff = (param.hasOwnProperty("diff") ? param.diff : {});
-    // diffは発射直前に位置とかそういうのいじりたいときに指定する。
-    let ptn = {};
-    // diffでズレを表現する。デフォルトはCannonの位置、速度も設定されたものを使う感じ・・
-    ptn.set = {x:this.position.x, y:this.position.y, speed:this.bulletSpeed, direction:this.bulletDirection};
-    ["x", "y", "speed", "direction"].forEach((name) => {
-      if(diff.hasOwnProperty(name)){ ptn.set[name] += diff[name]; }
-    })
-    // data.name:関数名、data.param:パラメータ
-    // goは引数とらないので普通に・・
-    ptn.execute = (data.name === "go" ? go : window[data.name](data.param));
-    // パターン作っちゃったらもう引き返せないんだよな。
-    // diffやめてそれも含めちゃうんといいんじゃないかと思ったりして。
-    createBullet(ptn);
-  }
-  */
 	update(){
-    /*
-    this.pattern.execute(this); // この中でfireするんだけど。
-    */
     // flagは常にfalseで返るはず・・でないとバグになる。大丈夫なのか心配。
     let debug = 0; // デバッグモード
     let continueFlag = true;
@@ -792,7 +749,7 @@ function getExpansion(shortcut, action){
       })
     }else{
       let copyObj = {};
-      Object.assign(copyObj, segment);
+      Object.assign(copyObj, segment); // 念のためコピー
       actionArray.push(copyObj);
     }
   }
@@ -832,7 +789,6 @@ function execute(_cannon, action){
   if(action.hasOwnProperty("wait")){
     // waitを減らすだけ。正なら抜ける。0なら次へ。
     action.wait--;
-    //console.log(action.wait, _cannon.properFrameCount, "currentIndex", _cannon.pattern.index);
     if(action.wait > 0){ return false; }
     else{
       _cannon.pattern.index++;
@@ -842,7 +798,6 @@ function execute(_cannon, action){
   if(action.hasOwnProperty("type")){
     // nameの内容に応じた行動を実行して次へ。
     executeEachAct(action, _cannon);
-    //console.log(_cannon.properFrameCount, "currentIndex", _cannon.pattern.index);
     _cannon.pattern.index++;
     return true;
   }
@@ -871,21 +826,34 @@ function execute(_cannon, action){
   }
 }
 
+// switchで書き直したいね。
 function executeEachAct(action, _cannon){
   if(action.type === "config"){
     // 今のところfire以外はconfigだけ
-    const param = action.param;
-    const {speed, direction} = param;
-    if(param.type === "set"){
-      if(speed !== undefined){ _cannon.bulletSpeed = speed; }
-      if(direction !== undefined){ _cannon.bulletDiretion = direction; }
-    }else if(param.type === "add"){
-      //console.log(_cannon.bulletDirection);
+    //const param = action.param;
+    const {speed, direction} = action;
+    if(action.mode === "set"){
+      if(speed !== undefined){ _cannon.bulletSpeed = randomRange(speed); }
+      if(direction !== undefined){ _cannon.bulletDirection = randomRange(direction); }
+    }else if(action.mode === "add"){
       if(speed !== undefined){ _cannon.bulletSpeed += speed; }
       if(direction !== undefined){ _cannon.bulletDirection += direction; }
+    }else if(action.mode === "align"){
+      // bulletの場合。自身の速度をそのまま適用する。
+      // んー・・継承どうしよっかなって感じ。
+      _cannon.bulletSpeed = _cannon.speed;
+      _cannon.bulletDirection = _cannon.direction;
     }
   }else if(action.type === "fire"){
-    _cannon.pattern.fire[action.name](_cannon); // 各種firePattern関数を実行する
+    // 各種firePattern関数を実行する
+    _cannon.pattern.fire[action.name](_cannon);
+  }else if(action.type === "vanish"){
+     // _bulletに適用することを想定してこんな感じに。vanishFlagを立てる。
+    _cannon.vanishFlag = true;
+  }else if(action.type === "aim"){
+    // bulletDirectionを自機の方向に合わせる
+    const margin = (action.hasOwnProperty("margin") ? action.margin : 0);
+    _cannon.bulletDirection = getPlayerDirection(_cannon.position, margin);
   }
   // 他にも増やすかもだけど・・
 }
@@ -893,8 +861,6 @@ function executeEachAct(action, _cannon){
 // リピーションパラメータの復元
 function recovery(backup, action, pivotIndex){
   backup.forEach((data) => {
-    //console.log(action[pivotIndex - data.back][data.name], "before");
     action[pivotIndex - data.back][data.name] = data[data.name];
-    //console.log(action[pivotIndex - data.back][data.name], "after");
   })
 }

@@ -1,0 +1,83 @@
+パターンの作り方（現時点）
+{
+  x:Cannonの初期x座標,
+  y:Cannonの初期y座標,
+  speed:Cannonの初期bulletSpeed(任意),
+  direction:Cannonの初期bulletDirection(任意),
+  action:[行動配列(作り方は後で)],
+  short:{行動配列のショートカット},
+  fire:{発射パターンについて}
+}
+actionの各セグメント
+{wait:n} nカウントの間何もしない
+{type:"fire", name:発射パターン名} 同じパターン名のfire内のプロパティが生成する関数に従って発射
+{type:"config", mode:"set"もしくは"add", speed:任意、direction:任意}
+bulletSpeed, bulletDirectionをsetまたはaddに従って操作する。setは値指定、addは加える。
+setの場合は配列にする（[a]でa,[a, b]でaからbまでのどれか、[a, b, i]でaからi刻みでbまでのどれか）
+{type:"aim", margin:任意}
+bulletDirectionをmarginの範囲で自機狙いに切り替える。
+{type:"vanish"}
+消滅するフラグを立てる（bullet用）
+{repeat:~~, back:~~} repeatの回数だけインデックスをbackだけバックする、同じターン内の繰り返し。
+{loop:~~, back:~~} loopの回数だけインデックスをbackだけバックする、これはバック時にターンを抜ける。
+無限ループの場合はloop:Infinityとする感じ。
+
+今んとこ、こんな感じ。2019/12/22(冬至)
+
+パターン1:
+{x:240, y:320, speed:2, direction:90,
+action:[
+{type:"config", mode:"add", direction:2}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
+{type:"config", mode:"add", direction:-2}, "routine",
+{loop:Infinity, back:10}],
+short:{routine:[{type:"fire", name:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}]},
+fire:{radial16:{radial:{count:16}}}
+};
+パターン2: (最初のやつ)
+{x:240, y:160,
+action:[{type:"config", mode:"set", speed:[3, 6], direction:[0, 360]}, {type:"fire", name:"u"}, {repeat:2, back:2}, {loop:Infinity, back:3}],
+fire:{u:{}}
+};
+
+バーストどうする？
+lineの実装より先にバースト作りたい。lineもいいんだけどね・・
+
+あそこさ、たとえば、{type:"config", content:["add", "-", 2]}とか書けないの？
+パーサーにそこら辺・・要するに、typeかwaitかrepeatかloopしかないわけで、そこら辺。
+つまりtypeに関してはここを配列にする、無いところは"-"でおいとく、的な？通すときに翻訳してオブジェクトにできたらいいね。
+と・・？
+{x:240, y:320, speed:2, direction:90,
+action:[
+{type:"config", mode:"add", direction:2}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
+{type:"config", mode:"add", direction:-2}, "routine",
+{loop:Infinity, back:10}],
+short:{routine:[{type:"fire", name:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}]},
+fire:{radial16:{radial:{count:16}}}
+};
+→
+{
+  set:[240, 320, 2, 90],
+  action:[["config", "add", "-", 2], "routine", ["config", "add", "-", -2], "routine", {loop:Infinity, back:10}],
+  short:{routine:[["fire", "radial16"], {wait:4}, {loop:8, back:3}, {wait:16}]},
+  fire:{radial16:{radial:{count:16}}}
+}
+説明・・
+setはセットする、セットしないところ（スピードとか）は"-"を入れる。
+こんな感じ
+{
+  set:[240, 160, "-", "-"],
+  action:[["config", "set", [3, 6], [0, 360]], ["fire", "u"], {repeat:2, back:2}, {loop:Infinity, back:3}],
+  fire:{u:{}}
+}
+ここから復元できるようにしたい。
+そうすれば、たとえばvanishなんかは["vanish"]で済むようになる。["set", "align"]で簡単に「bulletが作るbulletの速さと
+向きをそのまま同じもので固定」できるし。バーストに一歩近づくでしょ。
+
+翻訳した先を従来と同じものにすれば何の問題もない。
+
+""ではなく"-"を採用するのはどうしてかって？
+0 == ""がtrueになるからに決まってる・・0 === ""はfalseなんだけど。"-"なら0 == "-"でもfalseだから打ち間違いで
+バグになるのを防げる。だから""ではなくちゃんと数字になりえない"-"を採用するわけ。
+
+どうするかな・・
+はじめにsetプロパティをみて順繰りに。"-"は無視。
