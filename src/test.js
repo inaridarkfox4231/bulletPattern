@@ -39,20 +39,25 @@ function setup(){
   let ptn = {x:width / 2, y:height / 4, bulletSpeed:8, bulletDirection:90, execute:func};
   //createCannon(ptn);
   // さて・・
-  let seed1 = {x:240, y:320, speed:2, direction:90,
-  action:[
-  {type:"config", mode:"add", direction:2}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
-  {type:"config", mode:"add", direction:-2}, "routine",
-  {loop:Infinity, back:10}],
-  short:{routine:[{type:"fire", name:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}]},
-  fire:{radial16:{radial:{count:16}}}
+  let seed1 = {
+    set:[240, 320, 2, 90],
+    action:[["config", "add", "-", 2], "routine", ["config", "add", "-", -2], "routine", {loop:Infinity, back:10}],
+    short:{routine:[["fire", "radial16"], {wait:4}, {loop:8, back:3}, {wait:16}]},
+    fire:{radial16:{radial:{count:16}}}
   };
-  let seed2 = {x:240, y:160,
-  action:[{type:"config", mode:"set", speed:[3, 6], direction:[0, 360]}, {type:"fire", name:"u"}, {repeat:2, back:2}, {loop:Infinity, back:3}],
-  fire:{u:{}}
+  let seed2 = {
+    set:[240, 160, "-", "-"],
+    action:[["config", "set", [3, 6], [0, 360]], ["fire", "u"], {repeat:2, back:2}, {loop:Infinity, back:3}],
+    fire:{u:{}}
   };
+  let seed3 = {
+    set:[240, 160, 2, "-"],
+    action:[["config", "set", "-", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:Infinity, back:3}],
+    fire:{rad16way7:{radial:{count:16}, nway:{count:7, interval:2}}}
+  }
   // どうする？？
-  let newPtn = parsePatternSeed(seed2);
+  let newPtn = parsePatternSeed(seed3);
+  console.log(newPtn);
   createCannon(newPtn);
   // これを・・ね。
   // 得られたpatternをcreateCannonに放り込んでupdateで実行させる。
@@ -707,16 +712,29 @@ function createFirePattern(data){
 // fire.random_2_1:関数
 function parsePatternSeed(seed){
   let pattern = {};
+  // setの情報を元にオブジェクトを作る。
+  // 略記法を使います。setプロパティに情報を詰め込みます（設定しない場合は"-"にする）
+  const setArray = seed.set;
+  pattern.x = setArray[0];
+  pattern.y = setArray[1];
+  if(setArray[2] !== "-"){ pattern.speed = setArray[2]; }
+  if(setArray[3] !== "-"){ pattern.direction = setArray[3]; }
+  /*
   const {x, y, speed, direction} = seed;
   pattern.x = x;
   pattern.y = y;
   if(speed !== undefined){ pattern.speed = speed; }
   if(direction !== undefined){pattern.direction = direction; }
+  */
+
   // action(行動パターン).
   // 先に省略形で書いた部分を展開する。
-  let actionArray = getExpansion(seed.short, seed.action);
+  // ただしshortプロパティは存在しない場合もあるので注意する。
+  let actionArray = (seed.hasOwnProperty("short") ? getExpansion(seed.short, seed.action) : seed.action);
   // 展開してできたactionArrayのloopとrepeatにbackupInformationを付けて完成
-  pattern.action = addBackupInfo(actionArray); // recursion.
+  // 略記法で書かれたactionArrayを翻訳する感じ。オプションも付けられる高性能。
+  pattern.action = createAction(actionArray);
+  //pattern.action = addBackupInfo(actionArray); // recursion.
   // fire(各種発射メソッド). 関数に変換する。
   // fireの中の名前のキーに対して関数を登録する感じ。
   pattern.fire = {}; // これを用意しておかないとエラーになる
@@ -744,27 +762,36 @@ function getExpansion(shortcut, action){
       const segmentArray = getExpansion(shortcut, shortcut[segment]);
       segmentArray.forEach((obj) => {
         let copyObj = {};
+        // 配列をアサインでクローンすると配列にならずにlengthとかも失われるようです。
         Object.assign(copyObj, obj);
+        if(obj.hasOwnProperty("length")){ copyObj.length = obj.length; }
         actionArray.push(copyObj);
       })
     }else{
       let copyObj = {};
       Object.assign(copyObj, segment); // 念のためコピー
+      // なので、lengthがある場合はコピーします。
+      if(segment.hasOwnProperty("length")){ copyObj.length = segment.length; }
       actionArray.push(copyObj);
     }
   }
+  console.log(actionArray);
   return actionArray;
 }
 
 // 応用すれば、一定ターン移動するとかそういうのもbackupで表現できそう（waitの派生形）
 
 // 配列のloopとrepeatのところにbackupプロパティを付け加える処理
-function addBackupInfo(data){
+// ではなく、略記で書かれたaction配列を正式な形にパースする処理。
+function createAction(data){
+  let finalArray = [];
   // backupプロパティを追加して返すだけ。
   for(let index = 0; index < data.length; index++){
-    let block = data[index];
+    const block = data[index];
+    let segment = {};
     if(block.hasOwnProperty("repeat") || block.hasOwnProperty("loop")){
-      block.backup = [];
+      Object.assign(segment, block);
+      segment.backup = [];
       for(let k = 1; k <= block.back; k++){
         const eachBlock = data[index - k];
         // 該当するindexだけ後ろのセグメントのどのプロパティをどんな値に復元するかのデータを登録する
@@ -773,14 +800,41 @@ function addBackupInfo(data){
             let obj = {};
             // nameがないとどのプロパティを復元するのか分からないだろ・・
             obj.back = k; obj.name = name; obj[name] = eachBlock[name];
-            block.backup.push(obj);
+            segment.backup.push(obj);
           }
         })
       }
+    }else if(block.hasOwnProperty("length")){
+      // 配列の場合は先頭をtypeにしてあとは適当に。
+      segment.type = block[0];
+      setProp(segment, block); // typeの内容により場合分けする。
+    }else{
+      // waitの場合。普通にコピーするだけ。
+      Object.assign(segment, block);
     }
+    // segmentをpush.
+    finalArray.push(segment);
   }
   // オブジェクトをいじったものを返している。
-  return data;
+  return finalArray;
+}
+
+function setProp(segment, block){
+  switch(block[0]){
+    case "config":
+      segment.mode = block[1];
+      if(block[2] !== "-"){ segment.speed = block[2]; }
+      if(block[3] !== "-"){ segment.direction = block[3]; }
+      break;
+    case "fire":
+      segment.name = block[1];
+      break;
+    case "vanish":
+      break;
+    case "aim":
+      if(block[1] !== "-"){ segment.margin = block[1]; }
+      break;
+  }
 }
 
 // executeはここで。こうする、bulletにも適用したい・・
