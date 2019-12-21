@@ -37,19 +37,20 @@ function setup(){
     }
   }
   let ptn = {x:width / 2, y:height / 4, bulletSpeed:8, bulletDirection:90, execute:func};
-  createCannon(ptn);
+  //createCannon(ptn);
   // さて・・
   let seed = {x:240, y:320, speed:2, direction:90,
   action:[
-  {type:"config", param:{type:"add", direction:4}}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
-  {type:"config", param:{type:"add", direction:-4}}, "routine",
-  {loop:Infinity, back:8}],
-  routine:[{type:"fire", name:"radial16"}, {wait:4}, {loop:8, back:2}, {wait:16}],
+  {type:"config", param:{type:"add", direction:2}}, "routine", // 略記法・・配列が入ってるので展開して放り込む。
+  {type:"config", param:{type:"add", direction:-2}}, "routine",
+  {loop:Infinity, back:10}],
+  routine:[{type:"fire", name:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}],
   fire:{radial16:{radial:{count:16}}}
   };
   // どうする？？
   let newPtn = parsePatternSeed(seed);
   console.log(newPtn);
+  createCannon(newPtn);
   // これを・・ね。
   // 得られたpatternをcreateCannonに放り込んでupdateで実行させる。
 }
@@ -270,6 +271,7 @@ class Cannon{
   setPosition(x, y){
     this.position.set(x, y);
   }
+  /*
   config(param){
     // 速さとか方向の変化とか加えるのとか全部ここで出来る感じ
     // {type:"set", speed:2} で「速さを2にする」
@@ -290,6 +292,7 @@ class Cannon{
         break;
     }
   }
+  */
 	initialize(){
 		// これはbodyに関する情報
 		this.rotationAngle = 0;
@@ -303,11 +306,12 @@ class Cannon{
 	}
   setPattern(_pattern){
     this.pattern = _pattern;
-    const {x, y, bulletSpeed, bulletDirection} = _pattern;
+    const {x, y, speed, direction} = _pattern;
     this.setPosition(x, y);
-    if(bulletSpeed !== undefined){ this.bulletSpeed = bulletSpeed; }
-    if(bulletDirection !== undefined){ this.bulletDirection = bulletDirection }
+    if(speed !== undefined){ this.bulletSpeed = speed; }
+    if(direction !== undefined){ this.bulletDirection = direction }
   }
+  /*
   fire(param){
     // 無くす予定. もうこのメソッドでbulletを作ることはないので。
     const data = param.data;
@@ -327,8 +331,21 @@ class Cannon{
     // diffやめてそれも含めちゃうんといいんじゃないかと思ったりして。
     createBullet(ptn);
   }
+  */
 	update(){
+    /*
     this.pattern.execute(this); // この中でfireするんだけど。
+    */
+    // flagは常にfalseで返るはず・・でないとバグになる。大丈夫なのか心配。
+    let debug = 0; // デバッグモード
+    let continueFlag = true;
+    while(continueFlag){
+      const currentIndex = this.pattern.index;
+      const currentAction = this.pattern.action[currentIndex];
+      continueFlag = execute(this, currentAction);
+      debug++; // デバッグモード
+      if(debug > 10000){ break; } // デバッグモード
+    }
     this.properFrameCount++;
     // bullet関連のupdate.
 		this.rotationAngle += this.rotationSpeed; // 本体の回転
@@ -741,15 +758,23 @@ function parsePatternSeed(seed){
   // action(行動パターン).
   // 先に省略形で書いた部分を展開する。
   // ここは再帰を使って下位区分までstringを配列に出来るように工夫する必要があるね。
+  // 名前空間・・seed.shortに入れておいて逐次置き換える感じ。
   let actionArray = [];
+  // ここから
   for(let i = 0; i < seed.action.length; i++){
     const action = seed.action[i];
     if(typeof(action) === "string"){
-      actionArray.push(...seed[action]); // 省略先の配列を要素ごとに放り込む
+      seed[action].forEach((obj) => {
+        let copyObj = {};
+        Object.assign(copyObj, obj);
+        actionArray.push(copyObj); // 省略先の配列を要素ごとに・・オブジェクトなので新しく作らないとだめ。
+      })
+      //actionArray.push(...seed[action]); // 省略先の配列を要素ごとに放り込む
     }else{
       actionArray.push(action);
     }
   }
+  // ここまで
   // 展開してできたactionArrayのloopとrepeatにbackupInformationを付けて完成
   pattern.action = addBackupInfo(actionArray); // recursion.
   // fire(各種発射メソッド). 関数に変換する。
@@ -798,6 +823,7 @@ function execute(_cannon, action){
   if(action.hasOwnProperty("wait")){
     // waitを減らすだけ。正なら抜ける。0なら次へ。
     action.wait--;
+    //console.log(action.wait, _cannon.properFrameCount, "currentIndex", _cannon.pattern.index);
     if(action.wait > 0){ return false; }
     else{
       _cannon.pattern.index++;
@@ -807,6 +833,7 @@ function execute(_cannon, action){
   if(action.hasOwnProperty("type")){
     // nameの内容に応じた行動を実行して次へ。
     executeEachAct(action, _cannon);
+    //console.log(_cannon.properFrameCount, "currentIndex", _cannon.pattern.index);
     _cannon.pattern.index++;
     return true;
   }
@@ -844,6 +871,7 @@ function executeEachAct(action, _cannon){
       if(speed !== undefined){ _cannon.bulletSpeed = speed; }
       if(direction !== undefined){ _cannon.bulletDiretion = direction; }
     }else if(param.type === "add"){
+      //console.log(_cannon.bulletDirection);
       if(speed !== undefined){ _cannon.bulletSpeed += speed; }
       if(direction !== undefined){ _cannon.bulletDirection += direction; }
     }
@@ -856,6 +884,8 @@ function executeEachAct(action, _cannon){
 // リピーションパラメータの復元
 function recovery(backup, action, pivotIndex){
   backup.forEach((data) => {
+    //console.log(action[pivotIndex - data.back][data.name], "before");
     action[pivotIndex - data.back][data.name] = data[data.name];
+    //console.log(action[pivotIndex - data.back][data.name], "after");
   })
 }
