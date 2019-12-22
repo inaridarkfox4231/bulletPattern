@@ -41,23 +41,24 @@ function setup(){
   // さて・・
   let seed1 = {
     set:[240, 320, 2, 90],
-    action:[["config", "add", "-", 2], "routine", ["config", "add", "-", -2], "routine", {loop:Infinity, back:10}],
+    action:[["config", "add", "-", 2], "routine", ["config", "add", "-", -2], "routine", {loop:Infinity, back:-1}],
     short:{routine:[["fire", "radial16"], {wait:4}, {loop:8, back:3}, {wait:16}]},
     fire:{radial16:{radial:{count:16}}}
   };
   let seed2 = {
     set:[240, 160, "-", "-"],
-    action:[["config", "set", [3, 6], [0, 360]], ["fire", "u"], {repeat:2, back:2}, {loop:Infinity, back:3}],
+    action:[["config", "set", [3, 6], [0, 360]], ["fire", "u"], {repeat:2, back:2}, {loop:Infinity, back:-1}],
     fire:{u:{}}
   };
   let seed3 = {
     set:[240, 160, 2, "-"],
-    action:[["config", "set", "-", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:Infinity, back:3}],
+    action:[["config", "set", "-", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:Infinity, back:-1}],
     fire:{rad16way7:{radial:{count:16}, nway:{count:7, interval:2}}}
   }
   // どうする？？
-  let newPtn = parsePatternSeed(seed3);
+  let newPtn = parsePatternSeed(seed1);
   console.log(newPtn);
+  //noLoop();
   createCannon(newPtn);
   // これを・・ね。
   // 得られたpatternをcreateCannonに放り込んでupdateで実行させる。
@@ -299,6 +300,8 @@ class Cannon{
   }
 	update(){
     // flagは常にfalseで返るはず・・でないとバグになる。大丈夫なのか心配。
+    // patternの実行の仕方。actionの各成分を逐一実行していく。indexが滑る。
+    // 実行ごとにflagが返り、falseのときに抜ける。
     let debug = 0; // デバッグモード
     let continueFlag = true;
     while(continueFlag){
@@ -719,13 +722,6 @@ function parsePatternSeed(seed){
   pattern.y = setArray[1];
   if(setArray[2] !== "-"){ pattern.speed = setArray[2]; }
   if(setArray[3] !== "-"){ pattern.direction = setArray[3]; }
-  /*
-  const {x, y, speed, direction} = seed;
-  pattern.x = x;
-  pattern.y = y;
-  if(speed !== undefined){ pattern.speed = speed; }
-  if(direction !== undefined){pattern.direction = direction; }
-  */
 
   // action(行動パターン).
   // 先に省略形で書いた部分を展開する。
@@ -775,7 +771,7 @@ function getExpansion(shortcut, action){
       actionArray.push(copyObj);
     }
   }
-  console.log(actionArray);
+  //console.log(actionArray);
   return actionArray;
 }
 
@@ -791,15 +787,21 @@ function createAction(data){
     let segment = {};
     if(block.hasOwnProperty("repeat") || block.hasOwnProperty("loop")){
       Object.assign(segment, block);
+      // ここですね。ここで、block.back === -1ならsegment.backをindexにする。
+      if(block.back === -1){ segment.back = index; }
+      // 先頭に戻れ、という指示。
       segment.backup = [];
-      for(let k = 1; k <= block.back; k++){
+      // ここsegment.backとしないとエラーになるよね。そりゃそうだ。
+      for(let k = 1; k <= segment.back; k++){
         const eachBlock = data[index - k];
         // 該当するindexだけ後ろのセグメントのどのプロパティをどんな値に復元するかのデータを登録する
         ["repeat", "wait", "loop"].forEach((name) => {
           if(eachBlock.hasOwnProperty(name)){
             let obj = {};
             // nameがないとどのプロパティを復元するのか分からないだろ・・
-            obj.back = k; obj.name = name; obj[name] = eachBlock[name];
+            obj.back = k;
+            obj.name = name;
+            obj[name] = eachBlock[name];
             segment.backup.push(obj);
           }
         })
