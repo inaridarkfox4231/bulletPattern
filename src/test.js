@@ -25,33 +25,22 @@ function setup(){
   //preparePattern(); // jsonからあれこれするみたい(?)
   bulletPool = new ObjectPool(() => { return new Bullet(); }, 600);
   entity = new System();
-  let fireData = {
-    radial:{count:16},
-  };
-  let fireFunc = createFirePattern(fireData);
-  let func = (_cannon) => {
-    const fc = _cannon.properFrameCount;
-    if(fc % 4 === 0){
-      _cannon.config({type:"add", direction:5 * (frameCount % 60 < 30 ? 1 : -1)});
-      fireFunc(_cannon);
-    }
-  }
-  let ptn = {x:width / 2, y:height / 4, bulletSpeed:8, bulletDirection:90, execute:func};
+
   //createCannon(ptn);
   // さて・・
   let seed1 = {
-    set:[240, 320, 2, 90],
+    position:[240, 320], shotVelocity:[2, 90],
     action:[["config", "add", "-", 2], "routine", ["config", "add", "-", -2], "routine", {loop:Infinity, back:-1}],
     short:{routine:[["fire", "radial16"], {wait:4}, {loop:8, back:3}, {wait:16}]},
     fire:{radial16:{radial:{count:16}}}
   };
   let seed2 = {
-    set:[240, 160, "-", "-"],
+    position:[240, 160],
     action:[["config", "set", [3, 6], [0, 360]], ["fire", "u"], {repeat:2, back:2}, {loop:Infinity, back:-1}],
     fire:{u:{}}
   };
   let seed3 = {
-    set:[240, 160, 2, "-"],
+    position:[240, 160], shotVelocity:[2, 90],
     action:[["config", "set", "-", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:Infinity, back:-1}],
     fire:{rad16way7:{radial:{count:16}, nway:{count:7, interval:2}}}
   }
@@ -288,15 +277,15 @@ class Cannon{
 		this.properFrameCount = 0;
 		// 弾丸の発射の仕方について
 		this.pattern = undefined;
-    this.bulletSpeed = 1;
-    this.bulletDirection = 0;
+    this.shotSpeed = 1;
+    this.shotDirection = 0;
 	}
   setPattern(_pattern){
     this.pattern = _pattern;
-    const {x, y, speed, direction} = _pattern;
+    const {x, y, shotSpeed, shotDirection} = _pattern;
     this.setPosition(x, y);
-    if(speed !== undefined){ this.bulletSpeed = speed; }
-    if(direction !== undefined){ this.bulletDirection = direction }
+    if(shotSpeed !== undefined){ this.shotSpeed = shotSpeed; }
+    if(shotDirection !== undefined){ this.shotDirection = shotDirection }
   }
 	update(){
     // flagは常にfalseで返るはず・・でないとバグになる。大丈夫なのか心配。
@@ -423,28 +412,25 @@ function getPlayerDirection(pos, margin = 0){
   return atan2(y - pos.y, x - pos.x) + margin * random(-1, 1);
 }
 
-function randomRange(dataArray){
-	// a以上b以下のfloatをランダムで返す(a<b前提)
-	// i刻みで値を出すこともできる(たとえば3,6,1なら3,4,5のどれかみたいな)
-	// [2]なら2を返す。
-	// [3, 5]なら3以上5未満のどれかの実数を返す。
-	// [4, 9, 0.2]なら4, 4.2, 4.4, 4.6, ... (9未満)のどれかの実数を返す。
-  switch(dataArray.length){
-		case 1:
-		  return dataArray[0];
+function getNumber(data){
+  // dataが単なる数ならそれを返す。
+  // [2, 4]とかなら2から4までのどれかの実数を返す。
+  // [2, 8, 0.2]とかなら2以上8未満の0.2刻みの（2, 2.2, 2.4, ...）どれかを返す。
+  if(typeof(data) === "number"){ return data; }
+  switch(data.length){
 		case 2:
-		  return dataArray[0] + Math.random() * (dataArray[1] - dataArray[0]);
+		  return random(data[0], data[1]);
 		case 3:
-		  const a = dataArray[0];
-			const b = dataArray[1];
-			const step = dataArray[2];
-			return a + Math.floor(Math.random() * (b - a) / i) * i;
+		  const a = data[0];
+			const b = data[1];
+			const step = data[2];
+			return a + Math.floor(random((b - a) / step)) * step;
 	}
 }
 
 // ---------------------------------------------------------------------------------------- //
 // Behavior.
-// 遊びはこのくらいにして
+// ああこれbehaviorか。配列に入れて毎フレーム実行するやつや・・goとかもそうよね。
 
 function go(_bullet){
   // 普通に進む
@@ -668,11 +654,11 @@ function createFirePattern(data){
       patternSeed = [{x:0, y:0}]; }
     // 必要ならdata.delayに基づいてディレイ
     // この時点で[{x:~~, y:~~}]の列ができている。回転させて正面にもってくる。
-    fitting(patternSeed, _cannon.bulletDirection);
+    fitting(patternSeed, _cannon.shotDirection);
     // 速度を設定
     patternSeed.forEach((ptn) => {
-      ptn.speed = _cannon.bulletSpeed;
-      ptn.direction = _cannon.bulletDirection;
+      ptn.speed = _cannon.shotSpeed;
+      ptn.direction = _cannon.shotDirection;
     })
     // nwayとかradialとかする(data.decorateに情報が入っている)
     if(data.hasOwnProperty("nway")){
@@ -715,22 +701,25 @@ function createFirePattern(data){
 // fire.random_2_1:関数
 function parsePatternSeed(seed){
   let pattern = {};
-  // setの情報を元にオブジェクトを作る。
-  // 略記法を使います。setプロパティに情報を詰め込みます（設定しない場合は"-"にする）
-  const setArray = seed.set;
-  pattern.x = setArray[0];
-  pattern.y = setArray[1];
-  if(setArray[2] !== "-"){ pattern.speed = setArray[2]; }
-  if(setArray[3] !== "-"){ pattern.direction = setArray[3]; }
-
+  // position, velocity, shotVelocity. 初期設定。
+  if(seed.hasOwnProperty("position")){
+    pattern.x = seed.position[0];
+    pattern.y = seed.position[1];
+  }
+  if(seed.hasOwnProperty("velocity")){
+    if(seed.velocity[0] !== "-"){ pattern.speed = seed.velocity[0]; }
+    if(seed.velocity[1] !== "-"){ pattern.direction = seed.velocity[1]; }
+  }
+  if(seed.hasOwnProperty("shotVelocity")){
+    if(seed.shotVelocity[0] !== "-"){ pattern.shotSpeed = seed.shotVelocity[0]; }
+    if(seed.shotVelocity[1] !== "-"){ pattern.shotDirection = seed.shotVelocity[1]; }
+  }
   // action(行動パターン).
   // 先に省略形で書いた部分を展開する。
   // ただしshortプロパティは存在しない場合もあるので注意する。
   let actionArray = (seed.hasOwnProperty("short") ? getExpansion(seed.short, seed.action) : seed.action);
-  // 展開してできたactionArrayのloopとrepeatにbackupInformationを付けて完成
   // 略記法で書かれたactionArrayを翻訳する感じ。オプションも付けられる高性能。
   pattern.action = createAction(actionArray);
-  //pattern.action = addBackupInfo(actionArray); // recursion.
   // fire(各種発射メソッド). 関数に変換する。
   // fireの中の名前のキーに対して関数を登録する感じ。
   pattern.fire = {}; // これを用意しておかないとエラーになる
@@ -821,12 +810,13 @@ function createAction(data){
   return finalArray;
 }
 
+//
 function setProp(segment, block){
   switch(block[0]){
     case "config":
       segment.mode = block[1];
-      if(block[2] !== "-"){ segment.speed = block[2]; }
-      if(block[3] !== "-"){ segment.direction = block[3]; }
+      if(block[2] !== "-"){ segment.shotSpeed = block[2]; }
+      if(block[3] !== "-"){ segment.shotDirection = block[3]; }
       break;
     case "fire":
       segment.name = block[1];
@@ -887,18 +877,13 @@ function executeEachAct(action, _cannon){
   if(action.type === "config"){
     // 今のところfire以外はconfigだけ
     //const param = action.param;
-    const {speed, direction} = action;
+    const {shotSpeed, shotDirection} = action;
     if(action.mode === "set"){
-      if(speed !== undefined){ _cannon.bulletSpeed = randomRange(speed); }
-      if(direction !== undefined){ _cannon.bulletDirection = randomRange(direction); }
+      if(shotSpeed !== undefined){ _cannon.shotSpeed = getNumber(shotSpeed); }
+      if(shotDirection !== undefined){ _cannon.shotDirection = getNumber(shotDirection); }
     }else if(action.mode === "add"){
-      if(speed !== undefined){ _cannon.bulletSpeed += speed; }
-      if(direction !== undefined){ _cannon.bulletDirection += direction; }
-    }else if(action.mode === "align"){
-      // bulletの場合。自身の速度をそのまま適用する。
-      // んー・・継承どうしよっかなって感じ。
-      _cannon.bulletSpeed = _cannon.speed;
-      _cannon.bulletDirection = _cannon.direction;
+      if(shotSpeed !== undefined){ _cannon.shotSpeed += shotSpeed; }
+      if(shotDirection !== undefined){ _cannon.shotDirection += shotDirection; }
     }
   }else if(action.type === "fire"){
     // 各種firePattern関数を実行する
@@ -909,7 +894,7 @@ function executeEachAct(action, _cannon){
   }else if(action.type === "aim"){
     // bulletDirectionを自機の方向に合わせる
     const margin = (action.hasOwnProperty("margin") ? action.margin : 0);
-    _cannon.bulletDirection = getPlayerDirection(_cannon.position, margin);
+    _cannon.shotDirection = getPlayerDirection(_cannon.position, margin);
   }
   // 他にも増やすかもだけど・・
 }

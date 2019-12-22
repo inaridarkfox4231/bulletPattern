@@ -109,3 +109,15 @@ _cannon.bulletBurstに・・
 で、あー・・actionとは別にこれ用意したほうがよさそうだな・・
 moveの方も配列にした方がいいかもだけど一考の余地ありっていうか。下手したら以前と同じように、
 ちぐはぐに両方定義して云々連携がどうたらこうたらってことになりかねないから怖いんだよ。あれはひどすぎた。
+
+speedの代わりにshotSpeed, directionの代わりにshotDirectionにするかー。
+なぜかというと自身の速度の変化とかも考慮する必要が生じてきそうだからそこら辺を区別したいっていう。
+あとあれ、configだと分かりづらいからshotSpeedChangeとかshotDirectionChangeとかにしたいかな。
+そうすれば自身の方はspeedChangeとかdirectionChangeとかにできる。
+addBehavior("go")とか。behaviorに「速度を位置に足せ！」を追加する。
+behaviorは必要に応じてaddやremoveできるように、それをactionで制御し、なおかつ・・
+
+いじるか。
+まずはshotSpeedとshotDirectionにするね。
+次にconfigを廃止してshotSpeedChangeとshotDirectionChangeにするね。["shotSpeedChange", [3, 6]]とか・・
+setでなくsetPosition:[240, 160]とかsetVelocityとかsetShotVelocity:[6, 90]とかにしたいね。
