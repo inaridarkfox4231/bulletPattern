@@ -45,7 +45,7 @@ function setup(){
     fire:{rad16way7:{radial:{count:16}, nway:{count:7, interval:2}}}
   }
   // どうする？？
-  let newPtn = parsePatternSeed(seed3);
+  let newPtn = parsePatternSeed(seed1);
   console.log(newPtn);
   //noLoop();
   createCannon(newPtn);
@@ -883,30 +883,36 @@ function execute(_cannon, action){
 // switchで書き直したいね。
 // config廃止しました。
 function executeEachAct(action, _cannon){
-  if(action.type === "shotSpeed"){
-    // ショットの速さを変える
-    if(action.mode === "set"){
-      _cannon.shotSpeed = getNumber(action.shotSpeedChange);
-    }else if(action.mode === "add"){
-      _cannon.shotSpeed += getNumber(action.shotSpeedChange);
-    }
-  }else if(action.type === "shotDirection"){
-    // ショットの方向を変える
-    if(action.mode === "set"){
-      _cannon.shotDirection = getNumber(action.shotDirectionChange);
-    }else if(action.mode === "add"){
-      _cannon.shotDirection += getNumber(action.shotDirectionChange);
-    }
-  }else if(action.type === "fire"){
-    // 各種firePattern関数を実行する
-    _cannon.pattern.fire[action.name](_cannon);
-  }else if(action.type === "vanish"){
-     // _bulletに適用することを想定してこんな感じに。vanishFlagを立てる。
-    _cannon.vanishFlag = true;
-  }else if(action.type === "aim"){
-    // bulletDirectionを自機の方向に合わせる
-    const margin = (action.hasOwnProperty("margin") ? action.margin : 0);
-    _cannon.shotDirection = getPlayerDirection(_cannon.position, margin);
+  switch(action.type){
+    case "shotSpeed":
+      // ショットの速さを変える
+      if(action.mode === "set"){
+        _cannon.shotSpeed = getNumber(action.shotSpeedChange);
+      }else if(action.mode === "add"){
+        _cannon.shotSpeed += getNumber(action.shotSpeedChange);
+      }
+      break;
+    case "shotDirection":
+      // ショットの方向を変える
+      if(action.mode === "set"){
+        _cannon.shotDirection = getNumber(action.shotDirectionChange);
+      }else if(action.mode === "add"){
+        _cannon.shotDirection += getNumber(action.shotDirectionChange);
+      }
+      break;
+    case "fire":
+      // 各種firePattern関数を実行する
+      _cannon.pattern.fire[action.name](_cannon);
+      break;
+    case "vanish":
+      // _bulletに適用することを想定してこんな感じに。vanishFlagを立てる。
+      _cannon.vanishFlag = true;
+      break;
+    case "aim":
+      // bulletDirectionを自機の方向に合わせる
+      const margin = (action.hasOwnProperty("margin") ? action.margin : 0);
+      _cannon.shotDirection = getPlayerDirection(_cannon.position, margin);
+      break;
   }
   // 他にも増やすかもだけど・・
 }
