@@ -30,18 +30,18 @@ function setup(){
   // さて・・
   let seed1 = {
     position:[240, 320], shotVelocity:[2, 90],
-    action:[["config", "add", "-", 2], "routine", ["config", "add", "-", -2], "routine", {loop:Infinity, back:-1}],
+    action:[["shotDirection", "add", 2], "routine", ["shotDirection", "add", -2], "routine", {loop:Infinity, back:-1}],
     short:{routine:[["fire", "radial16"], {wait:4}, {loop:8, back:3}, {wait:16}]},
     fire:{radial16:{radial:{count:16}}}
   };
   let seed2 = {
     position:[240, 160],
-    action:[["config", "set", [3, 6], [0, 360]], ["fire", "u"], {repeat:2, back:2}, {loop:Infinity, back:-1}],
+    action:[["shotSpeed", "set", [3, 6]], ["shotDirection", "set", [0, 360]], ["fire", "u"], {repeat:2, back:3}, {loop:Infinity, back:-1}],
     fire:{u:{}}
   };
   let seed3 = {
     position:[240, 160], shotVelocity:[2, 90],
-    action:[["config", "set", "-", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:Infinity, back:-1}],
+    action:[["shotDirection", "set", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:Infinity, back:-1}],
     fire:{rad16way7:{radial:{count:16}, nway:{count:7, interval:2}}}
   }
   // どうする？？
@@ -810,14 +810,22 @@ function createAction(data){
   return finalArray;
 }
 
-//
+// configやめて。shotSpeedChangeにして。色々。
 function setProp(segment, block){
   switch(block[0]){
-    case "config":
+    case "shotSpeed":
       segment.mode = block[1];
-      if(block[2] !== "-"){ segment.shotSpeed = block[2]; }
-      if(block[3] !== "-"){ segment.shotDirection = block[3]; }
+      segment.shotSpeedChange = block[2];
       break;
+    case "shotDirection":
+      segment.mode = block[1];
+      segment.shotDirectionChange = block[2];
+      break;
+    //case "config":
+    //  segment.mode = block[1];
+    //  if(block[2] !== "-"){ segment.shotSpeed = block[2]; }
+    //  if(block[3] !== "-"){ segment.shotDirection = block[3]; }
+    //  break;
     case "fire":
       segment.name = block[1];
       break;
@@ -873,17 +881,21 @@ function execute(_cannon, action){
 }
 
 // switchで書き直したいね。
+// config廃止しました。
 function executeEachAct(action, _cannon){
-  if(action.type === "config"){
-    // 今のところfire以外はconfigだけ
-    //const param = action.param;
-    const {shotSpeed, shotDirection} = action;
+  if(action.type === "shotSpeed"){
+    // ショットの速さを変える
     if(action.mode === "set"){
-      if(shotSpeed !== undefined){ _cannon.shotSpeed = getNumber(shotSpeed); }
-      if(shotDirection !== undefined){ _cannon.shotDirection = getNumber(shotDirection); }
+      _cannon.shotSpeed = getNumber(action.shotSpeedChange);
     }else if(action.mode === "add"){
-      if(shotSpeed !== undefined){ _cannon.shotSpeed += shotSpeed; }
-      if(shotDirection !== undefined){ _cannon.shotDirection += shotDirection; }
+      _cannon.shotSpeed += getNumber(action.shotSpeedChange);
+    }
+  }else if(action.type === "shotDirection"){
+    // ショットの方向を変える
+    if(action.mode === "set"){
+      _cannon.shotDirection = getNumber(action.shotDirectionChange);
+    }else if(action.mode === "add"){
+      _cannon.shotDirection += getNumber(action.shotDirectionChange);
     }
   }else if(action.type === "fire"){
     // 各種firePattern関数を実行する
