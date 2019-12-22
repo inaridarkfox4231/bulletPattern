@@ -56,7 +56,7 @@ function setup(){
     fire:{rad16way7:{radial:{count:16}, nway:{count:7, interval:2}}}
   }
   // どうする？？
-  let newPtn = parsePatternSeed(seed1);
+  let newPtn = parsePatternSeed(seed3);
   console.log(newPtn);
   //noLoop();
   createCannon(newPtn);
@@ -238,7 +238,7 @@ class Bullet{
 	}
 	update(){
     if(this.delay > 0){ this.delay--; return; }
-    this.pattern.execute(this);
+    this.pattern.move(this);
     this.properFrameCount++;
 		if(!this.isInFrame()){ this.vanishFlag = true; } // ここではフラグを立てるだけ。直後に破棄。
 	}
@@ -690,9 +690,9 @@ function createFirePattern(data){
     // name指定がない場合は自動的にgoになる。
     patternSeed.forEach((ptn) => {
       if(data.hasOwnProperty("name")){
-        ptn.execute = window[data.name](data.param);
+        ptn.move = window[data.name](data.param);
       }else{
-        ptn.execute = go;
+        ptn.move = go;
       }
       createBullet(ptn);
     })
@@ -788,8 +788,8 @@ function createAction(data){
     if(block.hasOwnProperty("repeat") || block.hasOwnProperty("loop")){
       Object.assign(segment, block);
       // ここですね。ここで、block.back === -1ならsegment.backをindexにする。
-      if(block.back === -1){ segment.back = index; }
       // 先頭に戻れ、という指示。
+      if(block.back === -1){ segment.back = index; }
       segment.backup = [];
       // ここsegment.backとしないとエラーになるよね。そりゃそうだ。
       for(let k = 1; k <= segment.back; k++){
