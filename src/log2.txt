@@ -156,3 +156,34 @@ function outFrameVanishBehavior(obj){
   if(...画面外...){ obj.vanishFlag = true; }
 }
 bulletにデフォルトで入ってるのはこれとgoBehaviorのみ。
+
+
+behavior 案
+// 部品を組み合わせる形にしたい。たとえば、・・
+// curvingはあんな面白くない感。特定のパラメータ(speed, direction, shotSpeed, shotDirection)のどれかを
+// 継続的に変化させるbehaviorを用意して適切にonoffする感じにするかな。
+// homingあんま面白くない。やっぱ何フレームかおきに方向変化させるのがいいんじゃね。10フレームおきとか。
+// 何が言いたいってこの関数群を破棄してbehaviorという関数群にしてそれをいくつか放り込む形にしたい・・
+// bulletのデフォルトとして画面外で消えるってのを常におくようにしてそこに重ねていく形。
+// 継続的にパラメータ変化させるっての言ったけど・・
+// フレーム間隔くらいは指定してもいいと思う。そうすればactionの方を若干簡潔に出来る。リフレッシュレート
+// みたいな。4フレームおきに自機方向を計算してセットするとか。毎フレームでももちろんいいね。
+// ていうか毎フレームでいいのか・・毎フレーム自機方向。onoff自由自在。？
+
+// 今現在パターン登録のところでnameとしているところをやめてbehaviorにするとか。デフォルト・・
+// go:{位置に速度を足す}, frameOut:{画面外に出たら消える}
+// default:0とすることでgoが勝手に入る感じ。frameOutは元から入ってる感じで。うん。うん？goでいいよ
+
+// speedとshotSpeedがあるようにbehaviorとshotBehaviorがあってもいいんじゃない？
+// speedやdirectionをセットするみたいにshotBehaviorをセットする（リセットも用意する）イメージ。
+["shotBehavior", "brakeAccell", 60, 0.02, 0.1] (減衰時間、減衰割合、加速度)
+ってやると。ん。
+"go"は常にでいいよ。
+事前にCannonを動かす場合を考えてた。たとえばgoを指定して速度をどうするとかそんなような。
+bullet動かすにもそこら辺を。
+クラスにすると
+
+デフォルトはframeOutBehaviorでそこにまずgoBehaviorが入りその他って感じ。
+onとかoffはとりあえず考えなくていいと思う。unShiftで先頭に入れていく。pushではなく。
+
+流れの中でshotにどんなbehaviorを追加するのか、そのリストをaddしたりremoveしたりいろいろいじるイメージ。

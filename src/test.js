@@ -51,8 +51,14 @@ function setup(){
     action:[["aim"], ["fire", "way13"], ["aim"], ["fire", "go"], {wait:8}, {loop:8, back:3}, {wait:16}, {loop:Infinity, back:-1}],
     fire:{way13:{nway:{count:13, interval:6}}, go:{}}
   }
+  // バリエーションが欲しい・・貧弱極まりなくてつまんない
+  let seed5 = {
+    position:[240, 320], shotVelocity:[2, 90],
+    action:[["shotDirection", "set", [0, 360]], ["fire", "way27"], ["aim"], ["fire", "go"], {wait:5}, {loop:6, back:3}, {wait:30}, {loop:Infinity, back:-1}],
+    fire:{way27:{nway:{count:27, interval:10}}, go:{}}
+  }
   // どうする？？
-  let newPtn = parsePatternSeed(seed4);
+  let newPtn = parsePatternSeed(seed1);
   console.log(newPtn);
   //noLoop();
   createCannon(newPtn);
@@ -207,6 +213,7 @@ class Bullet{
 		this.pattern = undefined;
     this.delay = 0; // ディレイ。
 		this.vanishFlag = false; // まずフラグを立ててそれから別処理で破棄
+    this.behaviorList = [];
 	}
 	setPosition(x, y){
 		this.position.set(x, y);
@@ -220,6 +227,12 @@ class Bullet{
   setDelay(delayCount){
     this.delay = delayCount;
   }
+  setOptionalBehavior(behavior){
+    // behaviorは関数の配列
+    behavior.forEach((eachBehavior) => {
+      _bullet.behaviorList.unshift(eachBehavior); // 先頭から入れていく
+    })
+  }
   velocityUpdate(){
 		this.velocity.set(this.speed * cos(this.direction), this.speed * sin(this.direction));
   }
@@ -230,12 +243,22 @@ class Bullet{
     this.setPosition(x, y);
     this.setVelocity(speed, direction);
     if(delay !== undefined){ this.setDelay(delay); }else{ this.setDelay(0); }
+    this.behaviorList.push(goBehavior); // default
+    this.behaviorList.push(frameOutBehavior); // default
+    //  if(behavior !== undefined){
+    //    this.setOptionalBehavior(_pattern.behavior)?
+    //  }
     this.vanishFlag = false;
 	}
 	update(){
     if(this.delay > 0){ this.delay--; return; }
     this.pattern.move(this);
     this.properFrameCount++;
+    /*
+      this.behaviorList.forEach((behavior) => {
+        behavior(this);
+      })
+    */
 		if(!this.isInFrame()){ this.vanishFlag = true; } // ここではフラグを立てるだけ。直後に破棄。
 	}
 	eject(){
@@ -243,6 +266,7 @@ class Bullet{
 	}
 	vanish(){
 		// 自分をPoolに戻した後で自分を親から排除する
+    this.behaviorList = []; // behaviorListのクリーンアップ
 		this.belongingArray.remove(this);
 		bulletPool.recycle(this);
 	}
@@ -414,9 +438,16 @@ class CrossReferenceArray extends Array{
 // ---------------------------------------------------------------------------------------- //
 // Utility.
 
+// 自機方向の取得
 function getPlayerDirection(pos, margin = 0){
   const {x, y} = entity.player.position;
   return atan2(y - pos.y, x - pos.x) + margin * random(-1, 1);
+}
+
+// 自機方向の2乗の取得
+function getPlayerDistSquare(pos){
+  const {x, y} = entity.player.position;
+  return pow(pos.x - x, 2) + pow(pos.y - y, 2);
 }
 
 function getNumber(data){
@@ -438,18 +469,86 @@ function getNumber(data){
 // ---------------------------------------------------------------------------------------- //
 // Behavior.
 // ああこれbehaviorか。配列に入れて毎フレーム実行するやつや・・goとかもそうよね。
-// 部品を組み合わせる形にしたい。たとえば、・・
-// curvingはあんな面白くない感。特定のパラメータ(speed, direction, shotSpeed, shotDirection)のどれかを
-// 継続的に変化させるbehaviorを用意して適切にonoffする感じにするかな。
-// homingあんま面白くない。やっぱ何フレームかおきに方向変化させるのがいいんじゃね。10フレームおきとか。
-// 何が言いたいってこの関数群を破棄してbehaviorという関数群にしてそれをいくつか放り込む形にしたい・・
-// bulletのデフォルトとして画面外で消えるってのを常におくようにしてそこに重ねていく形。
+// せいぜいデフォのgoの他はaccellerate, decelerate, brakeAccell, raidくらいか。組み合わせる。
+// 組み合わせるのでもういちいちあれ（位置に速度プラス）を書かない。
 
-function go(_bullet){
-  // 普通に進む
+// 画面外で消える
+function frameOutBehavior(_bullet){
+  const {x, y} = _bullet.position;
+  if(x < -10 || x > width + 10 || y < -10 || y > height + 10){ _bullet.vanishFlag = true; }
+}
+
+// 速度の方向に進む
+function goBehavior(_bullet){
   _bullet.position.add(_bullet.velocity);
 }
 
+// 加速
+// accelleration
+function accellerateBehavior(param){
+  return (_bullet) => {
+    _bullet.speed += param.accelleration;
+    _bullet.velocityUpdate();
+  }
+}
+
+// 一定時間減速
+// friction, terminalSpeed
+function decelerateBehavior(param){
+  return (_bullet) => {
+    if(_bullet.speed > param.terminalSpeed){
+      _bullet.speed *= (1 - param.friction);
+      _bullet.velocityUpdate();
+    }
+  }
+}
+
+// 一定時間減速したのち加速
+// threshold, friction, accelleration
+function brakeAccellBehavior(param){
+  return (_bullet) => {
+    if(_bullet.properFrameCount < param.threshold){
+      _bullet.speed *= (1 - param.friction);
+    }else{
+      _bullet.speed += param.accelleration;
+    }
+  }
+}
+
+// ホーミング(一定フレームおきにこっち方向に進路を合わせる感じ)
+// しきい値を超えると直進(デフォは60)
+// refleshSpan, threshold, margin
+function homingBehavior(param){
+  const margin = (param.hasOwnProperty("margin") ? param.margin : 0);
+  const threshold = (param.hasOwnProperty("threshold") ? param.threshold : 60);
+  return (_bullet) => {
+    const fc = _bullet.properFrameCount;
+    if(fc % param.refleshSpan === 0 && fc < param.threshold){
+      _bullet.direction = getPlayerDirection(_bullet.position, margin);
+      _bullet.velocityUpdate();
+    }
+  }
+}
+
+// レイド（近付くと加速）
+// 2乗の値を設定（10000なら100以内みたいな）
+// raidDistSquare, accelleration
+function raidBehavior(param){
+  return (_bullet) => {
+    if(getPlayerDistSquare(_bullet.position) < param.raidDistSquare){
+      _bullet.speed += param.accelleration;
+      _bullet.velocityUpdate();
+    }
+  }
+}
+
+// 速度の方向に進む
+// あとでなくす
+function go(_bullet){
+  _bullet.position.add(_bullet.velocity);
+}
+
+/*
 function accellerate(param){
   // 加速する
   // acceleration:毎フレームの加速度
@@ -558,6 +657,9 @@ function homingNew(param){
     if(_bullet.properFrameCount === param.life){ _bullet.vanishFlag = true; }
   }
 }
+*/
+
+// プレーヤーに近付くと加速するくらいだったら作ってもいいかな(raidBehavior)
 
 // あとはプレイヤーが近付くとバーストするとか面白そう（いい加減にしろ）
 // 画面の端で3回反射するまで動き続けるとか面白そう。
@@ -700,6 +802,8 @@ function createFirePattern(data){
     })
     // data.nameはショットの種類、data.paramは設定するパラメータの内容
     // name指定がない場合は自動的にgoになる。
+    // ここを廃止してbehaviorListのデータを_cannonから取得してセットする形にするとか。
+    // ptn.behavior = _cannon.shotBehavior;
     patternSeed.forEach((ptn) => {
       if(data.hasOwnProperty("name")){
         ptn.move = window[data.name](data.param);
@@ -728,6 +832,7 @@ function createFirePattern(data){
 function parsePatternSeed(seed){
   let pattern = {};
   // position, velocity, shotVelocity. 初期設定。
+  // delay, shotDelay, behavior, shotBehaviorも追加することになりそう。
   if(seed.hasOwnProperty("position")){
     pattern.x = seed.position[0];
     pattern.y = seed.position[1];
@@ -804,7 +909,9 @@ function createAction(data){
       Object.assign(segment, block);
       // ここですね。ここで、block.back === -1ならsegment.backをindexにする。
       // 先頭に戻れ、という指示。
-      if(block.back === -1){ segment.back = index; }
+      // というか-nで先頭から（1ベースで）n番目、という風にしてもいい。
+      // たとえば-3ならindexが2の所に戻る感じ。
+      if(block.back < 0){ segment.back += index + 1; }
       segment.backup = [];
       // ここsegment.backとしないとエラーになるよね。そりゃそうだ。
       for(let k = 1; k <= segment.back; k++){
