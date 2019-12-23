@@ -2,6 +2,8 @@
 
 const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
 
+const INF = Infinity; // 長いので
+
 let isLoop = true;
 let showInfo = true;
 
@@ -37,7 +39,7 @@ function setup(){
       ["shotDirection", "add", 2], "routine", ["shotBehavior", "clear"],
       ["shotBehavior", "set", "highAccell"],
       ["shotDirection", "add", -2], "routine", ["shotBehavior", "clear"],
-      {loop:Infinity, back:-1}],
+      {loop:INF, back:-1}],
     short:{routine:[["fire", "radial16"], {wait:4}, {loop:8, back:3}, {wait:16}]},
     fire:{radial16:{radial:{count:16}}},
     behavior:{
@@ -47,29 +49,61 @@ function setup(){
   };
   let seed2 = {
     position:[240, 160],
-    action:[["shotSpeed", "set", [3, 6]], ["shotDirection", "set", [0, 360]], ["fire", "u"], {repeat:2, back:3}, {loop:Infinity, back:-1}],
+    action:[["shotSpeed", "set", [3, 6]], ["shotDirection", "set", [0, 360]], ["fire", "u"], {repeat:2, back:3}, {loop:INF, back:-1}],
     fire:{u:{}}
   };
   let seed3 = {
     position:[240, 160], shotVelocity:[2, 90],
-    action:[["shotDirection", "set", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:Infinity, back:-1}],
+    action:[["shotDirection", "set", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:INF, back:-1}],
     fire:{rad16way7:{radial:{count:16}, nway:{count:7, interval:2}}}
   }
   // ホーミング要らない気がしてきたな・・どう使うんだ。とりあえず
   // waysを放った後自機狙い8発を延々と繰り返すパターン。
   let seed4 = {
     position:[240, 40], shotVelocity:[2, 90],
-    action:[["aim"], ["fire", "way13"], ["aim"], ["fire", "go"], {wait:8}, {loop:8, back:3}, {wait:16}, {loop:Infinity, back:-1}],
+    action:[["aim"], ["fire", "way13"], ["aim"], ["fire", "go"], {wait:8}, {loop:8, back:3}, {wait:16}, {loop:INF, back:-1}],
     fire:{way13:{nway:{count:13, interval:6}}, go:{}}
   }
   // バリエーションが欲しい・・貧弱極まりなくてつまんない
   let seed5 = {
     position:[240, 320], shotVelocity:[2, 90],
-    action:[["shotDirection", "set", [0, 360]], ["fire", "way27"], ["aim"], ["fire", "go"], {wait:5}, {loop:6, back:3}, {wait:30}, {loop:Infinity, back:-1}],
+    action:[["shotDirection", "set", [0, 360]], ["fire", "way27"], ["aim"], ["fire", "go"], {wait:5}, {loop:6, back:3}, {wait:30}, {loop:INF, back:-1}],
     fire:{way27:{nway:{count:27, interval:10}}, go:{}}
   }
+  // waysてんこもり
+  let seed6 = {
+    position:[240, 80], shotVelocity:[4, 90],
+    action:[["aim"], ["fire", "way5"], {wait:8},
+            ["aim"], ["fire", "way9"], {wait:8},
+            ["aim"], ["fire", "way13"], {wait:8},
+            ["aim"], ["fire", "way17"], {wait:8},
+            {wait:32}, {loop:INF, back:-1}],
+    fire:{way5:{nway:{count:5, interval:6}}, way9:{nway:{count:9, interval:6}},
+          way13:{nway:{count:13, interval:6}}, way17:{nway:{count:17, interval:6}}}
+  }
+  // カミソリ
+  let seed7 = {
+    position:[240, 320], shotVelocity:[4, 90],
+    action:[["aim", 30], ["fire", "circle4"], {wait:8}, {loop:8, back:-1}, {wait:32}, {loop:INF, back:-1}],
+    fire:{circle4:{formation:{type:"points", p:[[0, -50]]}, radial:{count:16}}}
+  }
+  // circularBehavior試してみよう
+  // spiralBehavior試してみよう
+  let seed8 = {
+    position:[240, 320], shotVelocity:[4, 90],
+    action:[["shotBehavior", "set", "spir"], ["fire", "oct"], "routine", "intervalShot",
+            ["shotBehavior", "set", "spirInv"], ["fire", "octInv"], "routine", "intervalShot",
+            {loop:INF, back:-1}],
+    short:{routine:[{wait:16}, {loop:8, back:2}, {wait:32}, ["shotBehavior", "clear"]],
+           intervalShot:[["aim", 30], ["fire", "radial8"], {wait:4}, {loop:8, back:3}, {wait:32}, ["shotDirection", "set", 90]]},
+    fire:{radial8:{radial:{count:8}},
+          oct:{formation:{type:"points", p:[[0, -50]]}, radial:{count:8}},
+          octInv:{formation:{type:"points", p:[[0, 50]]}, radial:{count:8}}},
+    behavior:{spir:["spiralBehavior", {radius:50, radiusIncrement:0.5}],
+              spirInv:["spiralBehavior", {radius:50, radiusIncrement:0.5, clockwise:false}]}
+  }
   // どうする？？
-  let newPtn = parsePatternSeed(seed1);
+  let newPtn = parsePatternSeed(seed8);
   console.log(newPtn);
   //noLoop();
   createCannon(newPtn);
@@ -225,6 +259,9 @@ class Bullet{
     this.delay = 0; // ディレイ。
 		this.vanishFlag = false; // まずフラグを立ててそれから別処理で破棄
     this.behaviorList = [];
+    // this.shotSpeed = 1;
+    // this.shotDirection = 0;
+    // this.shotBehavior = {};
 	}
 	setPosition(x, y){
 		this.position.set(x, y);
@@ -288,13 +325,6 @@ class Bullet{
 		const s = sin(this.direction);
 		triangle(x + 6 * c, y + 6 * s, x - 6 * c + 3 * s, y - 6 * s - 3 * c, x - 6 * c - 3 * s, y - 6 * s + 3 * c);
 	}
-  /*
-	isInFrame(){
-		// フレーム外に出たときの排除処理
-		if(this.position.x < -10 || this.position.x > width + 10){ return false; }
-		if(this.position.y < -10 || this.position.y > height + 10){ return false; }
-		return true;
-	}*/
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -487,7 +517,7 @@ function getNumber(data){
 // 画面外で消える
 function frameOutBehavior(_bullet){
   const {x, y} = _bullet.position;
-  if(x < -10 || x > width + 10 || y < -10 || y > height + 10){ _bullet.vanishFlag = true; }
+  if(x < -width * 0.2 || x > width * 1.2 || y < -height * 0.2 || y > height * 1.2){ _bullet.vanishFlag = true; }
 }
 
 // 速度の方向に進む
@@ -554,122 +584,33 @@ function raidBehavior(param){
   }
 }
 
-// 速度の方向に進む
-// あとでなくす
-function go(_bullet){
-  _bullet.position.add(_bullet.velocity);
-}
-
-/*
-function accellerate(param){
-  // 加速する
-  // acceleration:毎フレームの加速度
+// formationで速度の方向を円の接線方向にしてradiusで増やせばそれっぽくなるよ。
+// 円の接線方向に発射される弾丸を中心の周りに巻き付ける処理ですね。
+// radius, clockwise
+function circularBehavior(param){
+  if(!param.hasOwnProperty("clockwise")){ param.clockwise = true; }
+  const clockwiseFactor = (param.clockwise ? 1 : -1);
   return (_bullet) => {
-    _bullet.speed += param.accelleration;
-		_bullet.velocityUpdate();
-    _bullet.position.add(_bullet.velocity);
-  }
-}
-
-function decelerate(param){
-  // (1-f)倍していってterminalになったら等速
-  // friction:毎フレームの減速度合い、terminalSpeed:終端速度
-  return (_bullet) => {
-    if(_bullet.speed > param.terminalSpeed){
-      _bullet.speed *= (1 - param.friction);
-		_bullet.velocityUpdate();
-    }
-    _bullet.position.add(_bullet.velocity);
-  }
-}
-
-function brakeAccell(param){
-  // thresholdフレームだけ(1-f)倍していってそのあとで加速する
-  // aimがtrueの場合はカウント消費後に自機狙いになる
-  // threshold:減速してる時間、friction:減速の度合い、accelleration:減速後の加速度、
-  // aim:デフォルトはfalse, 減速後にエイムするかどうか、margin:エイムの余地、デフォルトは0
-  const aim = (param.hasOwnProperty("aim") ? param.aim : false);
-  const margin = (param.hasOwnProperty("margin") ? param.margin : 0);
-  return (_bullet) => {
-    if(_bullet.properFrameCount < param.threshold){
-      _bullet.speed *= (1 - param.friction);
-    }else if(_bullet.properFrameCount === param.threshold){
-      if(aim){ _bullet.direction = getPlayerDirection(_bullet.position, margin); }
-    }else{
-      _bullet.speed += param.accelleration;
-    }
-		_bullet.velocityUpdate();
-    _bullet.position.add(_bullet.velocity);
-  }
-}
-
-function curving(param){
-  // 一定の角度ずつカーブしていく
-  // directionChange: 方向変化
-  return (_bullet) => {
-    _bullet.direction += param.directionChange;
-		_bullet.velocityUpdate();
-    _bullet.position.add(_bullet.velocity);
-  }
-}
-
-function waving(param){
-  // 一定の範囲内で微妙に角度を変えながら進む
-  // friction:ゆれ
-  return (_bullet) => {
-    _bullet.direction += param.friction * random(-1, 1);
-		_bullet.velocityUpdate();
-    _bullet.position.add(_bullet.velocity);
-  }
-}
-
-function arcGun(param){
-  // 普通に放ってから自機狙いに切り替える感じ
-  // threshold:曲がるまでの進んでる時間、diffAngle:本来の方向に対するずれ、margin:aimのずれ
-  // やっぱり元の方向に戻すようにするか。で、aimと分ける感じで。aim:デフォルトはfalse.
-  const aim = (param.hasOwnProperty("aim") ? param.aim : false);
-  const margin = (param.hasOwnProperty("margin") ? param.margin : 0);
-  return (_bullet) => {
-    if(_bullet.properFrameCount === 0){
-      _bullet.direction += param.diffAngle;
-    }else if(_bullet.properFrameCount === param.threshold){
-      if(aim){ _bullet.direction = getPlayerDirection(_bullet.position, margin); }
-      else{ _bullet.direction -= param.diffAngle; }
-    }
-		_bullet.velocityUpdate();
-    _bullet.position.add(_bullet.velocity);
-  }
-}
-
-function homing(param){
-  // スピードが落ち着いてから自機狙いで向かってきてある程度のところで消える感じ
-  // friction:減速の度合い、terminalSpeed:終端速度、life:消えるまでの時間、margin:ホーミング精度でデフォルト0
-  const margin = (param.hasOwnProperty("margin") ? param.margin : 0);
-  return (_bullet) => {
-    if(_bullet.speed > param.terminalSpeed){
-      _bullet.speed *= (1 - param.friction);
-    }else{
-      _bullet.direction = getPlayerDirection(_bullet.position, margin);
-    }
+    _bullet.direction += asin(_bullet.speed / param.radius) * clockwiseFactor;
     _bullet.velocityUpdate();
-    _bullet.position.add(_bullet.velocity);
-    if(_bullet.properFrameCount === param.life){ _bullet.vanishFlag = true; }
   }
 }
 
-// 角度を自分x90+aimx10にするとか
-// aimRatio = 0.9がデフォルト。
-function homingNew(param){
-  const aimRatio = (param.hasOwnProperty("aimRatio") ? param.aimRatio : 0.1);
+// 螺旋を描きながら発散するやつ。
+// 半径が線型に増加していく、速さは一定。
+// radius, radiusIncrement, clockwise
+function spiralBehavior(param){
+  if(!param.hasOwnProperty("clockwise")){ param.clockwise = true; }
+  const clockwiseFactor = (param.clockwise ? 1 : -1);
   return (_bullet) => {
-    const aimDirection = getPlayerDirection(_bullet.position);
-    _bullet.direction = (1 - aimRatio) * _bullet.direction + aimRatio * aimDirection;
+    const r = param.radius + _bullet.properFrameCount * param.radiusIncrement;
+    _bullet.direction += asin(_bullet.speed / r) * clockwiseFactor;
     _bullet.velocityUpdate();
-    _bullet.position.add(_bullet.velocity);
-    if(_bullet.properFrameCount === param.life){ _bullet.vanishFlag = true; }
   }
 }
-*/
+
+// 螺旋を描きながら
+
 
 // プレーヤーに近付くと加速するくらいだったら作ってもいいかな(raidBehavior)
 
@@ -691,6 +632,13 @@ function getFormation(param){
     case "default":
       // その場に1個
       ptnArray.push({x:0, y:0});
+      break;
+    case "points":
+      // 指定した場所. xArrayとyArrayは同じ長さにしておくこと。
+      // たとえば射出方向に対して時計回り90°方向30の位置に置こうと思ったら[0, 30]を指定する感じ。
+      for(let i = 0; i < param.p.length; i++){
+        ptnArray.push({x:param.p[i][0], y:param.p[i][1]});
+      }
       break;
     case "frontVertical":
       // 射出方向に横一列

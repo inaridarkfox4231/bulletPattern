@@ -195,3 +195,17 @@ fireみたいにbehavior:{}
 これをbehaviorにaddするときにaddならshotbehavior[名前] = その関数ってやって
 外したいときはdelete shotBehavior[名前]
 全部無くしたいときはshotBehavior = {}でOK.
+
+バーストって何だっけ・・・
+bulletにactionさせるだけでしょ。bullet作ってバーニッシュ(??)
+shotActionってやって同じように出来るはず、問題は・・あ、ディレイどうしよ(今更)
+bulletが発射するbulletは基本、発射位置がデフォルトでその位置、速度はいじらなければbulletそのまま
+で変えたきゃaction使ってくださいって感じ。shotDelayも同じ。そうです。
+
+まずbulletにもcannonと同じアレを用意する、
+次にseedの中のshotActionに入れ子でactionを入れてパースして配列にする。
+fireまででいい、それ以外はまあ・・ね。
+んで、createBulletのときにptnにindexとactionとあとfireをセットすれば然るべく動いてくれるよ。
+あとはupdateをいじるだけ。
+behavior・・そこまで複雑に、できなくもないけど、まあ、要らないでしょ・・
+問題は、ここまで似せちゃうともはやbulletとcannonを区別する意味が希薄になっちゃうってことね。
