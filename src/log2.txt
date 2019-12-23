@@ -121,3 +121,38 @@ behaviorは必要に応じてaddやremoveできるように、それをactionで
 まずはshotSpeedとshotDirectionにするね。
 次にconfigを廃止してshotSpeedChangeとshotDirectionChangeにするね。["shotSpeedChange", [3, 6]]とか・・
 setでなくsetPosition:[240, 160]とかsetVelocityとかsetShotVelocity:[6, 90]とかにしたいね。
+
+addBehavior
+removeBehavior
+
+go: this.position.add(this.velocity);
+behaviorListに「直進」って加える。
+「画面外で消える」って加える。
+speed, direction, shotSpeed, shotDirectionをそれぞれ継続的に変化させるのもbehaviorに入るかもね。
+class Behavior{
+  constructor(behaviorFunc){
+    this.behaviorFunc = behaviorFunc;
+    this.active = true; // falseの時は実行しない
+  }
+  on(){
+    this.active = true;
+  }
+  off(){
+    this.active = false;
+  }
+  execute(obj){
+    if(!this.active){ return; }
+    this.behaviorFunc(obj); // ここでいろいろやる感じ。
+  }
+}
+これだと細かい変化に対応できないよ。？逐一作るの？まあ、そうか・・
+あー違う、これ・・んぁーーめんどいいい
+関数、今、moveにセットしてるけど、これを、オブジェクトにする。
+{name: 識別用の名前, func:bullet間で共通, active:実行するかしないか。}
+nameはactivateBehavior, cancelBehaviorにおいて名前で該当するBehaviorを見つけるために必要。
+funcはBullet間で共通だったり。
+{name:"outFrameVanish", active:true, func:outFrameVanishBehavior}
+function outFrameVanishBehavior(obj){
+  if(...画面外...){ obj.vanishFlag = true; }
+}
+bulletにデフォルトで入ってるのはこれとgoBehaviorのみ。

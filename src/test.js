@@ -44,8 +44,15 @@ function setup(){
     action:[["shotDirection", "set", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:Infinity, back:-1}],
     fire:{rad16way7:{radial:{count:16}, nway:{count:7, interval:2}}}
   }
+  // ホーミング要らない気がしてきたな・・どう使うんだ。とりあえず
+  // waysを放った後自機狙い8発を延々と繰り返すパターン。
+  let seed4 = {
+    position:[240, 40], shotVelocity:[2, 90],
+    action:[["aim"], ["fire", "way13"], ["aim"], ["fire", "go"], {wait:8}, {loop:8, back:3}, {wait:16}, {loop:Infinity, back:-1}],
+    fire:{way13:{nway:{count:13, interval:6}}, go:{}}
+  }
   // どうする？？
-  let newPtn = parsePatternSeed(seed1);
+  let newPtn = parsePatternSeed(seed4);
   console.log(newPtn);
   //noLoop();
   createCannon(newPtn);
@@ -431,6 +438,12 @@ function getNumber(data){
 // ---------------------------------------------------------------------------------------- //
 // Behavior.
 // ああこれbehaviorか。配列に入れて毎フレーム実行するやつや・・goとかもそうよね。
+// 部品を組み合わせる形にしたい。たとえば、・・
+// curvingはあんな面白くない感。特定のパラメータ(speed, direction, shotSpeed, shotDirection)のどれかを
+// 継続的に変化させるbehaviorを用意して適切にonoffする感じにするかな。
+// homingあんま面白くない。やっぱ何フレームかおきに方向変化させるのがいいんじゃね。10フレームおきとか。
+// 何が言いたいってこの関数群を破棄してbehaviorという関数群にしてそれをいくつか放り込む形にしたい・・
+// bulletのデフォルトとして画面外で消えるってのを常におくようにしてそこに重ねていく形。
 
 function go(_bullet){
   // 普通に進む
@@ -527,6 +540,19 @@ function homing(param){
     }else{
       _bullet.direction = getPlayerDirection(_bullet.position, margin);
     }
+    _bullet.velocityUpdate();
+    _bullet.position.add(_bullet.velocity);
+    if(_bullet.properFrameCount === param.life){ _bullet.vanishFlag = true; }
+  }
+}
+
+// 角度を自分x90+aimx10にするとか
+// aimRatio = 0.9がデフォルト。
+function homingNew(param){
+  const aimRatio = (param.hasOwnProperty("aimRatio") ? param.aimRatio : 0.1);
+  return (_bullet) => {
+    const aimDirection = getPlayerDirection(_bullet.position);
+    _bullet.direction = (1 - aimRatio) * _bullet.direction + aimRatio * aimDirection;
     _bullet.velocityUpdate();
     _bullet.position.add(_bullet.velocity);
     if(_bullet.properFrameCount === param.life){ _bullet.vanishFlag = true; }
@@ -812,20 +838,13 @@ function createAction(data){
 
 // configやめて。shotSpeedChangeにして。色々。
 function setProp(segment, block){
-  switch(block[0]){
-    case "shotSpeed":
-      segment.mode = block[1];
-      segment.shotSpeedChange = block[2];
-      break;
-    case "shotDirection":
-      segment.mode = block[1];
-      segment.shotDirectionChange = block[2];
-      break;
-    //case "config":
-    //  segment.mode = block[1];
-    //  if(block[2] !== "-"){ segment.shotSpeed = block[2]; }
-    //  if(block[3] !== "-"){ segment.shotDirection = block[3]; }
-    //  break;
+  const type = block[0];
+  if(type === "shotSpeed" || type === "shotDirection" || type === "speed" || type === "direction"){
+    segment.mode = block[1];
+    segment[type + "Change"] = block[2];
+    return;
+  }
+  switch(type){
     case "fire":
       segment.name = block[1];
       break;
@@ -883,23 +902,18 @@ function execute(_cannon, action){
 // switchで書き直したいね。
 // config廃止しました。
 function executeEachAct(action, _cannon){
-  switch(action.type){
-    case "shotSpeed":
-      // ショットの速さを変える
-      if(action.mode === "set"){
-        _cannon.shotSpeed = getNumber(action.shotSpeedChange);
-      }else if(action.mode === "add"){
-        _cannon.shotSpeed += getNumber(action.shotSpeedChange);
-      }
-      break;
-    case "shotDirection":
-      // ショットの方向を変える
-      if(action.mode === "set"){
-        _cannon.shotDirection = getNumber(action.shotDirectionChange);
-      }else if(action.mode === "add"){
-        _cannon.shotDirection += getNumber(action.shotDirectionChange);
-      }
-      break;
+  const type = action.type;
+  if(type === "shotSpeed" || type === "shotDirection" || type === "speed" || type === "direction"){
+    // ショットの速さ、方向を変える場合
+    const change = getNumber(action[type + "Change"]);
+    if(action.mode === "set"){
+      _cannon[type] = change;
+    }else if(action.mode === "add"){
+      _cannon[type] += change;
+    }
+    return;
+  }
+  switch(type){
     case "fire":
       // 各種firePattern関数を実行する
       _cannon.pattern.fire[action.name](_cannon);
