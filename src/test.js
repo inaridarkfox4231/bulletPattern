@@ -29,11 +29,21 @@ function setup(){
   //createCannon(ptn);
   // さて・・
   // 加速するようになった。あとは・・んー。
+  // 速いアクセルと遅いアクセルの合わせ技。こんなことも自由自在。
   let seed1 = {
-    position:[240, 320], shotVelocity:[1, 90], shotBehavior:[["accellerateBehavior", {accelleration:0.1}]],
-    action:[["shotDirection", "add", 2], "routine", ["shotDirection", "add", -2], "routine", {loop:Infinity, back:-1}],
+    position:[240, 320], shotVelocity:[2, 90],
+    action:[
+      ["shotBehavior", "set", "lowAccell"],
+      ["shotDirection", "add", 2], "routine", ["shotBehavior", "clear"],
+      ["shotBehavior", "set", "highAccell"],
+      ["shotDirection", "add", -2], "routine", ["shotBehavior", "clear"],
+      {loop:Infinity, back:-1}],
     short:{routine:[["fire", "radial16"], {wait:4}, {loop:8, back:3}, {wait:16}]},
-    fire:{radial16:{radial:{count:16}}}
+    fire:{radial16:{radial:{count:16}}},
+    behavior:{
+      lowAccell:["accellerateBehavior", {accelleration:0.05}],
+      highAccell:["accellerateBehavior", {accelleration:0.1}]
+    }
   };
   let seed2 = {
     position:[240, 160],
@@ -42,7 +52,6 @@ function setup(){
   };
   let seed3 = {
     position:[240, 160], shotVelocity:[2, 90],
-    shotBehavior:[["raidBehavior", {raidDistSquare:10000, accelleration:0.3}]],
     action:[["shotDirection", "set", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:Infinity, back:-1}],
     fire:{rad16way7:{radial:{count:16}, nway:{count:7, interval:2}}}
   }
@@ -60,7 +69,7 @@ function setup(){
     fire:{way27:{nway:{count:27, interval:10}}, go:{}}
   }
   // どうする？？
-  let newPtn = parsePatternSeed(seed3);
+  let newPtn = parsePatternSeed(seed1);
   console.log(newPtn);
   //noLoop();
   createCannon(newPtn);
@@ -311,7 +320,7 @@ class Cannon{
 		this.pattern = undefined;
     this.shotSpeed = 1;
     this.shotDirection = 0;
-    this.shotBehavior = []; // bulletにセットする付加的なふるまい（関数列）
+    this.shotBehavior = {}; // bulletにセットする付加的なふるまい（関数列）
 	}
   setPattern(_pattern){
     this.pattern = _pattern;
@@ -802,9 +811,9 @@ function createFirePattern(data){
     patternSeed.forEach((ptn) => {
       ptn.x += _cannon.position.x;
       ptn.y += _cannon.position.y;
-      ptn.behavior = _cannon.shotBehavior; // ここで登録
+      // ptn.behavior = _cannon.shotBehavior; // ここで登録
       // Object.values()はvalueだけを抜き出して配列にする。
-      // ptn.behavior = Object.values(_cannon.shotBehavior);
+      ptn.behavior = Object.values(_cannon.shotBehavior);
     })
     // data.nameはショットの種類、data.paramは設定するパラメータの内容
     // name指定がない場合は自動的にgoになる。
@@ -833,7 +842,7 @@ function createFirePattern(data){
 function parsePatternSeed(seed){
   let pattern = {};
   // position, velocity, shotVelocity. 初期設定。
-  // delay, shotDelay, behavior, shotBehaviorも追加することになりそう。
+  // delay, shotDelay, behaviorも追加することになりそう。
   if(seed.hasOwnProperty("position")){
     pattern.x = seed.position[0];
     pattern.y = seed.position[1];
@@ -846,19 +855,11 @@ function parsePatternSeed(seed){
     if(seed.shotVelocity[0] !== "-"){ pattern.shotSpeed = seed.shotVelocity[0]; }
     if(seed.shotVelocity[1] !== "-"){ pattern.shotDirection = seed.shotVelocity[1]; }
   }
-  if(seed.hasOwnProperty("shotBehavior")){
-    // [[], [], ...]で各々が["accellerate", 0.1]とか["raid", ...]みたいになってるから
-    // それを適切に解釈して関数列にしたものをpattern.shotBehaviorとする。
-    // seedはたとえば["accellerate", {accelleration:0.1}]とかなってる。
-    pattern.shotBehavior = [];
-    seed.shotBehavior.forEach((seed) => {
-      pattern.shotBehavior.push(window[seed[0]](seed[1]));
-    })
-  }
   // action(行動パターン).
   // 先に省略形で書いた部分を展開する。
   // ただしshortプロパティは存在しない場合もあるので注意する。
   let actionArray = (seed.hasOwnProperty("short") ? getExpansion(seed.short, seed.action) : seed.action);
+
   // 略記法で書かれたactionArrayを翻訳する感じ。オプションも付けられる高性能。
   pattern.action = createAction(actionArray);
   // fire(各種発射メソッド). 関数に変換する。
@@ -867,6 +868,15 @@ function parsePatternSeed(seed){
   if(seed.hasOwnProperty("fire")){
     Object.keys(seed.fire).forEach((weaponName) => {
       pattern.fire[weaponName] = createFirePattern(seed.fire[weaponName]);
+    })
+  }
+  pattern.behavior = {};
+  if(seed.hasOwnProperty("behavior")){
+    // [name, param]という配列形式になっている。
+    // for example: ["accellerate", {accelleration:0.1}]
+    Object.keys(seed.behavior).forEach((behaviorName) => {
+      const content = seed.behavior[behaviorName];
+      pattern.behavior[behaviorName] = window[content[0]](content[1]);
     })
   }
   // って感じ？
@@ -962,6 +972,10 @@ function setProp(segment, block){
     return;
   }
   switch(type){
+    case "shotBehavior":
+      segment.mode = block[1];
+      segment.name = block[2];
+      break;
     case "fire":
       segment.name = block[1];
       break;
@@ -1031,6 +1045,15 @@ function executeEachAct(action, _cannon){
     return;
   }
   switch(type){
+    case "shotBehavior":
+      if(action.mode === "set"){
+        _cannon.shotBehavior[action.name] = _cannon.pattern.behavior[action.name];
+      }else if(action.mode === "delete"){
+        delete _cannon.shotBehavior[action.name];
+      }else if(action.mode === "clear"){
+        _cannon.shotBehavior = {};
+      }
+      break;
     case "fire":
       // 各種firePattern関数を実行する
       _cannon.pattern.fire[action.name](_cannon);
