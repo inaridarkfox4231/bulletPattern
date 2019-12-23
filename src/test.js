@@ -759,14 +759,10 @@ function createFirePattern(data){
     patternSeed.forEach((ptn) => {
       ptn.x += _cannon.position.x;
       ptn.y += _cannon.position.y;
-      // ptn.behavior = _cannon.shotBehavior; // ここで登録
+      // behaviorListのデータを_cannonから取得してセットする形にする。
       // Object.values()はvalueだけを抜き出して配列にする。
       ptn.behavior = Object.values(_cannon.shotBehavior);
     })
-    // data.nameはショットの種類、data.paramは設定するパラメータの内容
-    // name指定がない場合は自動的にgoになる。
-    // ここを廃止してbehaviorListのデータを_cannonから取得してセットする形にするとか。
-    // ptn.behavior = _cannon.shotBehavior;
     patternSeed.forEach((ptn) => {
       createBullet(ptn);
     })
@@ -780,6 +776,7 @@ function createFirePattern(data){
 // 前半はパース部分、後半は各セグメントに対するexecute部分。
 
 // パース関数
+// パターンシードをパターンにします。セットする生のパターンを略記法のjsonから生成します。
 // 配列を返すやつと本体と二つ必要なんですよね。
 // sample:{x:~~, y:~~, speed:~~(あれば), direction, action:~~, あればfire:~~みたいな。}
 // x, y, speed, directionのところはそのままコピーする感じでOK.
@@ -867,6 +864,8 @@ function getExpansion(shortcut, action){
 
 // 配列のloopとrepeatのところにbackupプロパティを付け加える処理
 // ではなく、略記で書かれたaction配列を正式な形にパースする処理。
+// backがあるときにbackupを用意するので、あそこは「"back"を持つとき」の方がいいかもね。
+// いやほら、trigger用意するから・・配列を関数に変換する作業も発生する。
 function createAction(data){
   let finalArray = [];
   // backupプロパティを追加して返すだけ。
@@ -921,10 +920,12 @@ function setProp(segment, block){
   }
   switch(type){
     case "shotBehavior":
+      // だからここにsegment.behavior = 「behavior関数」って書いた方がいいって
       segment.mode = block[1];
       segment.name = block[2];
       break;
     case "fire":
+      // ここにsegment.fire = 「fire関数」ってやるべきだろ
       segment.name = block[1];
       break;
     case "vanish":

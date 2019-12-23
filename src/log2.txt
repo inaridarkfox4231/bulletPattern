@@ -209,3 +209,98 @@ fireまででいい、それ以外はまあ・・ね。
 あとはupdateをいじるだけ。
 behavior・・そこまで複雑に、できなくもないけど、まあ、要らないでしょ・・
 問題は、ここまで似せちゃうともはやbulletとcannonを区別する意味が希薄になっちゃうってことね。
+
+trigger.
+loopやrepeatと同じでbackがあるんだけど、triggerには関数が設定されてて、それがtrueを返す場合に戻る。
+カウントもすべて元に戻す。falseを返す場合に次にインデックスを進める感じ。
+たとえばHPが低いとか、あるいは自身のスピードが高いとか。
+はやくバースト作ろうよ。
+
+{trigger:["HPMoreThan", 200], back:4}とか。hp > 200のとき戻る。
+{trigger:["nearBy", 10000], back:-1}とか。プレイヤーとの距離の2乗が10000以下の時に振る舞いが変わるイメージ
+あとはjumpかなぁ・・いくつかの候補の中からランダムでどれかに行くとか。
+はやくバースト作れ。
+
+やられたときになんか弾出すやつでしょ・・あれはね、behaviorにした方がいい。まあやらないだろうけど。
+やりかたは2つ。ひとつは素直にbehaviorで実現する。もうひとつは、衝突判定を
+actionの前にやって、トリガーでHP・・うそです。
+fireの関数はどこからでもアクセス可能だからどう考えてもbehaviorで実装するべきだろ。あほか。
+
+とりあえず、shotVelocityはvelocityが既に定義されているならそれを流用する感じにしよう・・？
+違う。セットするパターンシードがvelocityは持ってるけどshotVelocityは持ってない時に
+shotVelocityをvelocityにalignする処理でしょ。
+shotPatternのところにシードを書いてそれをパースしたものをbulletに当てはめて
+bulletにもcannonと同じようなactionの実行ルーチンをやらせるわけ。なんだけど・・んー。
+今現在のbulletにセットするパターンの形：
+x:~~, y:~~, speed:~~, direction:~~, delay:~~, behavior:~~
+って感じ。あ、behaviorは関数配列ね。
+結局moveを無くしてしまったので・・これをjsonのパースで作るとかそういう話。bulletはbehaviorで動く。
+cannonもbehaviorで動かせる・・動かそうと思えば。うん。同じようにね。
+
+
+めんどくさ
+createFirePattern. 手を加えるのはここ。それは分かってる。
+bulletはcannonと違ってcreateFirePattern関数しか作れない。その事実を使うんだろ。
+parse関数はactionをshortやfire, behaviorを使って解釈する部分が独立しているからそこら辺も・・
+丸写しだとマズいのは、waitとloopとrepeatの数を制御するところ。まああそこは配列の各成分をアサインで
+ああしてこうするしかないわね。入れ子の時どうするかだけど。ただいちいちパースするわけにもいかないでしょ。
+
+明日にしよう2019/12/24(Christmas Eve)
+ひとつだけ。actionをshort, fire, behaviorから構成するでしょ。その際、関数で置き換わる・・あ？
+action.fireに関数が入るものと思ってたのにそうなってないじゃん・・・書き換えて。
+そうすればパースした後はもうfireとかshortとかbehaviorとか全部要らなくなってactionだけになるわけ。
+パースの段階でほぼactionしかなくなる。
+さらに、behaviorって_cannonから移してるでしょ・・
+さて、cannonにセットするpatternで使うのは結局、
+x, y, shotSpeed, shotDirection, (delay??), action
+だけ、だからbulletについても同じだと思う。
+つまり、shotPatternについてパースに使うデータを用意してそれをパースして初期段階でaction一本にする、
+入れ子の場合も中身から何から何までパースして一本にする。
+
+つまりfireもbehaviorも(fireの情報がbehaviorで使われる可能性があるし)もちろんshortも
+actionを作るための付加データでしかない、
+だから完成形のpatternにはx, y, speed, direction, shotSpeed, shotDirection(あとshotDelayとかdelay...)の他には
+actionしか残らない、はず、なんです。
+そしてその付加データにshotPatternを加えようとしているイマココ。
+shotPatternにも同じようなのが入っててパースでactionになる。
+イメージ：
+x-------------------------|
+y-------------------------|
+speed---------------------|
+dir-----------------------|
+shotSpeed-----------------|
+shotDirection-------------|
+delay---------------------|
+shotDelay-----------------|
+                          |----pattern
+action----|               |
+fire------|               |
+behavior--|----|          |
+short-----|    |---action-|
+               |
+shotAction-----|
+
+action------|
+fire--------|
+behavior----|------shotActionの各々のactionSeedがこれらによりactionになる
+short-------|
+
+セットするパターンはxやらyやらを除いた特別な形をしている。
+たとえばbulletのdelayとかは_cannonがshotDelayを持っているときそれが登録される感じ。
+shotDelayをbulletが持つようなのはactionに含められる。
+だからactionだけだね。それがshotBehaviorのようにcannonのshotAction={}に付け外し、
+それがcreateFirePatternの中の関数で_cannon経由でbulletに登録される。
+登録されたactionがbulletのupdate内で実行されると、
+bulletがbulletを生成するメソッドが実行される仕組みだ。
+
+ただこの形式だとパターンシードオブジェクトのところが煩雑になってしまうので、
+shortのようにsubSeedみたくしてそこに名前経由で入れておいて展開するという手法に頼った方がいいね。
+
+各々は["name", actionSeed(のエイリアスの文字列)]という形をしている。
+コードネームがsubSeed:{エイリアス:{ここにシード}}という形で紐付けられる・・んー。
+action列を正式な形にするにはfire, behavior, shotActionがすべてきちんと関数を与える形になっていないといけない
+ので、そこら辺の翻訳を優先しないといけない。
+shotActionの下位にあるaction列をきちんとした形にするのが先だからそこは再帰で下っていく
+感じになるかな・・
+今の仕組みだとaction列の翻訳がfireやbehaviorより先になってるせいで配列に関数を落とし込めていないので
+だめなんですよ。
