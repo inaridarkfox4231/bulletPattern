@@ -28,8 +28,9 @@ function setup(){
 
   //createCannon(ptn);
   // さて・・
+  // 加速するようになった。あとは・・んー。
   let seed1 = {
-    position:[240, 320], shotVelocity:[2, 90],
+    position:[240, 320], shotVelocity:[1, 90], shotBehavior:[["accellerateBehavior", {accelleration:0.1}]],
     action:[["shotDirection", "add", 2], "routine", ["shotDirection", "add", -2], "routine", {loop:Infinity, back:-1}],
     short:{routine:[["fire", "radial16"], {wait:4}, {loop:8, back:3}, {wait:16}]},
     fire:{radial16:{radial:{count:16}}}
@@ -41,6 +42,7 @@ function setup(){
   };
   let seed3 = {
     position:[240, 160], shotVelocity:[2, 90],
+    shotBehavior:[["raidBehavior", {raidDistSquare:10000, accelleration:0.3}]],
     action:[["shotDirection", "set", [0, 360]], ["fire", "rad16way7"], {wait:60}, {loop:Infinity, back:-1}],
     fire:{rad16way7:{radial:{count:16}, nway:{count:7, interval:2}}}
   }
@@ -58,7 +60,7 @@ function setup(){
     fire:{way27:{nway:{count:27, interval:10}}, go:{}}
   }
   // どうする？？
-  let newPtn = parsePatternSeed(seed1);
+  let newPtn = parsePatternSeed(seed3);
   console.log(newPtn);
   //noLoop();
   createCannon(newPtn);
@@ -230,7 +232,7 @@ class Bullet{
   setOptionalBehavior(behavior){
     // behaviorは関数の配列
     behavior.forEach((eachBehavior) => {
-      _bullet.behaviorList.unshift(eachBehavior); // 先頭から入れていく
+      this.behaviorList.unshift(eachBehavior); // 先頭から入れていく
     })
   }
   velocityUpdate(){
@@ -239,27 +241,25 @@ class Bullet{
 	setPattern(_pattern){
     this.properFrameCount = 0;
 		this.pattern = _pattern;
-    const {x, y, speed, direction, delay} = _pattern;
+    const {x, y, speed, direction, delay, behavior} = _pattern;
     this.setPosition(x, y);
     this.setVelocity(speed, direction);
     if(delay !== undefined){ this.setDelay(delay); }else{ this.setDelay(0); }
     this.behaviorList.push(goBehavior); // default
     this.behaviorList.push(frameOutBehavior); // default
-    //  if(behavior !== undefined){
-    //    this.setOptionalBehavior(_pattern.behavior)?
-    //  }
+    if(behavior !== undefined){
+      this.setOptionalBehavior(_pattern.behavior);
+    }
     this.vanishFlag = false;
 	}
 	update(){
     if(this.delay > 0){ this.delay--; return; }
-    this.pattern.move(this);
+    //this.pattern.move(this);
+    this.behaviorList.forEach((behavior) => {
+      behavior(this);
+    })
     this.properFrameCount++;
-    /*
-      this.behaviorList.forEach((behavior) => {
-        behavior(this);
-      })
-    */
-		if(!this.isInFrame()){ this.vanishFlag = true; } // ここではフラグを立てるだけ。直後に破棄。
+		//if(!this.isInFrame()){ this.vanishFlag = true; } // ここではフラグを立てるだけ。直後に破棄。
 	}
 	eject(){
 		if(this.vanishFlag){ this.vanish(); }
@@ -279,12 +279,13 @@ class Bullet{
 		const s = sin(this.direction);
 		triangle(x + 6 * c, y + 6 * s, x - 6 * c + 3 * s, y - 6 * s - 3 * c, x - 6 * c - 3 * s, y - 6 * s + 3 * c);
 	}
+  /*
 	isInFrame(){
 		// フレーム外に出たときの排除処理
 		if(this.position.x < -10 || this.position.x > width + 10){ return false; }
 		if(this.position.y < -10 || this.position.y > height + 10){ return false; }
 		return true;
-	}
+	}*/
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -310,13 +311,15 @@ class Cannon{
 		this.pattern = undefined;
     this.shotSpeed = 1;
     this.shotDirection = 0;
+    this.shotBehavior = []; // bulletにセットする付加的なふるまい（関数列）
 	}
   setPattern(_pattern){
     this.pattern = _pattern;
-    const {x, y, shotSpeed, shotDirection} = _pattern;
+    const {x, y, shotSpeed, shotDirection, shotBehavior} = _pattern;
     this.setPosition(x, y);
     if(shotSpeed !== undefined){ this.shotSpeed = shotSpeed; }
-    if(shotDirection !== undefined){ this.shotDirection = shotDirection }
+    if(shotDirection !== undefined){ this.shotDirection = shotDirection; }
+    if(shotBehavior !== undefined){ this.shotBehavior = shotBehavior; } // 関数列
   }
 	update(){
     // flagは常にfalseで返るはず・・でないとバグになる。大丈夫なのか心配。
@@ -523,7 +526,7 @@ function homingBehavior(param){
   const threshold = (param.hasOwnProperty("threshold") ? param.threshold : 60);
   return (_bullet) => {
     const fc = _bullet.properFrameCount;
-    if(fc % param.refleshSpan === 0 && fc < param.threshold){
+    if(fc % param.refleshSpan === 0 && fc < threshold){
       _bullet.direction = getPlayerDirection(_bullet.position, margin);
       _bullet.velocityUpdate();
     }
@@ -795,21 +798,19 @@ function createFirePattern(data){
     if(data.hasOwnProperty("radial")){
       patternSeed = createRadial(data.radial, patternSeed); // とりあえずradial.
     }
-    // positionを設定
+    // positionとbehaviorを設定
     patternSeed.forEach((ptn) => {
       ptn.x += _cannon.position.x;
       ptn.y += _cannon.position.y;
+      ptn.behavior = _cannon.shotBehavior; // ここで登録
+      // Object.values()はvalueだけを抜き出して配列にする。
+      // ptn.behavior = Object.values(_cannon.shotBehavior);
     })
     // data.nameはショットの種類、data.paramは設定するパラメータの内容
     // name指定がない場合は自動的にgoになる。
     // ここを廃止してbehaviorListのデータを_cannonから取得してセットする形にするとか。
     // ptn.behavior = _cannon.shotBehavior;
     patternSeed.forEach((ptn) => {
-      if(data.hasOwnProperty("name")){
-        ptn.move = window[data.name](data.param);
-      }else{
-        ptn.move = go;
-      }
       createBullet(ptn);
     })
     // お疲れさまでした。
@@ -844,6 +845,15 @@ function parsePatternSeed(seed){
   if(seed.hasOwnProperty("shotVelocity")){
     if(seed.shotVelocity[0] !== "-"){ pattern.shotSpeed = seed.shotVelocity[0]; }
     if(seed.shotVelocity[1] !== "-"){ pattern.shotDirection = seed.shotVelocity[1]; }
+  }
+  if(seed.hasOwnProperty("shotBehavior")){
+    // [[], [], ...]で各々が["accellerate", 0.1]とか["raid", ...]みたいになってるから
+    // それを適切に解釈して関数列にしたものをpattern.shotBehaviorとする。
+    // seedはたとえば["accellerate", {accelleration:0.1}]とかなってる。
+    pattern.shotBehavior = [];
+    seed.shotBehavior.forEach((seed) => {
+      pattern.shotBehavior.push(window[seed[0]](seed[1]));
+    })
   }
   // action(行動パターン).
   // 先に省略形で書いた部分を展開する。

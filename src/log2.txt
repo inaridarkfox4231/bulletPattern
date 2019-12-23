@@ -187,3 +187,11 @@ bullet動かすにもそこら辺を。
 onとかoffはとりあえず考えなくていいと思う。unShiftで先頭に入れていく。pushではなく。
 
 流れの中でshotにどんなbehaviorを追加するのか、そのリストをaddしたりremoveしたりいろいろいじるイメージ。
+
+やめた。オブジェクトにしよう。で、付け外し出来るようにする。
+じゃないと柔軟性が・・
+fireみたいにbehavior:{}
+で、名前：paramでこれを解釈して名前：関数にする。
+これをbehaviorにaddするときにaddならshotbehavior[名前] = その関数ってやって
+外したいときはdelete shotBehavior[名前]
+全部無くしたいときはshotBehavior = {}でOK.
