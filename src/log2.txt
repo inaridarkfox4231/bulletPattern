@@ -267,7 +267,7 @@ shotPatternにも同じようなのが入っててパースでactionになる。
 x-------------------------|
 y-------------------------|
 speed---------------------|
-dir-----------------------|
+direction-----------------|
 shotSpeed-----------------|
 shotDirection-------------|
 delay---------------------|
@@ -304,3 +304,33 @@ shotActionの下位にあるaction列をきちんとした形にするのが先�
 感じになるかな・・
 今の仕組みだとaction列の翻訳がfireやbehaviorより先になってるせいで配列に関数を落とし込めていないので
 だめなんですよ。
+
+そこで・・parsePatternSeedを二つに分ける。
+setとpatternかな。この。
+setの中にはposition, velocity, shotVelocity, delay, shotDelayが入りうる。
+behavior, patternとかはその、shotBehaviorとshotPatternだけど、付け外しするから。別に、いい。
+{set:{}, pattern:{}}
+patternと書くのは入れ子にするため・・あーあとひとつ。
+{set:{}, pattern:{}, short:{}}
+shortには短絡の為の省略形を入れておいて、どの段階のpatternの構造からでも、action内の文字列を
+置き換える形で参照できるようにする。さらにshort内のそれも参照で解決できるようにする（入れ子の入れ子・・）
+let seed2 = {
+  position:[240, 160],
+  action:[["shotSpeed", "set", [3, 6]], ["shotDirection", "set", [0, 360]], ["fire", "u"], {repeat:2, back:3}, {loop:INF, back:-1}],
+  fire:{u:{}}
+};
+いいよ。
+先に・・
+position, velocity, shotVelocity, delay, shotDelayはsetに、
+shortはそのまま、
+それ以外はpatternに入れる(action, fire, behavior, pattern)
+これが第一段階。
+set:{position:[], velocity:[], shotVelocity:[], delay:[], shotDelay:[]}
+short:{}
+pattern:{action:{}, fire:{}, behavior:{}, pattern:{}}
+これも関数にする・・
+次に、set部分はいじらないで、shortの情報とpatternの情報をもとに省略部分を無くす。
+下まで見ていってすべて無くす。
+無くしたうえで、今度はもうshortが要らないので、こんどはfireとbehaviorを元に、actionの関数化できる部分を
+関数化する。patternのところも・・
+patternの入れ子は最後にはなくなる。おわり。
