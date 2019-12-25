@@ -334,3 +334,179 @@ pattern:{action:{}, fire:{}, behavior:{}, pattern:{}}
 無くしたうえで、今度はもうshortが要らないので、こんどはfireとbehaviorを元に、actionの関数化できる部分を
 関数化する。patternのところも・・
 patternの入れ子は最後にはなくなる。おわり。
+
+完成形が持ってるプロパティ
+{x, y, speed, shotSpeed, direction, shotDirection, delay, shotDelay, action}
+これですべて。
+fireとかbehaviorはseedのその部分を関数で置き換えて最終的にはaction配列内に埋め込まれるのでこっちには残らないし
+shortは略形の配列が入ってるだけだから最初に展開したら不要になる。
+そのときshotPatternも展開される、
+shotPatternについてはその中身から展開して、そっちはそれぞれactionになる、
+action配列内のshotActionを付けたり外したりするところに関数の形で埋め込まれる（shotBehaviorと同じ）
+
+
+あとね、細かいことだけどaction内の命令はshot~~~をいじるものとfireと構造関連(loop, repeat,いわゆる反復子)しかないから
+["speed", "set", 7]とか["direction", "add", 5]で通じると思う。気になるなら翻訳の際に・・まあ、要らないか。
+---------------------------------------------------------------------------------------
+actionSegmentの分類。
+bulletにセットするプロパティ関連
+speed, direction, delay --- set, add --- 数または2つ,3つの数からなる配列
+behavior, action --- set, remove, clear --- それらの名前(エイリアス)
+発射関連
+fire --- ショットの名前(エイリアス)
+反復子
+loop, repeat, (trigger) --- back
+その他
+vanish, waitなど
+---------------------------------------------------------------------------------------
+略形 → 実行形式
+文字列操作使うのもありなんだろうけど。
+自身のspeedやdirectionはメソッドで変えることはあっても直接いじることはないかな・・・
+["speed", "set", 8] → {type:"speedChange", mode:"set", speedChange:8}
+["direction", "add", 5] → {type:"directionChange", mode:"add", directionChange:5}
+["delay", 10] → {type:"delayChange", delayChange:10} // addやsetはなく、shotDelayを10にするとかそういうの
+["delay", 0] これで元に戻る。
+["fire", "name(エイリアス)"] → {type:"fire", shot:関数}
+["behavior", "setかremove", "name"] → {type:"behavior", mode:"setかremove", behavior:関数}
+["action", "setかremove", "name"] → {type:"action", mode:"setかremove", action:命令の配列}
+index付け加えるのわすれないでね
+{wait:8} → {type:"wait", count:8}
+{loop:4, back:2} → {type:"loop", count:4, back:2}
+{repeat:4, back:3} → {type:"repeat", count:4, back:3}
+{"vanish"} → {type:"vanish"}(たとえばvanish:30とかして30が0になったら消えるとかね。)
+{"aim", 30} → {type:"aim", margin:30}
+とりあえずこのくらい・・type使おう。
+
+{speed:["set", 8]}とかする。全部オブジェクトにしたい。配列無くしたいの。
+{direction:["add", 5]}とかね。
+{delay:10}とか{delay:0}の方が分かりやすいでしょ。
+{fire:"name"}{behavior:["set", "name"]}
+
+それと、できたらだけどcountをなくせたらなくしたい・・・・スタックでなんとか
+まずね
+repeatは？抜けないだけじゃないの・・知らないけど。
+まずfireするでしょ、次行くでしょ、からっぽかもしくは先頭が正の場合に0をpushして1ふやして<4だから出る
+1→2で<4
+2→3で<4
+3→4で<4を満たさないからそれを外して
+waitって何をするの
+fireのあとにしかwaitは存在していない
+ということはどっちかというとwaitはfireの付属品であるべきなんだろうね。その方が自然だろ。
+複数のactionが同時並行ならwaitCounterも同じ数用意すればいいだけ。
+じゃあloopは？
+waitとは別でループスタックなるものを用意
+loopやrepeatはwaitと違って戻らないからそもそも別扱いするべきだった。ごっちゃにしたのが間違いだった。
+waitが関わらなければスタックで処理できるはず・・
+waitがfireの付属品っていうのはやめよう。fireの後とは限らないんだった、loopのあとかもだし。
+waitは4をセットして次に行くだけの処理にすればOK.
+loopに来たら、2をセットして最初に戻ってそれを実行するのだ。で、またwaitに戻ると。
+class loopCounter{
+  constructor(cur, lim){
+    this.current = cur;
+    this.limit = lim;
+  }
+  judge(){
+    if(this.current < this.limit){ return false; }
+    return true;
+  }
+  increment(){
+    this.current++;
+  }
+}
+loopに来たら(current, limit)をpushして、やめた。
+
+難しくないんだよ。backupに相当することを個別のプロパティでやるだけでしょ。
+
+今の仕様だと{fire1}{wait:4}{fire2}{wait:4}ってやったときに8フレームに2回っていうふうにならないんだよね。
+repeatのせい・・工夫で回避できそうだけど。
+wait？？
+オーケストラってみんなで同じ楽譜を読むでしょ
+でも戻る記号とかタイミングまで同じわけじゃないからそういうのを表現したいみたいななんかそういうの。
+
+-------
+fireの後は抜けない、loopの後も抜けない、waitのあとは常に抜ける、でいいのね。repeatは？
+repeatも点だから（帯じゃないから）抜けない。
+それだとseed2で表現しているアレが最初のフレームで無数にブレット作って停止しちゃうだろって？
+{wait:1}をはさめば何の問題もない。そこで抜けるから。でしょ？
+これでいけるはず。つまり、複数種類の攻撃を決められたターン間隔で発射できる。
+-------
+
+あと、repeatにbackupは不要。同じターンの繰り返しなんだから復元するものなんか・・
+ああ、repeatは復元するけど・・そうね。
+配列使えばいいじゃん。個別に配列用意するの。そこまでやるかって感じだけどまあ・・ね。
+backup使う代わりに、それはもう書いてあるから、減らす用で配列作っちゃうわけ。それでいけるはず。
+それは、countをもってなければ0, もっていればその値を放り込む形で作られる感じ・・それと別に。
+減らすときはそっちを減らす。戻すときはactionから参照して戻す。以上！
+
+_cannon.pattern.actionのところ、まだるっこしいから_cannon.actionってしようよ。わざわざ
+patterm経由しなくていい、あとindexは持たせよう。_cannon.currentIndexとかする。
+
+仕様変更をまとめます。
+
+1. actionSeedで配列をやめる。全部オブジェクト記法にする。たとえば、
+["shotSpeed", "set", [3, 6]]だったら{speed:["set", [3, 6]]}みたく。
+うん、自身のスピード変えながらってのもありよね（回りながらとかね）・・じゃあ{shotSpeed:["set", [3, 6]]}でいこうね。
+
+2. 下位のactionも含めた全体の構成について。
+{set:{
+  position:[], velocity:[], shotVelocity:[], delay:~~, shotdelay:~~
+},
+action:{
+  ptn:[  ,  ,  ,  ],
+  fire:{name1:~~, ...},
+  behavior:{name1:~~, ...},
+  action:{name1:{入れ子でactionが入る感じ}, name2:{}}
+},
+short:{キー:[置き換わった先の配列]}
+}
+
+actionのやつはどっかでなくなる必要があるんだけど・・んー。
+自分自身を渡す・・自分と同じactionを渡すっていうのを考えられるんだよね。shotAction:this.actionでOK.
+this.actionをいじったものとかでもいける。一部変えるとか。setSelfActionでいけそう。
+{shotAction:["set", "self"]}とか？{shotBehavior:[]}
+selfの場合は自分自身のactionを使うようにすれば無限複製できるよ・・意味があるかどうかは知らない。
+{type:"shotAction", shotAction:"self", limit:3}
+selfの場合はセットするときにlimitを参照して
+
+あーーーーそうね。
+fireもbehaviorもshortと同じで展開に使うアレなのよね。だったらどこからでも参照できるべきよね。
+
+やり直し。こうしましょう。
+{set:{
+  position:[], velocity:[], shotVelocity:[], delay:~~, shotdelay:~~
+},
+action:{
+  main:[  ,  ,  ,  ],
+  mainの中のshotActionに出てくるselfではない文字列のキー:[](mainのような)
+  {shotAction:["set", エイリアス]}とか{shotAction:["clear"]}みたいな。
+  出てくるたびに:[]
+  出てくるたびに:[]
+  すべて書いてね:[] // こうすれば並列処理できるでしょ、頭いい！入れ子やめようぜ。
+  入れ子は闇・・
+},
+short:{キー:[置き換わった先の配列]}
+fire:{name1:~~, ...}, // actionの配列に出てくるfireの所に出てくるエイリアスの中身
+behavior:{name1:~~, ...}, // の、setBehavior版。
+}
+まずshortの中の文字列部分をすべて・・Object.keys(short)で順繰りにして、それより後ろですべて復元できるようにする。
+だから後ろから見ていって文字列あったらそれより先のもので置き換え、を繰り返せばshortの中から文字列を排除できる。
+そうしたら次はactionの中の配列の文字列部分をすべてshort内のそれで置き換える。
+次にfireとbehaviorのところを関数化する。
+action内のfireとbehavior関連のエイリアス部分をすべてそれで置き換える。
+最後に、actionの配列を下から見ていってエイリアスを順繰りにそれより先のaction配列で置き換えていく。
+main一本になる。
+登録するパターンは{x:~~~, y:~~~, (以下続く), action:~~~(mainのやつ)}になる。これでいける。
+backupは作らない。createFirePatternの際に各々のbulletにはbackup配列を渡す、というか
+cannon(もしくはbullet）のsetActionから1回だけ作ってコピーする。これでいこう。
+復元関数recoveryも作る。
+
+3. waitについて。今の仕様だと
+fire1 -- wait:4 -- fire2 -- wait:4
+のようなときに間が2フレームしか空かないので✕.
+こうする。
+fireのあとは継続。loopのあとやrepeatのあとも継続。backもきちんと行う。waitのあとだけ、常に抜ける。
+こうするとうまくいく。
+seed3のようなrepeat2回を毎フレーム延々とやる場合であっても、間に{wait:1}をはさめば、ここで抜けてくれるから
+ランタイムエラーにならずに済む。そういうことですね。
+
+3. なんかあったっけ（

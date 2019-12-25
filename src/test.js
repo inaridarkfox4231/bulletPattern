@@ -103,7 +103,7 @@ function setup(){
               spirInv:["spiralBehavior", {radius:50, radiusIncrement:0.5, clockwise:false}]}
   }
   // どうする？？
-  let newPtn = parsePatternSeed(seed8);
+  let newPtn = parsePatternSeed(seed5);
   console.log(newPtn);
   //noLoop();
   createCannon(newPtn);
@@ -805,8 +805,6 @@ function parsePatternSeed(seed){
   // ただしshortプロパティは存在しない場合もあるので注意する。
   let actionArray = (seed.hasOwnProperty("short") ? getExpansion(seed.short, seed.action) : seed.action);
 
-  // 略記法で書かれたactionArrayを翻訳する感じ。オプションも付けられる高性能。
-  pattern.action = createAction(actionArray);
   // fire(各種発射メソッド). 関数に変換する。
   // fireの中の名前のキーに対して関数を登録する感じ。
   pattern.fire = {}; // これを用意しておかないとエラーになる
@@ -825,6 +823,10 @@ function parsePatternSeed(seed){
     })
   }
   // って感じ？
+
+  // 略記法で書かれたactionArrayを翻訳する感じ。オプションも付けられる高性能。
+  pattern.action = createAction(actionArray);
+
   pattern.index = 0; // 配列実行時に使うcurrentIndex. これを付け加えて完成。
   return pattern;
 }
@@ -888,6 +890,7 @@ function createAction(data){
           if(eachBlock.hasOwnProperty(name)){
             let obj = {};
             // nameがないとどのプロパティを復元するのか分からないだろ・・
+            // や、全部countにしちゃえばいいやん・・
             obj.back = k;
             obj.name = name;
             obj[name] = eachBlock[name];
@@ -938,6 +941,11 @@ function setProp(segment, block){
 
 // executeはここで。こうする、bulletにも適用したい・・
 // だからCannonのexecuteとかそこらへんは無くすかもね。
+// ここスイッチで書きたいな・・どうにかならない？
+// {loop:4, back:5}を実行形式にするとき{type:"loop", count:4, back:5}みたいにするとか。
+// すべての命令がtype:~~~から始まるようにすればいける。
+// たとえばfireも{type:"fire", shot:関数}とか。
+// {type:"loop"か"repeat", count:数, back:数}
 function execute(_cannon, action){
   if(action.hasOwnProperty("wait")){
     // waitを減らすだけ。正なら抜ける。0なら次へ。
@@ -1026,3 +1034,17 @@ function recovery(backup, action, pivotIndex){
     action[pivotIndex - data.back][data.name] = data[data.name];
   })
 }
+
+/*
+function recovery(_cannon, back){
+  const cur = _cannon.currentIndex;
+  for(let i = 1; i <= back; i++){
+    const curAction = _cannon.action[cur - i];
+    _cannon.backup[cur - i] = (curAction.hasOwnProperty("count") ? curAction.count : 0);
+  }
+}
+使う時はrecovery(_cannon, action.back)みたいにする。
+_cannon.backupの作り方。
+どうせcreateFireActionが作る関数内で作るので、actionから1回だけ作ってあとはそれぞれにコピーすればいい。
+countがなければ0, あればcount値を入れて配列作るだけ。簡単！
+*/
