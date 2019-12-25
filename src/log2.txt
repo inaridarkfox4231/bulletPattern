@@ -495,7 +495,7 @@ behavior:{name1:~~, ...}, // の、setBehavior版。
 action内のfireとbehavior関連のエイリアス部分をすべてそれで置き換える。
 最後に、actionの配列を下から見ていってエイリアスを順繰りにそれより先のaction配列で置き換えていく。
 main一本になる。
-登録するパターンは{x:~~~, y:~~~, (以下続く), action:~~~(mainのやつ)}になる。これでいける。
+登録するパターン（完成形）は{x:~~~, y:~~~, (以下続く), action:~~~(mainのやつ)}になる。これでいける。
 backupは作らない。createFirePatternの際に各々のbulletにはbackup配列を渡す、というか
 cannon(もしくはbullet）のsetActionから1回だけ作ってコピーする。これでいこう。
 復元関数recoveryも作る。
@@ -509,4 +509,10 @@ fireのあとは継続。loopのあとやrepeatのあとも継続。backもき�
 seed3のようなrepeat2回を毎フレーム延々とやる場合であっても、間に{wait:1}をはさめば、ここで抜けてくれるから
 ランタイムエラーにならずに済む。そういうことですね。
 
-3. なんかあったっけ（
+4. なんかあったっけ（
+まあ、bulletにもactionを実行させる環境は必要よね。
+あと、cannonとか、indexはパターンに持たせない。個体に持たせる。バックアップも持たせる。・・・
+this.patternとなっているところはどちらもactionに切り替える。patternそれ自体はもう要らないので。
+情報は全部actionに入ってるし。
+pattern.fireとかpattern.behaviorとかあるけどこれも関数入れちゃうから要らないね。
+this.pattern, 廃止！！！！こんなところかな・・明日頑張ってやろう、年が明けちゃう前にやっちゃおう。

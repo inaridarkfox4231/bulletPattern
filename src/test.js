@@ -255,13 +255,17 @@ class Bullet{
 		this.position = createVector(0, 0);
 		this.velocity = createVector(0, 0);
 		this.properFrameCount = 0;
-		this.pattern = undefined;
+		this.pattern = undefined; // 廃止する方向で。
     this.delay = 0; // ディレイ。
 		this.vanishFlag = false; // まずフラグを立ててそれから別処理で破棄
     this.behaviorList = [];
     // this.shotSpeed = 1;
     // this.shotDirection = 0;
     // this.shotBehavior = {};
+    // this.shotAction = {};
+    // this.backup = [];
+    // this.currentIndex = 0;
+    // this.action = undefined;
 	}
 	setPosition(x, y){
 		this.position.set(x, y);
@@ -347,7 +351,7 @@ class Cannon{
 		// フレームカウント
 		this.properFrameCount = 0;
 		// 弾丸の発射の仕方について
-		this.pattern = undefined;
+		this.pattern = undefined; // actionがあれば十分なので廃止する方向で。
     this.shotSpeed = 1;
     this.shotDirection = 0;
     this.shotBehavior = {}; // bulletにセットする付加的なふるまい（関数列）
