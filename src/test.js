@@ -49,7 +49,7 @@ function setup(){
   };
   let seed2 = {
     position:[240, 160],
-    action:[["shotSpeed", "set", [3, 6]], ["shotDirection", "set", [0, 360]], ["fire", "u"], {repeat:2, back:3}, {loop:INF, back:-1}],
+    action:[["shotSpeed", "set", [3, 6]], ["shotDirection", "set", [0, 360]], ["fire", "u"], {loop:2, back:3}, {wait:1}, {loop:INF, back:-1}],
     fire:{u:{}}
   };
   let seed3 = {
@@ -103,7 +103,7 @@ function setup(){
               spirInv:["spiralBehavior", {radius:50, radiusIncrement:0.5, clockwise:false}]}
   }
   // どうする？？
-  let newPtn = parsePatternSeed(seed5);
+  let newPtn = parsePatternSeed(seed8);
   console.log(newPtn);
   //noLoop();
   createCannon(newPtn);
@@ -954,11 +954,13 @@ function execute(_cannon, action){
   if(action.hasOwnProperty("wait")){
     // waitを減らすだけ。正なら抜ける。0なら次へ。
     action.wait--;
-    if(action.wait > 0){ return false; }
+    if(action.wait === 0){ _cannon.pattern.index++; }
+    return false; // waitは必ず抜ける
+    /*if(action.wait > 0){ return false; }
     else{
       _cannon.pattern.index++;
       return true;
-    }
+    }*/
   }
   if(action.hasOwnProperty("type")){
     // nameの内容に応じた行動を実行して次へ。
@@ -966,6 +968,7 @@ function execute(_cannon, action){
     _cannon.pattern.index++;
     return true;
   }
+  /* repeatはなくす
   if(action.hasOwnProperty("repeat")){
     // 同じターン内の繰り返し
     action.repeat--;
@@ -976,18 +979,19 @@ function execute(_cannon, action){
       _cannon.pattern.index++;
     }
     return true;
-  }
+  }*/
   if(action.hasOwnProperty("loop")){
     // repeatと違ってループをさかのぼるときにターンを抜ける
     action.loop--;
     if(action.loop > 0){
       recovery(action.backup, _cannon.pattern.action, _cannon.pattern.index);
       _cannon.pattern.index -= action.back;
-      return false; // ここが違う。
+      //return false; // ここが違う。
     }else{
       _cannon.pattern.index++;
-      return true; // infinite loopの場合ここは存在しない
+      //return true; // infinite loopの場合ここは存在しない
     }
+    return true; // loopは必ず抜ける
   }
 }
 

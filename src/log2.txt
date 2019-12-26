@@ -530,3 +530,8 @@ this.pattern, 廃止！！！！こんなところかな・・明日頑張って
  fire:["way2", {nway:{count:2, interval:120}}], ["radial7", {nway:{count:7}}]
 }
 とか？
+_cannonとかbulletのwaitやらloopのカウントを無くすやつは、そういうメソッドとして確立すればいいのではないかな。
+this.backup[this.currentIndex]--; って感じで。んで、0になるならtrueを返す感じにする。
+0になるときにindexを増やすので。indexを増やすのも、indexは個別持ちになるからメソッドとして書いた方がいいね。
+いよいよ統一するときが来たかな・・
+repeat廃止！！！！
