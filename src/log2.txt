@@ -508,6 +508,7 @@ fireのあとは継続。loopのあとやrepeatのあとも継続。backもき�
 こうするとうまくいく。
 seed3のようなrepeat2回を毎フレーム延々とやる場合であっても、間に{wait:1}をはさめば、ここで抜けてくれるから
 ランタイムエラーにならずに済む。そういうことですね。
+・・となるとrepeat要らないな。loopで抜けないなら挙動に差がつかないものね。
 
 4. なんかあったっけ（
 まあ、bulletにもactionを実行させる環境は必要よね。
@@ -516,3 +517,16 @@ this.patternとなっているところはどちらもactionに切り替える�
 情報は全部actionに入ってるし。
 pattern.fireとかpattern.behaviorとかあるけどこれも関数入れちゃうから要らないね。
 this.pattern, 廃止！！！！こんなところかな・・明日頑張ってやろう、年が明けちゃう前にやっちゃおう。
+
+{set:{
+  position:[240, 160], shotVelocity:[2, 90]
+ }
+ action:{
+  main:[{setAction:"next1"}, {shotSpeed:2}, {fire:"radial7"}, {wait:30}, {loop:INF}],
+  next1:[{wait:30}, {setAction:"next2"}, {fire:"way2"}, {vanish:0}],
+  next2:[{wait:30}, {setAction:"next3"}, {fire:"way2"}, {vanish:0}],
+  next3:[{wait:30}, {fire:"way2"}, {vanish:0}]
+ }
+ fire:["way2", {nway:{count:2, interval:120}}], ["radial7", {nway:{count:7}}]
+}
+とか？
