@@ -788,6 +788,8 @@ function createFirePattern(data){
 // type:"fire"とかtype:"config"とかしたいの。
 // たとえば type:"fire", name:"random_2_1"みたいな感じ
 // fire.random_2_1:関数
+
+// 大幅に、変える。
 function parsePatternSeed(seed){
   let pattern = {};
   // position, velocity, shotVelocity. 初期設定。
@@ -878,7 +880,7 @@ function createAction(data){
   for(let index = 0; index < data.length; index++){
     const block = data[index];
     let segment = {};
-    if(block.hasOwnProperty("repeat") || block.hasOwnProperty("loop")){
+    if(block.hasOwnProperty("loop")){
       Object.assign(segment, block);
       // ここですね。ここで、block.back === -1ならsegment.backをindexにする。
       // 先頭に戻れ、という指示。
@@ -890,7 +892,7 @@ function createAction(data){
       for(let k = 1; k <= segment.back; k++){
         const eachBlock = data[index - k];
         // 該当するindexだけ後ろのセグメントのどのプロパティをどんな値に復元するかのデータを登録する
-        ["repeat", "wait", "loop"].forEach((name) => {
+        ["wait", "loop"].forEach((name) => {
           if(eachBlock.hasOwnProperty(name)){
             let obj = {};
             // nameがないとどのプロパティを復元するのか分からないだろ・・
@@ -956,11 +958,6 @@ function execute(_cannon, action){
     action.wait--;
     if(action.wait === 0){ _cannon.pattern.index++; }
     return false; // waitは必ず抜ける
-    /*if(action.wait > 0){ return false; }
-    else{
-      _cannon.pattern.index++;
-      return true;
-    }*/
   }
   if(action.hasOwnProperty("type")){
     // nameの内容に応じた行動を実行して次へ。
@@ -968,18 +965,6 @@ function execute(_cannon, action){
     _cannon.pattern.index++;
     return true;
   }
-  /* repeatはなくす
-  if(action.hasOwnProperty("repeat")){
-    // 同じターン内の繰り返し
-    action.repeat--;
-    if(action.repeat > 0){
-      recovery(action.backup, _cannon.pattern.action, _cannon.pattern.index);
-      _cannon.pattern.index -= action.back;
-    }else{
-      _cannon.pattern.index++;
-    }
-    return true;
-  }*/
   if(action.hasOwnProperty("loop")){
     // repeatと違ってループをさかのぼるときにターンを抜ける
     action.loop--;

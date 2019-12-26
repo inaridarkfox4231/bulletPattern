@@ -443,9 +443,22 @@ patterm経由しなくていい、あとindexは持たせよう。_cannon.curren
 
 仕様変更をまとめます。
 
-1. actionSeedで配列をやめる。全部オブジェクト記法にする。たとえば、
+1. action配列のセグメント部分の翻訳について。記法を変えるのです。
+actionSeedで配列をやめる。全部オブジェクト記法にする。たとえば、
 ["shotSpeed", "set", [3, 6]]だったら{speed:["set", [3, 6]]}みたく。
 うん、自身のスピード変えながらってのもありよね（回りながらとかね）・・じゃあ{shotSpeed:["set", [3, 6]]}でいこうね。
+凡例
+{shotSpeed:["set", 4]} {shotSpeed:["set", [5, 6]]} {shotSpeed:["set", [2, 10, 2]]}
+{shotDirection:["set", 60]} {shotDirection:["add", 5]} {shotDirection:["add", [0, 20]]}
+{fire:"way7"} {shotBehavior:["set", "spiral8"]} {shotBehavior:["clear"]}
+{shotAction:["set", "split2"]} {shotAction:["clear"]}
+{loop:9, back:-1} {loop:INF, back:5} {wait:60}
+{aim:0} {vanish:0} // vanishにカウント付けると何もしないまま流れていってカウント後に消える
+// つまり{vanish:60}と{wait:60}{vanish:0}はほぼ同じ、省略記法みたいな。
+// aimの数字はマージン、だから以前までの["aim"]は{aim:0}と同じ。
+{shotDelay:60}, {shotDelay:[4, 80]}, {shotDelay:0} clearしなくても0で充分。
+(speedやdirectionと違いデフォルトがあるので。)
+意外と少ないな？
 
 2. 下位のactionも含めた全体の構成について。
 {set:{
@@ -518,11 +531,13 @@ this.patternとなっているところはどちらもactionに切り替える�
 pattern.fireとかpattern.behaviorとかあるけどこれも関数入れちゃうから要らないね。
 this.pattern, 廃止！！！！こんなところかな・・明日頑張ってやろう、年が明けちゃう前にやっちゃおう。
 
+// 新しい記法の具体例をあげます。
+// こちらは7方向に発射した弾が分かれて、分かれて、直進する感じのやつ。
 {set:{
   position:[240, 160], shotVelocity:[2, 90]
  }
  action:{
-  main:[{setAction:"next1"}, {shotSpeed:2}, {fire:"radial7"}, {wait:30}, {loop:INF}],
+  main:[{setAction:"next1"}, {shotSpeed:2}, {fire:"radial7"}, {wait:30}, {loop:INF, back:-1}],
   next1:[{wait:30}, {setAction:"next2"}, {fire:"way2"}, {vanish:0}],
   next2:[{wait:30}, {setAction:"next3"}, {fire:"way2"}, {vanish:0}],
   next3:[{wait:30}, {fire:"way2"}, {vanish:0}]
@@ -530,6 +545,9 @@ this.pattern, 廃止！！！！こんなところかな・・明日頑張って
  fire:["way2", {nway:{count:2, interval:120}}], ["radial7", {nway:{count:7}}]
 }
 とか？
+ここにたとえばbehaviorの付与を加えることで曲がりながら飛んでいって分裂、などのバリエーションも可能です。
+飛んでいく方向を調節すればきれいな幾何学模様を描くこともできるかもね。
+
 _cannonとかbulletのwaitやらloopのカウントを無くすやつは、そういうメソッドとして確立すればいいのではないかな。
 this.backup[this.currentIndex]--; って感じで。んで、0になるならtrueを返す感じにする。
 0になるときにindexを増やすので。indexを増やすのも、indexは個別持ちになるからメソッドとして書いた方がいいね。
