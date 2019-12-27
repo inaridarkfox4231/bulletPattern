@@ -35,6 +35,7 @@ function setup(){
   // さて・・
   // 加速するようになった。あとは・・んー。
   // 速いアクセルと遅いアクセルの合わせ技。こんなことも自由自在。
+  /*
   let seed1 = {
     position:[240, 320], shotVelocity:[2, 90],
     action:[
@@ -104,20 +105,33 @@ function setup(){
           octInv:{formation:{type:"points", p:[[0, 50]]}, radial:{count:8}}},
     behavior:{spir:["spiralBehavior", {radius:50, radiusIncrement:0.5}],
               spirInv:["spiralBehavior", {radius:50, radiusIncrement:0.5, clockwise:false}]}
-  }
+  }*/
+  // 回転砲台
   let seed1_1 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
     action:{main:[{shotDirection:["add", 5]}, {fire:"u"}, {wait:4}, {loop:INF, back:-1}]},
     fireDef:{u:{}}
   }
+  // 双回転砲台
   let seed1_2 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
     action:{main:[{shotDirection:["add", 5]}, {fire:"u"}, {shotDirection:["mirror", 90]},{fire:"u"},
                   {wait:4}, {shotDirection:["mirror", 90]}, {loop:INF, back:-1}]},
     fireDef:{u:{}}
   }
+  // いったりきたりしながら下に向けて発射. ディレイをかけて。さらにアクセルをかけて。
+  let seed1_3 = {
+    x:0.2, y:0.2, speed:4, direction:0, shotSpeed:4, shotDirection:90, shotDelay:30, shotBehavior:["accell"],
+    action:{main:[{fire:"u"}, {wait:4}, {loop:16, back:2}, {wait:16}, {direction:["mirror", 90]}, {loop:INF, back:-1}]},
+    fireDef:{u:{}}, behaviorDef:{accell:["accellerate", {accelleration:0.2}]}
+  }
+  // 四角形に沿って移動（初めて作ったやつ）
+  let seed1_4 = {
+    x:0.2, y:0.2, speed:4, direction:0,
+    action:{main:[{wait:50}, {direction:["add", 90]}, {loop:INF, back:-1}]}
+  }
   // どうする？？
-  let newPtn = parsePatternSeed(seed1_2);
+  let newPtn = parsePatternSeed(seed1_3);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -1033,7 +1047,7 @@ function parsePatternSeed(seed){
   // ここでもう数にしてしまおうね。
   ptn.x = getNumber(x) * AREA_WIDTH;
   ptn.y = getNumber(y) * AREA_HEIGHT;
-  ["speed", "direction", "delay", "shotSpeed", "shotDirection", "shotdelay"].forEach((propName) => {
+  ["speed", "direction", "delay", "shotSpeed", "shotDirection", "shotDelay"].forEach((propName) => {
     if(seed[propName] !== undefined){ ptn[propName] = getNumber(seed[propName]); }
   })
   // fireDef, behaviorDefの展開
@@ -1221,7 +1235,7 @@ function interpretCommand(data, command, index){
   const _type = getTopKey(command); // 最初のキーがそのままtypeになる。
   result.type = _type;
   if(["speed", "direction", "shotSpeed", "shotDirection"].includes(_type)){
-    result.mode = command[_type][0]; // "set" or "add" or "mirror".
+    result.mode = command[_type][0]; // "set" or "add" or "mirror" or etc...
     result[_type + "Change"] = command[_type][1]; // 3とか[2, 9]とか[1, 10, 1]
     return result;
   }
@@ -1280,9 +1294,10 @@ function execute(unit, command){
     }else if(command.mode === "add"){
       unit[_type] += newParameter;
     }else if(command.mode === "mirror"){
-      // 角度限定。角度をθ → 2a-θにする
+      // 角度限定。角度をθ → 2a-θにする。speedでは使わないでね。
       unit[_type] = 2 * newParameter - unit[_type];
     }
+    if(["speed", "direction"].includes(_type)){ unit.velocityUpdate(); }
     unit.actionIndex++;
     return true; // ループは抜けない
   }

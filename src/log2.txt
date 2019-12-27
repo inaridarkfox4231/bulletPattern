@@ -690,3 +690,7 @@ fireDef:{name:["しゅるい", パラメータ]}とbehaviorDef:{name:["しゅる
 shotDirection:"set", "add", "mirror"
 "mirror"は後に指定した方向の直線で折り返す。たとえば45なら45°方向について折り返す。実質0～180で網羅する。
 これにより角度θは2a-θになる(aは指定角度)。
+単独文字列の指定について。
+"middle"とか"fast"でランダムに設定されたり？
+mode:"fast" → たとえば"set", [7, 9]の言い換え、みたいな。
+mode:"down" → たとえば"set", 90 とか？
