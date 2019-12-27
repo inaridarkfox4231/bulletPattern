@@ -460,6 +460,10 @@ actionSeedで配列をやめる。全部オブジェクト記法にする。た�
 (speedやdirectionと違いデフォルトがあるので。)
 意外と少ないな？
 
+speed, direction,
+{shotSpeed:["set", 4]} ---- {type:"shotSpeed", mode:"set", shotSpeedChange:4}
+{shotDirection:["add", [5, 10]]} ---- {type:"shotDirection", mode:"add", shotDirectionChange:[5, 10]}
+
 2. 下位のactionも含めた全体の構成について。
 {set:{
   position:[], velocity:[], shotVelocity:[], delay:~~, shotdelay:~~
@@ -537,9 +541,9 @@ this.pattern, 廃止！！！！こんなところかな・・明日頑張って
   position:[240, 160], shotVelocity:[2, 90]
  }
  action:{
-  main:[{setAction:"next1"}, {shotSpeed:2}, {fire:"radial7"}, {wait:30}, {loop:INF, back:-1}],
-  next1:[{wait:30}, {setAction:"next2"}, {fire:"way2"}, {vanish:0}],
-  next2:[{wait:30}, {setAction:"next3"}, {fire:"way2"}, {vanish:0}],
+  main:[{shotAction:["set", "next1"]}, {shotSpeed:2}, {fire:"radial7"}, {wait:30}, {loop:INF, back:-1}],
+  next1:[{wait:30}, {shotAction:["set", "next2"]}, {fire:"way2"}, {vanish:0}],
+  next2:[{wait:30}, {shotAction:["set", "next3"]}, {fire:"way2"}, {vanish:0}],
   next3:[{wait:30}, {fire:"way2"}, {vanish:0}]
  }
  fire:["way2", {nway:{count:2, interval:120}}], ["radial7", {nway:{count:7}}]
@@ -556,8 +560,133 @@ repeat廃止！！！！
 
 backup作り方変える。
 countプロパティを持つオブジェクトの数だけ0を用意して、それ専用のインデックスも用意する。
+/*
+  ここ。オブジェクトの数を数える必要はない！適宜増やしていくだけでOK.
+*/
 countを持つセグメントに遭遇したら、その箇所のカウントを増やす、
 countに達したら、waitの場合はインデックスを増やして抜ける。ループの方のインデックスも増やす。どっちも増やす。
 次にbackするときに、戻って行って、count持ちのプロパティに出会ったらループのインデックスをひとつ戻して
 そこを0に戻す。それを最後までやる。そうするとそのあとの走査で最初に遭遇するカウントセグメントのところに以下略。
 はじめようか。さっさと終わらせよう、明日から忙しいから。
+action, actionIndex, loopCounter, loopCounterIndexでいける。
+
+Object.assign()で移すとき、コピー先が{}だとオブジェクトになるためlengthプロパティが付与されないっぽい。
+[] に移す場合は普通に配列になるんだけどね。
+
+initializeのところで詰んでる・・
+positionはわざわざx, yにするメリットが、ないな・・velocityも普通に大きさ、角度でいい気がする。
+x:~~, y:~~, speed:~~, direction:~~, shotSpeed:~~, shotDirection:~~,
+自分自身の？behaviorの取り換え作りたい。
+今の仕様だと、たとえばAをBにしたいときとか一旦クリアしないといけないけど、
+replace "name1" "name2"とかでname1をname2にするとかすればいいじゃんってなる感じ。
+{shotBehavior:["replace", "name1", "name2"]} こういうの。
+で、たとえばだけど初期設定でbehaviorAとbehaviorBを同時にショットに付与することが決まってる場合とか、
+seedの最初のsetんとこに
+shotBehavior:["name1", "name2"]
+ってかいておいてあとでその対応するbehavior関数で置き換える処理するとかできないかなって。
+自分の速さ？
+{speed:["set", 3]} {aim:0} {behavior:["set", "goBehavior"]} {wait:60}
+ってやるとこっちの方向に60フレーム動くでしょ、そういう感じの。
+または{wait:60}の代わりにこっちに一定距離近付いたらパターン変えるのとかありね。だからそういうのも考慮しないと。
+自分自身の動きも考える必要が今後出てくる、はず。
+
+set:{x, y, speed, direction, delay, behavior, shotSpeed, shotDirection, shotDelay, shotBehavior}
+
+あるものだけセットする。shotBehaviorはオブジェクトだけどbehaviorはこれもオブジェクトか、こっちは
+Object.values使ってListに放り込む。
+goと画面外のやつはデフォルトで全部持ってるようにするよ。動かない場合も速度0にすればいい話、
+となるとこれで完全に区別がなくなるな・・・
+とはいえ四角形でなくても何かしらの差別化は必要なのでなにかしないと区別できなくなる。
+isParent = trueってやって描画関数を変える。四角形の方は一つの頂点がdirection方向に来るようにしよ。
+behavior以外は普通に数を置くか[]でランダム指定する。どっちみちgetNumberで数になる。
+behaviorの方はエイリアスの配列書いておいてあとで関数をバリューにもつオブジェクトで置き換える感じ。
+それはbehaviorの翻訳をしてから。
+fireも翻訳するけどね。
+
+behavior, fireの翻訳 → setの完成 → short内の文字列の簡約化 → action内の文字列の簡約化
+ → action内の簡略化されたメソッド表記を実行形式にする → 最終的に、{set:{...}, action:[...]}になる。
+これをセットする際、set内について、behavior以外は「あれば」getNumberでセットする、
+behaviorはshotBehaviorの場合はObject.assign()でコピーする、自身のbehaviorについては
+Object.valuesでbehaviorListに...でpushする。
+actionはそのままセットする。
+
+loopCounterは用意しなくていい。新しく0をpushするだけでいいわけだから。あとは進んだり戻ったり数を
+増やしたりするだけ。つまりいくつcountプロパティを持ったセグメントがあるのか数えることに意味はない。
+そのままでいい。initializeで[0]に戻しさえすればね。増やすときにindex === lengthなら0をpushするだけ！
+
+class Unit{
+  constructor(){
+    this.position = createVector();
+    this.velocity = createVector();
+    this.initialize();
+  }
+  initialize(){
+    // vanishの際に呼び出される感じ
+    // 動きに関する固有のプロパティ
+    this.position.set(0, 0);
+    this.velocity.set(0, 0);
+    this.speed = 0;
+    this.direction = 0;
+    this.delay = 0;
+    this.behaviorList = [goBehavior, frameOutBehavior]; // 速度を位置に足す、画面外で消える、がデフォルト。
+    this.action = [];
+    this.actionIndex = 0;
+    this.loopCounter = []; // loopCounterIndex === lengthの際に0をpushするように仕向ける。
+    this.loopCounterIndex = 0;
+    // bulletを生成する際に使うプロパティ
+    this.shotSpeed = 0;
+    this.shotDirection = 0;
+    this.shotDelay = 0;
+    this.shotBehavior = {};
+    this.shotAction = [];
+    // その他の挙動を制御する固有のプロパティ
+    this.isParent = false; // 親：Cannonかどうか。デフォはbullet.
+    this.drawFunction = drawBullet; // 親かどうかで変化（一応drawBulletとかdrawCannonをセットする）。デフォdrawBullet.
+    this.vanishFlag = false; // trueなら、消す。
+    this.hide = false; // 隠したいとき // appearでも作る？disappearとか。それも面白そうね。ステルス？・・・
+  }
+  setIsParent(flag){
+    this.isParent = flag;
+    if(flag){ this.drawFunction = drawCannon; }else{ this.drawFunction = drawBullet; }
+  }
+  setPattern(ptn){
+    const {x, y, behavior, shotBehavior} = ptn.set;
+    this.position.set(x, y);
+    ["speed", "direction", "delay", "shotSpeed", "shotDirection", "shotDelay"].forEach((name) => {
+      if(ptn.set[name] !== undefined){ this[name] = getNumber(ptn.set[name]); } // ランダムを考慮
+    })
+    if(behavior !== undefined){
+      this.behaviorList.push(...Object.values(behavior)); // behaviorListに追加
+    }
+    if(shotBehavior !== undefined){
+      Object.assign(this.shotBehavior, shotBehavior); // オブジェクトのコピー
+    }
+    this.action = ptn.action;
+  }
+  vanish(){
+    this.
+  }
+  draw(){
+    this.drawFunction(this);
+  }
+}
+
+createUnitのところでオプションによりparentになるかどうか分ける感じ（引数使って）。
+"cannon"とか"bullet"でいいんじゃん？
+
+細かい変更点（MassGame作りたいねぇ・・・）
+位置決定の所、widthの何倍とかそういう風にしたい。
+というかwidthじゃなくて横幅を定数化してそれ使いたい。heightの何倍とかそういうのにしたい。
+createFirePatternで作るあれこれは別にいいんだけど。
+本体の位置を決めるところをそういう風にしたいってだけ。
+他にもたとえばx:[0.2, 0.4]とかランダム指定できるような仕様も欲しいところね。
+triggerの具体例・・右に移動してある線を超えたら逆方向に行くとか？
+MassGameやるなら特定の場所にイージングかけてぎゅん！っての使えばいい。
+
+x, yは割合で書いてparseの際に実数値に直す。で、範囲指定もできるように。
+
+fireDef:{name:["しゅるい", パラメータ]}とbehaviorDef:{name:["しゅるい", パラメータ]}
+
+shotDirection:"set", "add", "mirror"
+"mirror"は後に指定した方向の直線で折り返す。たとえば45なら45°方向について折り返す。実質0～180で網羅する。
+これにより角度θは2a-θになる(aは指定角度)。
