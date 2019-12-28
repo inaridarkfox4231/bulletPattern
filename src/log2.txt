@@ -697,3 +697,6 @@ mode:"down" → たとえば"set", 90 とか？
 
 behaviorのframeOutでparamに適当な四角形を使えばコンパクトなアイデアを表現できるよ。
 4分割・・9分割とか。wayとかradialのオプションの理解とか作れそう。
+
+とりあえずlineパターン作りましょう。
+あとbehaviorとかbendとかテストしたい。
