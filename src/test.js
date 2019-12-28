@@ -28,7 +28,7 @@ function setup(){
   textSize(16);
   //preparePattern(); // jsonからあれこれするみたい(?)
   //bulletPool = new ObjectPool(() => { return new Bullet(); }, 600);
-  unitPool = new ObjectPool(() => { return new Unit(); }, 600);
+  unitPool = new ObjectPool(() => { return new Unit(); }, 800);
   entity = new System();
 
   // createCannon(ptn);
@@ -130,8 +130,32 @@ function setup(){
     x:0.2, y:0.2, speed:4, direction:0,
     action:{main:[{wait:50}, {direction:["add", 90]}, {loop:INF, back:-1}]}
   }
+  // 簡単な分裂
+  let seed1_5 = {
+    x:0.5, y:0.1, shotSpeed:4, shotDirection:90,
+    action:{main:[{shotAction:["set", "split2_0"]}, {fire:"way2"}, {wait:4}, {loop:INF, back:-2}],
+            split2_0:[{shotAction:["set", "split2_1"]}, "split2"],
+            split2_1:[{shotAction:["set", "split2_2"]}, "split2"],
+            split2_2:["split2"]
+           },
+    short:{split2:[{wait:30}, {fire:"way2"}, {vanish:1}]},
+    fireDef:{way2:{nway:{count:2, interval:30}}}
+  }
+  // FALさんの分裂
+  let seed1_6 = {
+    x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
+    action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
+                  {wait:32}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
+            split2_0:[{shotAction:["set", "split2_1"]}, "split2"],
+            split2_1:[{shotAction:["set", "split2_2"]}, "split2"],
+            split2_2:["split2"]
+           },
+    short:{split2:[{wait:20}, {fire:"way2"}, {vanish:1}]},
+    fireDef:{radial7:{radial:{count:7}}, way2:{nway:{count:2, interval:120}}}
+  }
+
   // どうする？？
-  let newPtn = parsePatternSeed(seed1_3);
+  let newPtn = parsePatternSeed(seed1_6);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -1202,7 +1226,7 @@ function getExpansion(shortcut, action){
     }else{
       // stringでなければオブジェクト
       let copyObj = {};
-      Object.assign(copyObj, segment);
+      Object.assign(copyObj, command);
       actionArray.push(copyObj);
     }
   }
@@ -1261,7 +1285,9 @@ function interpretCommand(data, command, index){
   // {action:["set", エイリアス]} "set" or "clear".
   if(_type === "shotAction"){
     result.mode = command[_type][0];
-    if(result.mode === "set"){ result.shotAction = data.action[command[_type[1]]]; }
+    if(result.mode === "set"){
+      result.shotAction = data.action[command[_type][1]];
+    }
     return result;
   }
   // あとはwait, loop, aim, vanish, triggerなど。triggerは未準備なのでまた今度でいい。手前の3つやってね。
