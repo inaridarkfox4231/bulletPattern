@@ -11,6 +11,7 @@ let showInfo = true;
 
 let drawTimeSum = 0;
 let drawTimeAverage = 0;
+let usingUnitMax = 0;
 const AVERAGE_CALC_SPAN = 30;
 
 let unitPool;
@@ -27,7 +28,7 @@ function setup(){
   angleMode(DEGREES);
   textSize(16);
   //preparePattern(); // jsonからあれこれするみたい(?)
-  unitPool = new ObjectPool(() => { return new Unit(); }, 800);
+  unitPool = new ObjectPool(() => { return new Unit(); }, 1024);
   entity = new System();
 
   // 回転砲台
@@ -170,9 +171,51 @@ function setup(){
     },
     fireDef:{u:{}, way3:{nway:{count:3, interval:45}}}
   }
+  // shotDelayが新しくなったんで使ってみる.
+  // 直線状に弾丸を配置していっせいにばーーーーーーーん！
+  let seed2_8 = {
+    x:0.5, y:0.2, shotSpeed:4,
+    action:{
+      main:[{aim:120}, {shotAction:["set", "sub1"]}, {fire:"u"}, {wait:30}, {loop:INF, back:-1}],
+      sub1:[{wait:30}, {aim:10}, {shotAction:["set", "trap"]}, {fire:"u"}, {vanish:1}],
+      trap:[{shotDelay:["set", 120]}, {shotDelay:["add", -3]}, {shotDirection:["add", 15]}, {fire:"u"}, {wait:3}, {loop:40, back:4}, {vanish:1}]
+    },
+    fireDef:{u:{}},
+  }
+  // homingBehaviorが新しくなったので試してみる.
+  // radial12と組み合わせる感じで。
+  let seed2_9 = {
+    x:0.5, y:0.3, shotSpeed:6, shotBehavior:["decele"],
+    action:{
+      main:[{shotDirection:["set", [0, 360]]}, {shotAction:["set", "delayHom"]},
+            {fire:"radial12"}, {wait:30}, {loop:INF, back:4}],
+      delayHom:[{wait:60}, {behavior:["add", "hom1"]}, {wait:INF}]
+    },
+    fireDef:{radial12:{radial:{count:12}}},
+    behaviorDef:{decele:["decelerate", {terminalSpeed:1, friction:0.05}],
+                 hom1:["homing", {rotationSpeed:2, threshold:120}]}
+  }
+  // FALさんの8, 多分だけど円周上をぐるぐるまわる16個の砲台が
+  // 6フレームおきに120°間隔で2way発射を4回を16フレームおきにやってる？
+  // とりま、16発回らせてみますか。
+  // できたかな？
+  let seed2_10 = {
+    x:0.5, y:0.5, shotSpeed:0.5*PI, shotDirection:0, shotBehavior:["circ120"],
+    action:{
+      main:[{hide:true}, {shotAction:["set", "way2"]}, {fire:"radial16"}, {wait:INF}],
+      way2:[{shotSpeed:["set", 2]}, {fire:"way2"}, {wait:6}, {loop:4, back:2}, {wait:16}, {loop:INF, back:-2}]
+    },
+    fireDef:{
+      radial16:{formation:{type:"points", p:[[120, 0]]}, radial:{count:16}, bend:90},
+      way2:{nway:{count:2, interval:120}}
+    },
+    behaviorDef:{circ120:["circular", {radius:120}]}
+  }
+
+  // FALさんの9, これは16個の方向に
 
   // どうする？？
-  let newPtn = parsePatternSeed(seed2_7);
+  let newPtn = parsePatternSeed(seed2_10);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -213,6 +256,8 @@ function showPerformanceInfo(updateTime, drawTime){
 	const drawTimeAverageStr = drawTimeAverage.toPrecision(4);
   const drawTimeAverageInnerText = `${drawTimeAverageStr}ms`;
   text("drawTimeAverage:" + drawTimeAverageInnerText, 40, 160);
+  if(usingUnitMax < entity.getCapacity()){ usingUnitMax = entity.getCapacity(); }
+  text("usingUnitMax:" + usingUnitMax, 40, 200);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -241,6 +286,13 @@ class System{
 		this.player = new SelfUnit();
     this.bulletArray = new CrossReferenceArray();
     this.cannonArray = new CrossReferenceArray();
+    // ↑ここを、統一して、updateは同じArrayにして、それとは別に、
+    // 描画用にfill色でオブジェクトで分ける・・{red:{color:~~, array:~~}, blue:{color:~~, array:~~}}
+    // みたくして、fill(red) red.array描画 fill(blue) blue.array描画 以下略。
+    // こっちで予め色とかオブジェクトとか用意しておいて名前からアクセスできるようにしといて、
+    // その名前を各unitにも持たせておいてvanishの際にピンポイントで配列にアクセスして排除（そういう関数作る）。
+    // 登録もその名前経由で、それであとはfireFunc作るときにオプションで色指定できるようにするだけ。
+    // イメージ的には{fire:"fire", color:"dkblue"}みたいな感じ。this.colorName = "dkblue".
     this.bulletColor = color(0, 0, 255);
     this.cannonColor = color(100, 100, 255);
     this.backgroundColor = color(220, 220, 255);
@@ -470,6 +522,8 @@ class Unit{
 
 // ---------------------------------------------------------------------------------------- //
 // drawFunction. bullet, cannon用の描画関数.
+// もっと形増やしたい。剣とか槍とか手裏剣とか。3つ4つの三角形や四角形がくるくるしてるのとか面白いかも。
+// で、色とは別にすれば描画の負担が減るばかりかさらにバリエーションが増えて一石二鳥。
 
 function drawBullet(bullet){
   // とりあえず三角形だけど別のバージョンも考えたい、あと色とか変えたいな。
@@ -617,6 +671,11 @@ function getTopKey(obj){
   return "";
 }
 
+// 0～360の値2つに対して角度としての距離を与える
+function directionDist(d1, d2){
+  return min(abs(d1 - d2), 360 - abs(d1 - d2));
+}
+
 // ---------------------------------------------------------------------------------------- //
 // Behavior.
 // ああこれbehaviorか。配列に入れて毎フレーム実行するやつや・・goとかもそうよね。
@@ -663,26 +722,33 @@ function brakeAccellBehavior(param){
     }else{
       _bullet.speed += param.accelleration;
     }
+    _bullet.velocityUpdate();
   }
 }
-
-// ホーミング(一定フレームおきにこっち方向に進路を合わせる感じ)
-// しきい値を超えると直進(デフォは60)
-// refleshSpan, threshold, margin
 
 // ホーミングの仕様を変えたい。徐々に角度がこっちを向くように変化していく、具体的には
 // 1°ずつとか、0.5°ずつとかそんな風に。2°ずつとか。今の仕様だと180°いきなりがちゃん！って感じだから。
 // そこをね・・あと、ある程度それやったらもう角度変えないとかそういう感じにするのもあり。
 // そういうホーミングをレイドと組み合わせると強力なショットに（以下略）
+
+// ホーミング。徐々にこちらに方向を揃えてくる。
+// rotationSpeed(1フレーム当たりの回転角の上限), threshold(角度変化が行われる範囲).
 function homingBehavior(param){
-  const margin = (param.hasOwnProperty("margin") ? param.margin : 0);
-  const threshold = (param.hasOwnProperty("threshold") ? param.threshold : 60);
-  return (_bullet) => {
-    const fc = _bullet.properFrameCount;
-    if(fc % param.refleshSpan === 0 && fc < threshold){
-      _bullet.direction = getPlayerDirection(_bullet.position, margin);
-      _bullet.velocityUpdate();
+  const {rotationSpeed, threshold} = param;
+  return (unit) => {
+    if(unit.properFrameCount > threshold){ return; }
+    const targetDir = getPlayerDirection(unit.position);
+    const currentDir = unit.direction;
+    if(directionDist(targetDir, currentDir) < rotationSpeed){
+      unit.direction = targetDir;
+    }else{
+      if(directionDist(targetDir, currentDir + rotationSpeed) < directionDist(targetDir, currentDir)){
+        unit.direction += rotationSpeed;
+      }else{
+        unit.direction -= rotationSpeed;
+      }
     }
+    unit.velocityUpdate();
   }
 }
 
@@ -1070,14 +1136,9 @@ function interpretCommand(data, command, index){
   let result = {};
   const _type = getTopKey(command); // 最初のキーがそのままtypeになる。
   result.type = _type;
-  if(["speed", "direction", "shotSpeed", "shotDirection"].includes(_type)){
+  if(["speed", "direction", "shotSpeed", "shotDirection", "shotDelay"].includes(_type)){
     result.mode = command[_type][0]; // "set" or "add" or "mirror" or etc...
     result[_type + "Change"] = command[_type][1]; // 3とか[2, 9]とか[1, 10, 1]
-    return result;
-  }
-  if(_type === "shotDelay"){
-    // {shotDelay:60}とか{shotDelay:0}みたいな。
-    result.delayCount = command.shotDelay;
     return result;
   }
   if(["behavior", "shotBehavior"].includes(_type)){
@@ -1126,9 +1187,8 @@ function interpretCommand(data, command, index){
 }
 
 function execute(unit, command){
-  //console.log(command);
   const _type = command.type;
-  if(["speed", "direction", "shotSpeed", "shotDirection"].includes(_type)){
+  if(["speed", "direction", "shotSpeed", "shotDirection", "shotDelay"].includes(_type)){
     // speedとかshotDirectionとかいじる
     let newParameter = getNumber(command[_type + "Change"]);
     if(command.mode === "set"){
@@ -1136,7 +1196,7 @@ function execute(unit, command){
     }else if(command.mode === "add"){
       unit[_type] += newParameter;
     }else if(command.mode === "mirror"){
-      // 角度限定。角度をθ → 2a-θにする。speedでは使わないでね。
+      // 角度限定。角度をθ → 2a-θにする。speedやdelayでは使わないでね。
       unit[_type] = 2 * newParameter - unit[_type];
     }
     if(["speed", "direction"].includes(_type)){ unit.velocityUpdate(); }
