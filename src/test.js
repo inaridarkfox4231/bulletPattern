@@ -65,7 +65,7 @@ function setup(){
     short:{split2:[{wait:30}, {fire:"way2"}, {vanish:1}]},
     fireDef:{way2:{nway:{count:2, interval:30}}}
   }
-  // FALさんの分裂
+  // FALさんの分裂(7)
   let seed1_6 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
     action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
@@ -77,9 +77,102 @@ function setup(){
     short:{split2:[{wait:20}, {fire:"way2"}, {vanish:1}]},
     fireDef:{radial7:{radial:{count:7}}, way2:{nway:{count:2, interval:120}}}
   }
+  // burstSweeping.(FALさんの4)
+  // 回転しながら弾をばらまく。
+  // これでいいでしょ。角速度2πだから2秒で1周する。12°ずつ方向変化、速度は2.
+  let seed1_7 = {
+    x:0.5, y:0.5, shotSpeed:2*Math.PI, shotDirection:0, shotBehavior:["circle"],
+    action:{
+      main:[{shotAction:["set", "sweep"]}, {fire:"rad2"}, {wait:INF}],
+      sweep:[{hide:true}, {shotSpeed:["set", 2]}, {shotDirection:["add", 12]}, {fire:"u"}, {wait:1}, {loop:INF, back:-2}]
+    },
+    fireDef:{u:{}, rad2:{formation:{type:"points", p:[[120, 0]]}, bend:90, radial:{count:2}}},
+    behaviorDef:{circle:["circular", {radius:120}]}
+  }
+  // 失われたパターン1
+  let seed2_1 = {
+    x:0.5, y:0.5, shotSpeed:1, shotDirection:90,
+    action:{
+      main:[{shotBehavior:["add", "lowAccell"]}, {shotDirection:["add", 4]}, "routine",
+            {shotBehavior:["add", "highAccell"]}, {shotDirection:["add", -4]}, "routine", {loop:INF, back:-1}]
+    },
+    short:{routine:[{fire:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}, {shotBehavior:["clear"]}]},
+    fireDef:{radial16:{radial:{count:16}}},
+    behaviorDef:{
+      lowAccell:["accellerate", {accelleration:0.05}],
+      highAccell:["accellerate", {accelleration:0.1}]
+    }
+  }
+  // lineのテスト(nwayと組み合わせる)
+  // さらにホーミングマシンガンを組み合わせて逃げ場のない感じに。
+  let seed2_2 = {
+    x:0.5, y:0.5,
+    action:{
+      main:[{shotSpeed:["set",2]}, {aim:0}, {fire:"line3_8_6"}, {wait:4},
+            {shotSpeed:["set", 5]}, {aim:10}, {fire:"u"}, {wait:4}, {loop:29,back:3}, {loop:INF,back:-1}]
+      },
+    fireDef:{u:{}, line3_8_6:{nway:{count:7, interval:5}, radial:{count:8}, line:{count:6,upSpeed:0.3}}}
+  }
+  // FALさんの1
+  let seed2_3 = {
+    x:0.5, y:0.5,
+    action:{
+      main:[{shotSpeed:["set", [3, 6]]}, {shotDirection:["set", [0, 360]]}, {fire:"u"},
+            {loop:2, back:-1}, {wait:1}, {loop:INF, back:-1}]
+    },
+    fireDef:{u:{}}
+  }
+  // FALさんの2
+  let seed2_4 = {
+    x:0.5, y:0.5, shotSpeed:2,
+    action:{
+      main:[{shotDirection:["set", [0, 360]]}, {fire:"fire"}, {wait:60}, {loop:INF, back:-1}]
+    },
+    fireDef:{fire:{radial:{count:16}, nway:{count:7, interval:2}}}
+  }
+  // FALさんの3
+  let seed2_5 = {
+    x:0.5, y:0.5, shotSpeed:2,
+    action:{
+      main:[{shotDirection:["add", 2]}, "attack", {shotDirection:["add", -2]}, "attack", {loop:INF, back:-1}]
+    },
+    short:{attack:[{fire:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}]},
+    fireDef:{radial16:{radial:{count:16}}}
+  }
+  // FALさんの5
+  // kindをcannonに指定すると複数のcannonを生成してそれぞれに挙動させることができる
+  let seed2_6 = {
+    x:0.5, y:0.3, shotSpeed:96*PI/180, shotDirection:90,
+    action:{
+      main:[{shotAction:["set", "cannon1"]}, {shotBehavior:["add", "circle"]}, {fire:"setCannon1"},
+            {shotBehavior:["clear"]}, {shotAction:["set", "cannon2"]}, {shotBehavior:["add", "circleInv"]},
+            {fire:"setCannon2"}, {vanish:1}
+           ],
+      cannon1:["cannonMain"], cannon2:[{wait:48}, "cannonMain"]
+    },
+    short:{cannonMain:[{shotSpeed:["set", 5]}, {aim:0}, {fire:"line7"}, {wait:4}, {loop:8, back:3},
+                       {wait:64}, {loop:INF, back:5}]},
+    fireDef:{setCannon1:{formation:{type:"points", p:[[48, 0]]}, bend:90, kind:"cannon"},
+             setCannon2:{formation:{type:"points", p:[[48, 0]]}, bend:-90, kind:"cannon"},
+             line7:{line:{count:7, upSpeed:0.3}}},
+    behaviorDef:{circle:["circular", {radius:96, clockwise:true}],
+                 circleInv:["circular", {radius:96, clockwise:false}]}
+  }
+  // FALさんの6.
+  // margin120であらぬ方向に3wayを発射して(interval45°)速さ5で30フレーム進んでから
+  // margin30でこっちに向かって・・んー。2フレームに1発、0.5ずつ速くしていって飛ばす感じ。(??)
+  let seed2_7 = {
+    x:0.5, y:0.3, shotSpeed:5,
+    action:{
+      main:[{aim:120}, {shotAction:["set", "burst"]}, {fire:"way3"}, {wait:30}, {loop:INF, back:-1}],
+      burst:[{wait:30}, {aim:10}, {shotAction:["set", "burst2"]}, {fire:"u"}, {vanish:1}],
+      burst2:[{shotSpeed:["add", 0.5]}, {fire:"u"}, {wait:2}, {loop:24, back:3}, {vanish:1}]
+    },
+    fireDef:{u:{}, way3:{nway:{count:3, interval:45}}}
+  }
 
   // どうする？？
-  let newPtn = parsePatternSeed(seed1_6);
+  let newPtn = parsePatternSeed(seed2_7);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -370,6 +463,7 @@ class Unit{
     this.actionIndex -= back; // 戻すのは最後。コードの可読性を上げるため。
   }
   draw(){
+    if(this.hide){ return; } // hide === trueのとき描画しない
     this.drawFunction(this);
   }
 }
@@ -606,7 +700,7 @@ function raidBehavior(param){
 
 // formationで速度の方向を円の接線方向にしてradiusで増やせばそれっぽくなるよ。
 // 円の接線方向に発射される弾丸を中心の周りに巻き付ける処理ですね。
-// radius, clockwise
+// radius, clockwise.
 function circularBehavior(param){
   if(!param.hasOwnProperty("clockwise")){ param.clockwise = true; }
   const clockwiseFactor = (param.clockwise ? 1 : -1);
@@ -739,7 +833,19 @@ function createRadial(param, ptnArray){
 
 // いわゆるline.
 // 速さを増しながら複数用意する感じ
-function createLine(param, ptnArray){ /* 工事中 */ }
+// countが弾ひとつからいくつ作るか、upSpeedはまんまの意味。
+function createLine(param, ptnArray){
+  let newArray = [];
+  ptnArray.forEach((ptn) => {
+    for(let i = 0; i < param.count; i++){
+      let obj = {};
+      Object.assign(obj, ptn);
+      obj.speed += i * param.upSpeed;
+      newArray.push(obj);
+    }
+  })
+  return newArray;
+}
 
 // この関数をたとえば4フレームに1回とかすることでいろいろ実現できるよって感じのあれ。
 // data.formation:{}フォーメーションを決める
@@ -786,6 +892,9 @@ function createFirePattern(data){
     if(data.hasOwnProperty("radial")){
       ptnArray = createRadial(data.radial, ptnArray); // とりあえずradial.
     }
+    if(data.hasOwnProperty("line")){
+      ptnArray = createLine(data.line, ptnArray); // なんかline.
+    }
     // この時点でこれ以上ptnは増えないのでdelayとbehaviorをまとめて設定する
     // 実行形式のpatternを作る。略形式じゃないやつ。あれにはfireとかいろいろ入ってるけど、
     // ここで作るのはそういうのが入ってない、完全版。
@@ -802,8 +911,10 @@ function createFirePattern(data){
       ptn.shotBehavior = {}; // デフォルト
       ptn.action = unit.shotAction; // 無くても[]が入るだけ
     })
+    // ここでdata.kindが未定義の場合は必然的に"bullet", "cannon"も指定できる。
+    if(!data.hasOwnProperty("kind")){ data.kind = "bullet"; }
     ptnArray.forEach((ptn) => {
-      createUnit(ptn, "bullet"); // 作るのは、bullet.
+      createUnit(ptn, data.kind); // 作るのは、基本的にbullet.
     })
     // お疲れさまでした。
   }
@@ -1008,6 +1119,10 @@ function interpretCommand(data, command, index){
   }
   if(_type === "aim"){ result.margin = command.aim; return result; } // 狙う際のマージン
   if(_type === "vanish"){ result.vanishDelay = command.vanish; return result; } // 消えるまでのディレイ
+  if(_type === "hide"){
+    // 隠れる. trueのとき見えなくする。falseで逆。
+    result.flag = command.hide; return result;
+  }
 }
 
 function execute(unit, command){
@@ -1081,14 +1196,20 @@ function execute(unit, command){
   }
   if(_type === "aim"){
     // marginの揺れ幅でエイムする。
-    unit.direction = getPlayerDirection(unit.position, command.margin);
+    unit.shotDirection = getPlayerDirection(unit.position, command.margin);
     unit.velocityUpdate();
     unit.actionIndex++;
-    return true; // ループを抜ける
+    return true; // ループは抜けない
   }
   if(_type === "vanish"){
     // vanishDelayまで何もしない、そのあと消える。デフォルトは1. {vanish:1}ですぐ消える。
     if(unit.loopCheck(command.vanishDelay)){ unit.vanishFlag = true; }
     return false; // ループを抜ける
+  }
+  if(_type === "hide"){
+    // 関数で分けて書きたいね・・
+    unit.hide = command.flag;
+    unit.actionIndex++;
+    return true; // ループは抜けない
   }
 }
