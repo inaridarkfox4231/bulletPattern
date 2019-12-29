@@ -212,10 +212,32 @@ function setup(){
     behaviorDef:{circ120:["circular", {radius:120}]}
   }
 
-  // FALさんの9, これは16個の方向に
+  // FALさんの9, これは16個の方向にとばしてそれに2wayさせてる、すぐに。
+  let seed2_11 = {
+    x:0.5, y:0.5, shotSpeed:4,
+    action:{
+      main:[{shotAction:["set", "way2"]}, {shotDirection:["add", 11.5]}, {fire:"radial16"}, {wait:120}, {loop:INF, back:-2}],
+      way2:[{wait:15}, {shotSpeed:["set", 2]}, {fire:"way2"}, {wait:4}, {loop:8, back:2}, {wait:INF}]
+    },
+    fireDef:{radial16:{radial:{count:16}}, way2:{nway:{count:2, interval:120}}}
+  }
+
+  // FALさんの10, lineをターゲットホーミングでlineしている。
+  // それっぽくなった。
+  let seed2_12 = {
+    x:0.5, y:0.4, shotSpeed:4,
+    action:{
+      main:[{shotAction:["set", "line10"]},
+            {aim:0}, {shotDirection:["add", [-105, -45]]}, {fire:"line12"}, {wait:45},
+            {aim:0}, {shotDirection:["add", [45, 105]]}, {fire:"line12"}, {wait:45}, {loop:INF, back:-2}],
+      line10:[{wait:15}, {shotSpeed:["set", 2]}, {aim:0}, {fire:"line10"}, {vanish:1}]
+    },
+    fireDef:{line12:{line:{count:12, upSpeed:1}}, line10:{line:{count:10, upSpeed:0.5}}}
+  }
+  // FALさんの11作ろう。
 
   // どうする？？
-  let newPtn = parsePatternSeed(seed2_10);
+  let newPtn = parsePatternSeed(seed2_12);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
