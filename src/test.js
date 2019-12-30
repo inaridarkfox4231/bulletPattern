@@ -224,13 +224,15 @@ function setup(){
 
   // FALさんの10, lineをターゲットホーミングでlineしている。
   // それっぽくなった。
+  // setのところを30フレームかけて1にする処理にしたらそれっぽくなった。
+  // スピードが1になった直後に流れていく感じ。
   let seed2_12 = {
-    x:0.5, y:0.4, shotSpeed:4,
+    x:0.5, y:0.3, shotSpeed:4,
     action:{
-      main:[{shotAction:["set", "line10"]},
+      main:[{shotAction:["set", "line12"]},
             {aim:0}, {shotDirection:["add", [-105, -45]]}, {fire:"line12"}, {wait:45},
             {aim:0}, {shotDirection:["add", [45, 105]]}, {fire:"line12"}, {wait:45}, {loop:INF, back:-2}],
-      line10:[{wait:15}, {shotSpeed:["set", 2]}, {aim:0}, {fire:"line10"}, {vanish:1}]
+      line12:[{speed:["set", 1, 30]}, {shotSpeed:["set", 4]}, {aim:0}, {fire:"line10"}, {vanish:1}]
     },
     fireDef:{line12:{line:{count:12, upSpeed:1}}, line10:{line:{count:10, upSpeed:0.5}}}
   }
@@ -254,6 +256,7 @@ function setup(){
   // 3つおきに入れ替わる形で1.5°ずつ, 1.5 * 6 = 9で40サイクル。これが90フレームおき。
   // できれば色も変えたいね
   // できたけど洗練させたいな。
+  // set 3 30 set 2 30にしたら滑らかさが増した（気がする）
   let seed3_2 = {
     x:0.5, y:0.25,
     action:{
@@ -265,8 +268,8 @@ function setup(){
               {shotAction:["set", "decel_3"]}, {fire:"u"}, {shotDirection:["add", 1.5]}, {loop:3, back:2},
               {shotAction:["set", "decel_2"]}, {fire:"u"}, {shotDirection:["add", 1.5]}, {loop:3, back:2},
               {loop:40, back:8}, {wait:90}, {loop:INF, back:-3}],
-      decel_3:[{wait:60}, {speed:["set", 3]}, {wait:INF}],
-      decel_2:[{wait:60}, {speed:["set", 2]}, {wait:INF}]
+      decel_3:[{wait:60}, {speed:["set", 3, 30]}, {wait:INF}],
+      decel_2:[{wait:60}, {speed:["set", 2, 30]}, {wait:INF}]
     },
     short:{rad_24:[{fire:"radial_24"}, {wait:6}, {loop:2, back:2}, {wait:120}]},
     fireDef:{radial_24:{radial:{count:24}}},
@@ -280,19 +283,21 @@ function setup(){
   // これ書いたら洗練させる作業に入るしpatternチェンジも実装したい。
   // set[1, 30]は30フレームかけて1にするとかそういう意味？
   // accellerateでterminalSpeed実装した.
+  // delayってactionのwaitじゃん・・まあ、とにかく。
+  // できました。いちいちwait:INFって書くのばかばかしいから、
+  // actionの終わりに来たら自動的にスルーするように仕向けるか。
   let seed3_3 = {
     x:0.5, y:0.3, shotSpeed:8,
     action:{
       main:[{shotAction:["set", "sub"]}, {shotDirection:["set", [0, 360]]}, {fire:""}, {wait:90},
             {loop:INF, back:-2}],
-      sub:[{speed:["add", -7/30]}, {wait:1}, {loop:30, back:2}, {shotAction:["set", "trap"]},
+      sub:[{speed:["set", 1, 30]}, {shotAction:["set", "trap"]},
            {shotSpeed:["set", 12]}, {aim:0}, {shotDirection:["add", [-30, 30]]}, {fire:""},
            {vanish:1}],
-      trap:[{hide:true}, {shotDelay:["set", 60]}, {shotSpeed:["set", 0]},
-            {shotBehavior:["add", "accell_2"]},
-            {shotDirection:["add", 20]}, {fire:""}, {wait:1}, {loop:INF, back:3}]
+      trap:[{hide:true}, {shotSpeed:["set", 0.001]}, {shotAction:["set", "last"]},
+            {shotDirection:["add", 20]}, {fire:""}, {wait:1}, {loop:INF, back:3}],
+      last:[{wait:60}, {speed:["set", 2, 60]}, {wait:INF}]
     },
-    behaviorDef:{accell_2:["accellerate", {accelleration:2/60, terminalSpeed:2}]}
   }
 
   // 速度反転のテスト.
@@ -389,20 +394,22 @@ function setup(){
     }
   }
   // FALさんの7.(メソッドを用いてやり直し)
+  // 出来たと思う。多分本家のあっちの方が速いね・・48→24にするとかしないと似ない気がする。まあいいけど。
   let seed4_2 = {
-    x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
+    x:0.5, y:0.3, shotSpeed:6, shotDirection:90,
     action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
-                  {wait:32}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
+                  {wait:48}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
             split2_0:[{shotAction:["set", "split2_1"]}, "split2"],
             split2_1:[{shotAction:["set", "split2_2"]}, "split2"],
-            split2_2:["split2"]
+            split2_2:[{shotAction:["set", "last"]}, "split2"],
+            last:[{speed:["set", 3, 30]}, {wait:INF}]
            },
-    short:{split2:[{wait:20}, {fire:"way2"}, {vanish:1}]},
+    short:{split2:[{speed:["set", 1, 30]}, {shotSpeed:["set", 6]}, {fire:"way2"}, {vanish:1}]},
     fireDef:{radial7:{radial:{count:7}}, way2:{nway:{count:2, interval:120}}}
   }
 
   // どうする？？
-  let newPtn = parsePatternSeed(seed4_2);
+  let newPtn = parsePatternSeed(seed3_3);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
