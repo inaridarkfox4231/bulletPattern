@@ -364,8 +364,7 @@ function setup(){
       way8_2:[{shotDirection:["add", 90]}, "way8routine"],
       way8_3:[{shotDirection:["add", 180]}, "way8routine"],
       way8_4:[{shotDirection:["add", 270]}, "way8routine"],
-      sub:[{speed:["add", -1/10]}, {wait:1}, {loop:30, back:2},
-           {speed:["add", 1/60]}, {direction:["add", 210/60]}, {wait:1}, {loop:60, back:3}, {wait:INF}]
+      sub:[{speed:["set", 1, 30]}, {direction:["add", 210, 60]}, {speed:["set", 2, 60]}]
     },
     short:{way8routine:[{hide:true}, {shotAction:["set", "sub"]}, {shotSpeed:["set", 4]},
                         {fire:"way8"}, {wait:240}, {loop:INF, back:2}],
@@ -377,6 +376,8 @@ function setup(){
     },
     behaviorDef:{circ:["circular", {radius:80}]}
   };
+  // できたよー
+  // 最後の所は多分、30フレームで1にしたあと60フレームで回転させて最後に60フレームで2に加速して直進させてる。
 
   // 新しいset,addメソッドのテスト。
   let seed4_1 = {
@@ -404,8 +405,21 @@ function setup(){
     fireDef:{radial7:{radial:{count:7}}, way2:{nway:{count:2, interval:120}}}
   };
 
+  // FALさんの15.
+  let seed4_3 = {
+    x:0.5, y:0.3,
+    action:{
+      main:[{shotAction:["set", "fire15"]},
+            {shotSpeed:["set", [6, 11]]}, {shotDirection:["set", [45, 135]]}, {fire:""}, {wait:40},
+            {shotSpeed:["set", [6, 11]]}, {shotDirection:["set", [225, 315]]}, {fire:""}, {wait:40},
+            {loop:INF, back:-2}],
+      fire15:[{speed:["set", 1, 30]}, {shotSpeed:["set", 8]}, {aim:5}, {fire:"way5"}, {vanish:1}]
+    },
+    fireDef:{way5:{nway:{count:5, interval:30}}}
+  }
+
   // どうする？？
-  let newPtn = parsePatternSeed(seed3_3);
+  let newPtn = parsePatternSeed(seed4_3);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -1168,6 +1182,10 @@ function createFirePattern(data){
       ptn.direction = unit.shotDirection + (data.hasOwnProperty("bend") ? data.bend : 0);
       // たとえば90°ずつ曲げるとか, -90°ずつ曲げるとか。30°とかね。
     })
+
+    // このタイミングでunitのshotSpeedなどに指定があるなら一斉に適用する。でなければデフォルト値を使う。
+    // ...あれ？
+
     // nwayとかradialとかする(data.decorateに情報が入っている)
     if(data.hasOwnProperty("nway")){
       ptnArray = createNWay(data.nway, ptnArray); // とりあえずnway.
@@ -1190,6 +1208,7 @@ function createFirePattern(data){
       // あとでObject.values使ってあれにする。
       ptn.shotSpeed = ptn.speed; // 基本、同じ速さ。
       ptn.shotDirection = ptn.direction; // 基本、飛んでく方向だろうと。
+      // ↑まずいよねぇ・・
       ptn.shotDelay = 0; // デフォルト
       ptn.shotBehavior = {}; // デフォルト
       ptn.action = unit.shotAction; // 無くても[]が入るだけ
