@@ -66,7 +66,7 @@ function setup(){
     short:{split2:[{wait:30}, {fire:"way2"}, {vanish:1}]},
     fireDef:{way2:{nway:{count:2, interval:30}}}
   }
-  // FALさんの分裂(7)
+  // FALさんの7.
   let seed1_6 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
     action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
@@ -377,8 +377,32 @@ function setup(){
     behaviorDef:{circ:["circular", {radius:80}]}
   }
 
+  // 新しいset,addメソッドのテスト。
+  let seed4_1 = {
+    x:0, y:0.2, speed:4, direction:0, shotDirection:90, shotSpeed:10,
+    action:{
+      main:[{shotAction:["set", "dec1"]},
+            {fire:""}, {wait:3}, {loop:30, back:2},
+            {wait:30}, // やめなさい
+            {direction:["mirror", 90]}, {loop:INF, back:-2}],
+      dec1:[{speed:["set", 1, 30]}, {wait:INF}]
+    }
+  }
+  // FALさんの7.(メソッドを用いてやり直し)
+  let seed4_2 = {
+    x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
+    action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
+                  {wait:32}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
+            split2_0:[{shotAction:["set", "split2_1"]}, "split2"],
+            split2_1:[{shotAction:["set", "split2_2"]}, "split2"],
+            split2_2:["split2"]
+           },
+    short:{split2:[{wait:20}, {fire:"way2"}, {vanish:1}]},
+    fireDef:{radial7:{radial:{count:7}}, way2:{nway:{count:2, interval:120}}}
+  }
+
   // どうする？？
-  let newPtn = parsePatternSeed(seed3_7);
+  let newPtn = parsePatternSeed(seed4_2);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -661,7 +685,10 @@ class Unit{
     this.properFrameCount++;
   }
   getLoopCount(){
-    // ループ内で何かしら処理するときに使う。基本1, 2, 3, ..., limit-1, limitの値が使われる。
+    // ループ内で何かしら処理するときに使う。基本0, 1, 2, ..., limit-1の値が使われる。
+    // カウントを増やす前に使われるってこと。
+    // 必要なら0を追加する処理はこっちにも書く（使われない場合もあるけどね）
+    if(this.loopCounterIndex === this.loopCounter.length){ this.loopCounter.push(0); }
     return this.loopCounter[this.loopCounterIndex];
   }
   loopCheck(limit){
@@ -1386,19 +1413,31 @@ function execute(unit, command){
     // 次にインデックスを増やすかどうかはプロパティが無ければ増やし、
     // ある場合はアレがtrueを返せば増やす。
     const newParameter = getNumber(command[_type + "Change"]);
+    const hasCount = command.hasOwnProperty("count"); // countを持っているかどうか
     // ループを抜けないかどうか
-    const loopAdvanceFlag = (command.hasOwnProperty("count") ? false : true);
-    // インデックスを増やすかどうか（countがあるならカウント進める）
-    const indexAdvanceFlag = (command.hasOwnProperty("count") ? unit.loopCheck(command.count) : true);
+    const loopAdvanceFlag = (hasCount ? false : true);
     if(command.mode === "set"){
-      unit[_type] = newParameter;
+      if(hasCount){
+        const cc = unit.getLoopCount();
+        // cc(currentLoopCount)から目標値との割合を計算する感じ.
+        unit[_type] = map(cc + 1, cc, command.count, unit[_type], newParameter);
+      }else{
+        unit[_type] = newParameter; // ターンを消費しないで普通にセットする
+      }
     }else if(command.mode === "add"){
-      unit[_type] += newParameter;
+      if(hasCount){
+        unit[_type] += newParameter / command.count; // 単に割り算の結果を足すだけ。
+      }else{
+        unit[_type] += newParameter; // ターンを消費しないで普通に足す
+      }
     }else if(command.mode === "mirror"){
       // 角度限定。角度をθ → 2a-θにする。speedやdelayでは使わないでね。
       unit[_type] = 2 * newParameter - unit[_type];
     }
     if(["speed", "direction"].includes(_type)){ unit.velocityUpdate(); }
+    // インデックスを増やすかどうか（countがあるならカウント進める）
+    // countがある場合は処理が終了している時に限り進める感じ。
+    const indexAdvanceFlag = (hasCount ? unit.loopCheck(command.count) : true);
     if(indexAdvanceFlag){ unit.actionIndex++; }
     return loopAdvanceFlag; // フラグによる
   }
