@@ -279,7 +279,7 @@ function setup(){
   // FALさんの12
   // これ書いたら洗練させる作業に入るしpatternチェンジも実装したい。
   // set[1, 30]は30フレームかけて1にするとかそういう意味？
-  // accellerateでterminalSpeed実装した
+  // accellerateでterminalSpeed実装した.
   let seed3_3 = {
     x:0.5, y:0.3, shotSpeed:8,
     action:{
@@ -295,8 +295,90 @@ function setup(){
     behaviorDef:{accell_2:["accellerate", {accelleration:2/60, terminalSpeed:2}]}
   }
 
+  // 速度反転のテスト.
+  // 上向きにぽーんと出た弾丸が逆方向に落ちてくるイメージ。まあどうでもいい・・。
+  // 描画の所でspeedが負の時に逆向きに描画するようにしてみた。とりあえず応急処置って感じで。
+  // 実際の所加速度ってベクトルだからね・・スカラーで扱うのはどうしたって無理がある。
+  // 加速だって本来はベクトルの足し算をやっているので・・そしてそれは座標ベースでないとしっくりこない。
+  // 今って完全に極座標ベースでやってるでしょ、それってベクトルの足し算と相性最悪だからどうしようもないんよ。
+  // ------- でも、極座標ベースの可能性を信じたい。もちろん、ね。 ------- //
+  let seed3_4 = {
+    x:0.5, y:0.5, shotSpeed:4, shotDirection:-90, shotBehavior:["accell"],
+    action:{
+      main:[{fire:""}, {wait:30}, {loop:INF, back:2}]
+    },
+    behaviorDef:{accell:["accellerate", {accelleration:-0.1}]}
+  }
+
+  // decelerationBehaviorを一定の割合で減らせるように新しくした.
+  // さらに・・これやばいね。。
+  let seed3_5 = {
+    x:0.5, y:0.3, shotSpeed:4, shotDirection:90,
+    action:{
+      main:[{aim:0}, {shotBehavior:["add", "decel_3"]}, {fire:"burst"}, {shotDirection:["add", 4.5]},
+            {shotBehavior:["clear"]}, {shotBehavior:["add", "decel_2"]}, {fire:"burst"}, {shotBehavior:["clear"]},
+            {shotDirection:["add", -60]}, {fire:""}, {shotDirection:["add", 8]}, {wait:2}, {loop:15, back:3},
+            {wait:15}, {fire:""}, {shotDirection:["add", -8]}, {wait:2}, {loop:15, back:3}, {wait:15},
+            {shotBehavior:["clear"]}, {loop:INF, back:-1}]
+    },
+    fireDef:{burst:{radial:{count:40}, nway:{count:3, interval:1.5}}},
+    behaviorDef:{
+      decel_2:["decelerate", {deceleration:0.05, terminalSpeed:2}],
+      decel_3:["decelerate", {deceleration:0.05, terminalSpeed:3}]
+    }
+  }
+  // FALさんの13. ベアリングからの・・機銃掃射？アーミーくさくなってきた感。
+  // すげぇ。普通にradial_4でいけるんだ。
+  // 360フレームで1周するように調整。
+  let seed3_6 = {
+    x:0.5, y:0.3, shotSpeed:2*PI/3, shotDirection:0, shotBehavior:["circ3"],
+    action:{
+      main:[{shotAction:["set", "barricade"]}, {fire:"radgun3"}, {wait:INF}],
+      barricade:[{hide:true}, {shotSpeed:["set", 10]}, {fire:"rad4"}, {wait:1}, {loop:INF, back:2}]
+    },
+    fireDef:{
+      radgun3:{formation:{type:"points", p:[[120, 0]]}, bend:90, radial:{count:3}},
+      rad4:{radial:{count:4}}
+    },
+    behaviorDef:{circ3:["circular", {radius:120}]}
+  }
+  // FALさんの14やりたいけど準備が足りないかも。
+  // waitの変種でsetとadd使うやつ・・んー。引数が2つ以上で配列でない時そういう処理にしてもいいかな・・
+  // って気がする。そうしたいね。どうしようね。先にそっち？
+  // 周囲80πx2で160πだから240で割って・・240フレームで1周するように調整。
+  // これ、順繰りにshotDirectionが90°ずつずれてる・・・・どうしよ。異なるわけね。まあでも・・んー。
+  // 仕方ないので8個ずつまとめてそれぞれ90°ずつ射出方向を変える荒業で解決しました。でも、
+  // なげぇ・・actionも変数導入して・・もうちょっとパースの所を洗練させないとだめだこりゃ。
+  // たとえばsubの命令、これあそこをあれにすれば4つでいける。
+  // actionは変数導入すれば1行で済むし。
+  // もしくは・・今、撃ちだしたあれのshotSpeedやshotDirectionが追従で決まってるからそこをいじるとか。
+  let seed3_7 = {
+    x:0.5, y:0.3, shotSpeed:2*PI/3, shotDirection:0, shotBehavior:["circ"],
+    action:{
+      main:[{shotAction:["set", "way8_1"]}, "revolveFire",
+            {shotAction:["set", "way8_2"]}, "revolveFire",
+            {shotAction:["set", "way8_3"]}, "revolveFire",
+            {shotAction:["set", "way8_4"]}, "revolveFire", {wait:INF}],
+      way8_1:[{shotDirection:["add", 0]}, "way8routine"],
+      way8_2:[{shotDirection:["add", 90]}, "way8routine"],
+      way8_3:[{shotDirection:["add", 180]}, "way8routine"],
+      way8_4:[{shotDirection:["add", 270]}, "way8routine"],
+      sub:[{speed:["add", -1/10]}, {wait:1}, {loop:30, back:2},
+           {speed:["add", 1/60]}, {direction:["add", 210/60]}, {wait:1}, {loop:60, back:3}, {wait:INF}]
+    },
+    short:{way8routine:[{hide:true}, {shotAction:["set", "sub"]}, {shotSpeed:["set", 4]},
+                        {fire:"way8"}, {wait:240}, {loop:INF, back:2}],
+           revolveFire:[{shotDirection:["add", 22.5]}, {fire:"radgun8"}]
+    },
+    fireDef:{
+      radgun8:{formation:{type:"points", p:[[80, 0]]}, bend:90, radial:{count:8}},
+      way8:{nway:{count:8, interval:12}}
+    },
+    behaviorDef:{circ:["circular", {radius:80}]}
+  }
+
   // どうする？？
-  let newPtn = parsePatternSeed(seed3_3);
+  let newPtn = parsePatternSeed(seed3_7);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -609,14 +691,19 @@ class Unit{
 // もっと形増やしたい。剣とか槍とか手裏剣とか。3つ4つの三角形や四角形がくるくるしてるのとか面白いかも。
 // で、色とは別にすれば描画の負担が減るばかりかさらにバリエーションが増えて一石二鳥。
 
+// 一般的な三角形。drawWedgeの方が適切だからそのうちそうしたい。
+// drawSpearとかdrawSwordとかdrawShrikenとかと差別化したい。全部bulletなので・・・
 function drawBullet(bullet){
   // とりあえず三角形だけど別のバージョンも考えたい、あと色とか変えたいな。
   const {x, y} = bullet.position;
-  const c = cos(bullet.direction);
-  const s = sin(bullet.direction);
+  const direction = (bullet.speed > 0 ? bullet.direction : bullet.direction + 180);
+  const c = cos(direction);
+  const s = sin(direction);
   triangle(x + 6 * c, y + 6 * s, x - 6 * c + 3 * s, y - 6 * s - 3 * c, x - 6 * c - 3 * s, y - 6 * s + 3 * c);
 }
 
+// 一般的なCannon.これもdrawSquareの方が適切だからいずれそうしたい。
+// drawTriangleとかdrawPentagonとかdrawCross(十字架)とかいろいろ考えたい感じ。
 function drawCannon(cannon){
   // directionの方向に正方形のひとつの頂点が来る感じでお願い
   // やっぱrotationAngle復活
@@ -791,12 +878,16 @@ function accellerateBehavior(param){
 }
 
 // 一定時間減速
-// friction, threshold, deceleration, terminalSpeed.
-// frictionがある場合は掛け算、thresholdがある場合はdecelerationで減速する。
+// friction, deceleration, terminalSpeed.
+// frictionがある場合は掛け算、decelerationがある場合はその値で減速する。
 function decelerateBehavior(param){
   return (_bullet) => {
     if(_bullet.speed > param.terminalSpeed){
-      _bullet.speed *= (1 - param.friction);
+      if(param.hasOwnProperty("friction")){
+        _bullet.speed *= (1 - param.friction);
+      }else{
+        _bullet.speed -= param.deceleration;
+      }
       _bullet.velocityUpdate();
     }
   }
