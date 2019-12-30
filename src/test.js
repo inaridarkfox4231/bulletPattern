@@ -660,6 +660,10 @@ class Unit{
     // カウントの進行
     this.properFrameCount++;
   }
+  getLoopCount(){
+    // ループ内で何かしら処理するときに使う。基本1, 2, 3, ..., limit-1, limitの値が使われる。
+    return this.loopCounter[this.loopCounterIndex];
+  }
   loopCheck(limit){
     // 該当するloopCounterを増やしてlimitに達するならインデックスを先に進める。
     if(this.loopCounterIndex === this.loopCounter.length){ this.loopCounter.push(0); }
@@ -671,6 +675,7 @@ class Unit{
   loopBack(back){
     // actionIndexをback回だけ戻す。countプロパティを持つcommandにさしかかるたびに
     // loopCounterIndexを1つ戻してそこを0に置き換える。
+    // countプロパティを持つコマンドは滞留コマンド(stay)と呼ばれる。（名前つけたかっただけ）
     for(let i = 1; i <= back; i++){
       const command = this.action[this.actionIndex - i];
       if(command.hasOwnProperty("count")){
@@ -1319,6 +1324,9 @@ function interpretCommand(data, command, index){
   if(["speed", "direction", "shotSpeed", "shotDirection", "shotDelay"].includes(_type)){
     result.mode = command[_type][0]; // "set" or "add" or "mirror" or etc...
     result[_type + "Change"] = command[_type][1]; // 3とか[2, 9]とか[1, 10, 1]
+    // 長さが3の場合はcountを設定する。この場合、waitの変種となる。
+    if(command[_type].length > 2){ result.count = command[_type][2]; }
+    // set:count数でその値になる. add:count数でその値だけ足す。
     return result;
   }
   if(["behavior", "shotBehavior"].includes(_type)){
@@ -1373,7 +1381,15 @@ function execute(unit, command){
   const _type = command.type;
   if(["speed", "direction", "shotSpeed", "shotDirection", "shotDelay"].includes(_type)){
     // speedとかshotDirectionとかいじる
-    let newParameter = getNumber(command[_type + "Change"]);
+    // 第2引数（3番目)がある場合。
+    // まずループを抜けるかどうかはプロパティの有無で純粋に決まる。プロパティが無ければ抜けないで進む(true)。
+    // 次にインデックスを増やすかどうかはプロパティが無ければ増やし、
+    // ある場合はアレがtrueを返せば増やす。
+    const newParameter = getNumber(command[_type + "Change"]);
+    // ループを抜けないかどうか
+    const loopAdvanceFlag = (command.hasOwnProperty("count") ? false : true);
+    // インデックスを増やすかどうか（countがあるならカウント進める）
+    const indexAdvanceFlag = (command.hasOwnProperty("count") ? unit.loopCheck(command.count) : true);
     if(command.mode === "set"){
       unit[_type] = newParameter;
     }else if(command.mode === "add"){
@@ -1383,8 +1399,8 @@ function execute(unit, command){
       unit[_type] = 2 * newParameter - unit[_type];
     }
     if(["speed", "direction"].includes(_type)){ unit.velocityUpdate(); }
-    unit.actionIndex++;
-    return true; // ループは抜けない
+    if(indexAdvanceFlag){ unit.actionIndex++; }
+    return loopAdvanceFlag; // フラグによる
   }
   if(_type === "shotDelay"){
     // shotDelayをいじる
