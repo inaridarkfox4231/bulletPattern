@@ -235,9 +235,43 @@ function setup(){
     fireDef:{line12:{line:{count:12, upSpeed:1}}, line10:{line:{count:10, upSpeed:0.5}}}
   }
   // FALさんの11作ろう。
+  // 手始めにスパイラル部分。
+  let seed3_1 = {
+    x:0.5, y:0.5, shotSpeed:1, shotDirection:0,
+    action:{
+      main:[{shotBehavior:["add", "spiral_1"]}, "rad_24", {shotBehavior:["clear"]},
+            {shotBehavior:["add", "spiral_1_Inv"]}, "rad_24", {shotBehavior:["clear"]}, {loop:INF, back:-1}],
+    },
+    short:{rad_24:[{fire:"radial_24"}, {wait:6}, {loop:2, back:2}, {wait:120}]},
+    fireDef:{radial_24:{radial:{count:24}}},
+    behaviorDef:{
+      spiral_1:["spiral", {radius:1, radiusIncrement:1}],
+      spiral_1_Inv:["spiral", {radius:1, radiusIncrement:1, clockwise:false}]
+    }
+  }
+
+  // FALさんの11. スパイラルは120フレームおき（回転方向チェンジ）、ラジアルは終端速度2と3が
+  // 3つおきに入れ替わる形で1.5°ずつ, 1.5 * 6 = 9で40サイクル。これが90フレームおき。
+  let seed3_2 = {
+    x:0.5, y:0.5,
+    action:{
+      main:[{shotAction:["set", "spiral"]}, {fire:"u"}, {shotAction:["set", "radial"]}, {fire:"u"}, {vanish:1}],
+      spiral:[{hide:true}, {shotSpeed:["set", 1]}, {shotDirection:["set", 0]},
+              {shotBehavior:["add", "spiral_1"]}, "rad_24", {shotBehavior:["clear"]},
+              {shotBehavior:["add", "spiral_1_Inv"]}, "rad_24", {shotBehavior:["clear"]}, {loop:INF, back:-1}],
+      radial:[{hide:true}, {shotSpeed:["set", 1]}, {shotDirection:["set", 90]},
+              {fire:"u"}, {wait:24}, {loop:INF, back:-1}]
+    },
+    short:{rad_24:[{fire:"radial_24"}, {wait:6}, {loop:2, back:2}, {wait:120}]},
+    fireDef:{radial_24:{radial:{count:24}}},
+    behaviorDef:{
+      spiral_1:["spiral", {radius:1, radiusIncrement:1}],
+      spiral_1_Inv:["spiral", {radius:1, radiusIncrement:1, clockwise:false}]
+    }
+  }
 
   // どうする？？
-  let newPtn = parsePatternSeed(seed2_12);
+  let newPtn = parsePatternSeed(seed3_2);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -1173,7 +1207,10 @@ function interpretCommand(data, command, index){
     return result;
   }
   if(_type === "fire"){
-    result.fire = data.fire[command.fire]; // fire:名前, の名前を関数にするだけ。
+    // fire:名前, の名前を関数にするだけ。
+    // ライブラリに存在しない場合は自動的にデフォルトになる（書き忘れ対策）
+    if(data.fire[command.fire] === undefined){ result.fire = createFirePattern({}); }
+    else{ result.fire = data.fire[command.fire]; }
     return result;
   }
   // action.
