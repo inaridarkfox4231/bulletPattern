@@ -252,26 +252,51 @@ function setup(){
 
   // FALさんの11. スパイラルは120フレームおき（回転方向チェンジ）、ラジアルは終端速度2と3が
   // 3つおきに入れ替わる形で1.5°ずつ, 1.5 * 6 = 9で40サイクル。これが90フレームおき。
+  // できれば色も変えたいね
+  // できたけど洗練させたいな。
   let seed3_2 = {
-    x:0.5, y:0.5,
+    x:0.5, y:0.25,
     action:{
       main:[{shotAction:["set", "spiral"]}, {fire:"u"}, {shotAction:["set", "radial"]}, {fire:"u"}, {vanish:1}],
       spiral:[{hide:true}, {shotSpeed:["set", 1]}, {shotDirection:["set", 0]},
               {shotBehavior:["add", "spiral_1"]}, "rad_24", {shotBehavior:["clear"]},
               {shotBehavior:["add", "spiral_1_Inv"]}, "rad_24", {shotBehavior:["clear"]}, {loop:INF, back:-1}],
-      radial:[{hide:true}, {shotSpeed:["set", 1]}, {shotDirection:["set", 90]},
-              {fire:"u"}, {wait:24}, {loop:INF, back:-1}]
+      radial:[{hide:true}, {shotSpeed:["set", 4]}, {shotDirection:["set", 0]},
+              {shotAction:["set", "decel_3"]}, {fire:"u"}, {shotDirection:["add", 1.5]}, {loop:3, back:2},
+              {shotAction:["set", "decel_2"]}, {fire:"u"}, {shotDirection:["add", 1.5]}, {loop:3, back:2},
+              {loop:40, back:8}, {wait:90}, {loop:INF, back:-3}],
+      decel_3:[{wait:60}, {speed:["set", 3]}, {wait:INF}],
+      decel_2:[{wait:60}, {speed:["set", 2]}, {wait:INF}]
     },
     short:{rad_24:[{fire:"radial_24"}, {wait:6}, {loop:2, back:2}, {wait:120}]},
     fireDef:{radial_24:{radial:{count:24}}},
     behaviorDef:{
       spiral_1:["spiral", {radius:1, radiusIncrement:1}],
-      spiral_1_Inv:["spiral", {radius:1, radiusIncrement:1, clockwise:false}]
+      spiral_1_Inv:["spiral", {radius:1, radiusIncrement:1, clockwise:false}],
     }
   }
 
+  // FALさんの12
+  // これ書いたら洗練させる作業に入るしpatternチェンジも実装したい。
+  // set[1, 30]は30フレームかけて1にするとかそういう意味？
+  // accellerateでterminalSpeed実装した
+  let seed3_3 = {
+    x:0.5, y:0.3, shotSpeed:8,
+    action:{
+      main:[{shotAction:["set", "sub"]}, {shotDirection:["set", [0, 360]]}, {fire:""}, {wait:90},
+            {loop:INF, back:-2}],
+      sub:[{speed:["add", -7/30]}, {wait:1}, {loop:30, back:2}, {shotAction:["set", "trap"]},
+           {shotSpeed:["set", 12]}, {aim:0}, {shotDirection:["add", [-30, 30]]}, {fire:""},
+           {vanish:1}],
+      trap:[{hide:true}, {shotDelay:["set", 60]}, {shotSpeed:["set", 0]},
+            {shotBehavior:["add", "accell_2"]},
+            {shotDirection:["add", 20]}, {fire:""}, {wait:1}, {loop:INF, back:3}]
+    },
+    behaviorDef:{accell_2:["accellerate", {accelleration:2/60, terminalSpeed:2}]}
+  }
+
   // どうする？？
-  let newPtn = parsePatternSeed(seed3_2);
+  let newPtn = parsePatternSeed(seed3_3);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -542,7 +567,10 @@ class Unit{
         const command = this.action[this.actionIndex];
         continueFlag = execute(this, command); // flagがfalseを返すときに抜ける
         debug++; // デバッグモード
-        if(debug > 100){ console.log("INFINITE LOOP ERROR!!"); noLoop(); break; } // デバッグモード
+        if(debug > 1000){
+          console.log("INFINITE LOOP ERROR!!");
+          console.log(command, this.actionIndex);
+          noLoop(); break; } // デバッグモード
       }
     }
     // 回転する場合は回転角を更新
@@ -751,15 +779,20 @@ function goBehavior(_bullet){
 
 // 加速
 // accelleration
+// terminalSpeed用意しますね.(デフォはINF)
 function accellerateBehavior(param){
+  if(!param.hasOwnProperty("terminalSpeed")){ param.terminalSpeed = INF; }
   return (_bullet) => {
-    _bullet.speed += param.accelleration;
+    if(_bullet.speed < param.terminalSpeed){
+      _bullet.speed += param.accelleration;
+    }
     _bullet.velocityUpdate();
   }
 }
 
 // 一定時間減速
-// friction, terminalSpeed
+// friction, threshold, deceleration, terminalSpeed.
+// frictionがある場合は掛け算、thresholdがある場合はdecelerationで減速する。
 function decelerateBehavior(param){
   return (_bullet) => {
     if(_bullet.speed > param.terminalSpeed){
