@@ -34,27 +34,25 @@ function setup(){
   // 回転砲台
   let seed1_1 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
-    action:{main:[{shotDirection:["add", 5]}, {fire:"u"}, {wait:4}, {loop:INF, back:-1}]},
-    fireDef:{u:{}}
-  }
+    action:{main:[{shotDirection:["add", 5]}, {fire:""}, {wait:4}, {loop:INF, back:-1}]},
+  };
   // 双回転砲台
   let seed1_2 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
-    action:{main:[{shotDirection:["add", 5]}, {fire:"u"}, {shotDirection:["mirror", 90]},{fire:"u"},
+    action:{main:[{shotDirection:["add", 5]}, {fire:""}, {shotDirection:["mirror", 90]}, {fire:""},
                   {wait:4}, {shotDirection:["mirror", 90]}, {loop:INF, back:-1}]},
-    fireDef:{u:{}}
-  }
+  };
   // いったりきたりしながら下に向けて発射. ディレイをかけて。さらにアクセルをかけて。
   let seed1_3 = {
     x:0.2, y:0.2, speed:4, direction:0, shotSpeed:4, shotDirection:90, shotDelay:30, shotBehavior:["accell"],
-    action:{main:[{fire:"u"}, {wait:4}, {loop:16, back:2}, {wait:16}, {direction:["mirror", 90]}, {loop:INF, back:-1}]},
-    fireDef:{u:{}}, behaviorDef:{accell:["accellerate", {accelleration:0.2}]}
-  }
+    action:{main:[{fire:""}, {wait:4}, {loop:16, back:2}, {wait:16}, {direction:["mirror", 90]}, {loop:INF, back:-1}]},
+    behaviorDef:{accell:["accellerate", {accelleration:0.2}]}
+  };
   // 四角形に沿って移動（初めて作ったやつ）
   let seed1_4 = {
     x:0.2, y:0.2, speed:4, direction:0,
     action:{main:[{wait:50}, {direction:["add", 90]}, {loop:INF, back:-1}]}
-  }
+  };
   // 簡単な分裂
   let seed1_5 = {
     x:0.5, y:0.1, shotSpeed:4, shotDirection:90,
@@ -65,7 +63,7 @@ function setup(){
            },
     short:{split2:[{wait:30}, {fire:"way2"}, {vanish:1}]},
     fireDef:{way2:{nway:{count:2, interval:30}}}
-  }
+  };
   // FALさんの7.
   let seed1_6 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
@@ -77,7 +75,7 @@ function setup(){
            },
     short:{split2:[{wait:20}, {fire:"way2"}, {vanish:1}]},
     fireDef:{radial7:{radial:{count:7}}, way2:{nway:{count:2, interval:120}}}
-  }
+  };
   // burstSweeping.(FALさんの4)
   // 回転しながら弾をばらまく。
   // これでいいでしょ。角速度2πだから2秒で1周する。12°ずつ方向変化、速度は2.
@@ -85,11 +83,11 @@ function setup(){
     x:0.5, y:0.5, shotSpeed:2*Math.PI, shotDirection:0, shotBehavior:["circle"],
     action:{
       main:[{shotAction:["set", "sweep"]}, {fire:"rad2"}, {wait:INF}],
-      sweep:[{hide:true}, {shotSpeed:["set", 2]}, {shotDirection:["add", 12]}, {fire:"u"}, {wait:1}, {loop:INF, back:-2}]
+      sweep:[{hide:true}, {shotSpeed:["set", 2]}, {shotDirection:["add", 12]}, {fire:""}, {wait:1}, {loop:INF, back:-2}]
     },
-    fireDef:{u:{}, rad2:{formation:{type:"points", p:[[120, 0]]}, bend:90, radial:{count:2}}},
+    fireDef:{rad2:{formation:{type:"points", p:[[120, 0]]}, bend:90, radial:{count:2}}},
     behaviorDef:{circle:["circular", {radius:120}]}
-  }
+  };
   // 失われたパターン1
   let seed2_1 = {
     x:0.5, y:0.5, shotSpeed:1, shotDirection:90,
@@ -103,26 +101,25 @@ function setup(){
       lowAccell:["accellerate", {accelleration:0.05}],
       highAccell:["accellerate", {accelleration:0.1}]
     }
-  }
+  };
   // lineのテスト(nwayと組み合わせる)
   // さらにホーミングマシンガンを組み合わせて逃げ場のない感じに。
   let seed2_2 = {
     x:0.5, y:0.5,
     action:{
       main:[{shotSpeed:["set",2]}, {aim:0}, {fire:"line3_8_6"}, {wait:4},
-            {shotSpeed:["set", 5]}, {aim:10}, {fire:"u"}, {wait:4}, {loop:29,back:3}, {loop:INF,back:-1}]
+            {shotSpeed:["set", 5]}, {aim:10}, {fire:""}, {wait:4}, {loop:29,back:3}, {loop:INF,back:-1}]
       },
-    fireDef:{u:{}, line3_8_6:{nway:{count:7, interval:5}, radial:{count:8}, line:{count:6,upSpeed:0.3}}}
-  }
+    fireDef:{line3_8_6:{nway:{count:7, interval:5}, radial:{count:8}, line:{count:6,upSpeed:0.3}}}
+  };
   // FALさんの1
   let seed2_3 = {
     x:0.5, y:0.5,
     action:{
-      main:[{shotSpeed:["set", [3, 6]]}, {shotDirection:["set", [0, 360]]}, {fire:"u"},
+      main:[{shotSpeed:["set", [3, 6]]}, {shotDirection:["set", [0, 360]]}, {fire:""},
             {loop:2, back:-1}, {wait:1}, {loop:INF, back:-1}]
     },
-    fireDef:{u:{}}
-  }
+  };
   // FALさんの2
   let seed2_4 = {
     x:0.5, y:0.5, shotSpeed:2,
@@ -130,7 +127,7 @@ function setup(){
       main:[{shotDirection:["set", [0, 360]]}, {fire:"fire"}, {wait:60}, {loop:INF, back:-1}]
     },
     fireDef:{fire:{radial:{count:16}, nway:{count:7, interval:2}}}
-  }
+  };
   // FALさんの3
   let seed2_5 = {
     x:0.5, y:0.5, shotSpeed:2,
@@ -139,7 +136,7 @@ function setup(){
     },
     short:{attack:[{fire:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}]},
     fireDef:{radial16:{radial:{count:16}}}
-  }
+  };
   // FALさんの5
   // kindをcannonに指定すると複数のcannonを生成してそれぞれに挙動させることができる
   let seed2_6 = {
@@ -158,7 +155,7 @@ function setup(){
              line7:{line:{count:7, upSpeed:0.3}}},
     behaviorDef:{circle:["circular", {radius:96, clockwise:true}],
                  circleInv:["circular", {radius:96, clockwise:false}]}
-  }
+  };
   // FALさんの6.
   // margin120であらぬ方向に3wayを発射して(interval45°)速さ5で30フレーム進んでから
   // margin30でこっちに向かって・・んー。2フレームに1発、0.5ずつ速くしていって飛ばす感じ。(??)
@@ -167,21 +164,20 @@ function setup(){
     action:{
       main:[{aim:120}, {shotAction:["set", "burst"]}, {fire:"way3"}, {wait:30}, {loop:INF, back:-1}],
       burst:[{wait:30}, {aim:10}, {shotAction:["set", "burst2"]}, {fire:"u"}, {vanish:1}],
-      burst2:[{shotSpeed:["add", 0.5]}, {fire:"u"}, {wait:2}, {loop:24, back:3}, {vanish:1}]
+      burst2:[{shotSpeed:["add", 0.5]}, {fire:""}, {wait:2}, {loop:24, back:3}, {vanish:1}]
     },
-    fireDef:{u:{}, way3:{nway:{count:3, interval:45}}}
-  }
+    fireDef:{way3:{nway:{count:3, interval:45}}}
+  };
   // shotDelayが新しくなったんで使ってみる.
   // 直線状に弾丸を配置していっせいにばーーーーーーーん！
   let seed2_8 = {
     x:0.5, y:0.2, shotSpeed:4,
     action:{
-      main:[{aim:120}, {shotAction:["set", "sub1"]}, {fire:"u"}, {wait:30}, {loop:INF, back:-1}],
-      sub1:[{wait:30}, {aim:10}, {shotAction:["set", "trap"]}, {fire:"u"}, {vanish:1}],
-      trap:[{shotDelay:["set", 120]}, {shotDelay:["add", -3]}, {shotDirection:["add", 15]}, {fire:"u"}, {wait:3}, {loop:40, back:4}, {vanish:1}]
+      main:[{aim:120}, {shotAction:["set", "sub1"]}, {fire:""}, {wait:30}, {loop:INF, back:-1}],
+      sub1:[{wait:30}, {aim:10}, {shotAction:["set", "trap"]}, {fire:""}, {vanish:1}],
+      trap:[{shotDelay:["set", 120]}, {shotDelay:["add", -3]}, {shotDirection:["add", 15]}, {fire:""}, {wait:3}, {loop:40, back:4}, {vanish:1}]
     },
-    fireDef:{u:{}},
-  }
+  };
   // homingBehaviorが新しくなったので試してみる.
   // radial12と組み合わせる感じで。
   let seed2_9 = {
@@ -194,7 +190,7 @@ function setup(){
     fireDef:{radial12:{radial:{count:12}}},
     behaviorDef:{decele:["decelerate", {terminalSpeed:1, friction:0.05}],
                  hom1:["homing", {rotationSpeed:2, threshold:120}]}
-  }
+  };
   // FALさんの8, 多分だけど円周上をぐるぐるまわる16個の砲台が
   // 6フレームおきに120°間隔で2way発射を4回を16フレームおきにやってる？
   // とりま、16発回らせてみますか。
@@ -210,7 +206,7 @@ function setup(){
       way2:{nway:{count:2, interval:120}}
     },
     behaviorDef:{circ120:["circular", {radius:120}]}
-  }
+  };
 
   // FALさんの9, これは16個の方向にとばしてそれに2wayさせてる、すぐに。
   let seed2_11 = {
@@ -220,7 +216,7 @@ function setup(){
       way2:[{wait:15}, {shotSpeed:["set", 2]}, {fire:"way2"}, {wait:4}, {loop:8, back:2}, {wait:INF}]
     },
     fireDef:{radial16:{radial:{count:16}}, way2:{nway:{count:2, interval:120}}}
-  }
+  };
 
   // FALさんの10, lineをターゲットホーミングでlineしている。
   // それっぽくなった。
@@ -235,7 +231,7 @@ function setup(){
       line12:[{speed:["set", 1, 30]}, {shotSpeed:["set", 4]}, {aim:0}, {fire:"line10"}, {vanish:1}]
     },
     fireDef:{line12:{line:{count:12, upSpeed:1}}, line10:{line:{count:10, upSpeed:0.5}}}
-  }
+  };
   // FALさんの11作ろう。
   // 手始めにスパイラル部分。
   let seed3_1 = {
@@ -250,7 +246,7 @@ function setup(){
       spiral_1:["spiral", {radius:1, radiusIncrement:1}],
       spiral_1_Inv:["spiral", {radius:1, radiusIncrement:1, clockwise:false}]
     }
-  }
+  };
 
   // FALさんの11. スパイラルは120フレームおき（回転方向チェンジ）、ラジアルは終端速度2と3が
   // 3つおきに入れ替わる形で1.5°ずつ, 1.5 * 6 = 9で40サイクル。これが90フレームおき。
@@ -277,7 +273,7 @@ function setup(){
       spiral_1:["spiral", {radius:1, radiusIncrement:1}],
       spiral_1_Inv:["spiral", {radius:1, radiusIncrement:1, clockwise:false}],
     }
-  }
+  };
 
   // FALさんの12
   // これ書いたら洗練させる作業に入るしpatternチェンジも実装したい。
@@ -296,9 +292,9 @@ function setup(){
            {vanish:1}],
       trap:[{hide:true}, {shotSpeed:["set", 0.001]}, {shotAction:["set", "last"]},
             {shotDirection:["add", 20]}, {fire:""}, {wait:1}, {loop:INF, back:3}],
-      last:[{wait:60}, {speed:["set", 2, 60]}, {wait:INF}]
+      last:[{wait:60}, {speed:["set", 2, 60]}]
     },
-  }
+  }; // できた。wait:INFがなくてもエラー出ない。
 
   // 速度反転のテスト.
   // 上向きにぽーんと出た弾丸が逆方向に落ちてくるイメージ。まあどうでもいい・・。
@@ -313,7 +309,7 @@ function setup(){
       main:[{fire:""}, {wait:30}, {loop:INF, back:2}]
     },
     behaviorDef:{accell:["accellerate", {accelleration:-0.1}]}
-  }
+  };
 
   // decelerationBehaviorを一定の割合で減らせるように新しくした.
   // さらに・・これやばいね。。
@@ -331,7 +327,7 @@ function setup(){
       decel_2:["decelerate", {deceleration:0.05, terminalSpeed:2}],
       decel_3:["decelerate", {deceleration:0.05, terminalSpeed:3}]
     }
-  }
+  };
   // FALさんの13. ベアリングからの・・機銃掃射？アーミーくさくなってきた感。
   // すげぇ。普通にradial_4でいけるんだ。
   // 360フレームで1周するように調整。
@@ -346,7 +342,7 @@ function setup(){
       rad4:{radial:{count:4}}
     },
     behaviorDef:{circ3:["circular", {radius:120}]}
-  }
+  };
   // FALさんの14やりたいけど準備が足りないかも。
   // waitの変種でsetとadd使うやつ・・んー。引数が2つ以上で配列でない時そういう処理にしてもいいかな・・
   // って気がする。そうしたいね。どうしようね。先にそっち？
@@ -380,7 +376,7 @@ function setup(){
       way8:{nway:{count:8, interval:12}}
     },
     behaviorDef:{circ:["circular", {radius:80}]}
-  }
+  };
 
   // 新しいset,addメソッドのテスト。
   let seed4_1 = {
@@ -392,7 +388,7 @@ function setup(){
             {direction:["mirror", 90]}, {loop:INF, back:-2}],
       dec1:[{speed:["set", 1, 30]}, {wait:INF}]
     }
-  }
+  };
   // FALさんの7.(メソッドを用いてやり直し)
   // 出来たと思う。多分本家のあっちの方が速いね・・48→24にするとかしないと似ない気がする。まあいいけど。
   let seed4_2 = {
@@ -406,7 +402,7 @@ function setup(){
            },
     short:{split2:[{speed:["set", 1, 30]}, {shotSpeed:["set", 6]}, {fire:"way2"}, {vanish:1}]},
     fireDef:{radial7:{radial:{count:7}}, way2:{nway:{count:2, interval:120}}}
-  }
+  };
 
   // どうする？？
   let newPtn = parsePatternSeed(seed3_3);
@@ -672,8 +668,8 @@ class Unit{
     })
     // デフォルトビヘイビア実行
     this.defaultBehavior.forEach((behavior) => { behavior(this); })
-    // アクションの実行
-    if(this.action.length > 0){
+    // アクションの実行（処理が終了しているときは
+    if(this.action.length > 0 && this.actionIndex < this.action.length){
       let debug = 0; // デバッグモード
       let continueFlag = true;
       while(continueFlag){
@@ -684,6 +680,8 @@ class Unit{
           console.log("INFINITE LOOP ERROR!!");
           console.log(command, this.actionIndex);
           noLoop(); break; } // デバッグモード
+        // actionの終わりに来たら勝手に抜ける。その後は永久にwaitになる（予定）
+        if(this.actionIndex === this.action.length){ break; }
       }
     }
     // 回転する場合は回転角を更新
