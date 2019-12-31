@@ -406,6 +406,9 @@ function setup(){
   };
 
   // FALさんの15.
+  // 今のままだとway5を発射した時のshotDirectionをlineに設定できない。工夫が必要。
+  // でもなぁ・・
+  // だめでした。way5を撃った瞬間にすべてのbulletのshotDirectionがそろわないとだめ。んー。
   let seed4_3 = {
     x:0.5, y:0.3,
     action:{
@@ -413,9 +416,13 @@ function setup(){
             {shotSpeed:["set", [6, 11]]}, {shotDirection:["set", [45, 135]]}, {fire:""}, {wait:40},
             {shotSpeed:["set", [6, 11]]}, {shotDirection:["set", [225, 315]]}, {fire:""}, {wait:40},
             {loop:INF, back:-2}],
-      fire15:[{speed:["set", 1, 30]}, {shotSpeed:["set", 8]}, {aim:5}, {fire:"way5"}, {vanish:1}]
+      fire15:[{shotAction:["set", "lineAim"]}, {speed:["set", 1, 30]}, {shotSpeed:["set", 8]}, {aim:5},
+              {fire:"way5"}, {vanish:1}],
+      lineAim:[{shotAction:["set", "last"]}, {speed:["set", 1, 45]}, {shotSpeed:["set", 1]}, {aim:0},
+              {fire:"line12"}, {vanish:1}],
+      last:[{wait:30}, {speed:["add", 5, 60]}]
     },
-    fireDef:{way5:{nway:{count:5, interval:30}}}
+    fireDef:{way5:{nway:{count:5, interval:30}}, line12:{line:{count:12, upSpeed:0.5}}}
   }
 
   // どうする？？

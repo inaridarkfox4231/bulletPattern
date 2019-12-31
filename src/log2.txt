@@ -777,3 +777,20 @@ FALさんの15, ごめん勘違い。単に速さと角度のランダム指定�
 指定が無ければ今まで通りデフォルト（speed, direction当てはめ）が行われる感じ。
 ------------- ルール --------------
 やり直し。こうしよう。
+デフォは同じ。だから、"follow"が基本。そうでない時は数を指定して、
+shotSpeedDiff:{nway:"follow", radial:"follow", line:"follow"}
+のfollowのところをたとえばnwayで0にすれば全部同じショットスピードになったりする感じにしよう。
+shotDirectionDiff:{radial:90}
+ってやるとshotDirectionのdiffが90になる。
+
+data.shotSpeed === ["follow"] ならデフォルト値は そのままの値。
+data.shotSpeed === ["absolute", 2] なら2で固定
+data.shotSpeed === ["relative", 3] ならfollowの値+3. マイナスも。
+directionも同様。指定が無ければ["follow"]になる。
+
+とりあえず差分バージョンだけ実装する。
+radial・・デフォルトはa,a+x,a+2x,...だけどこのxを可変にする。xのデフォルトは360/c.
+nway・・デフォルトはたとえばa-1.5x, a-0.5x, a+0.5x, a+1.5xみたいな。このxを可変にする。xのデフォルトはinterval.
+line・・デフォルトはスピードがs,s+x,s+2x,...でこのxは基本upSpeedだけどこれを可変にする。
+それぞれ角度やスピードで変えてない部分はデフォルトが0であるとみなして可変にする。
+可換性が問題になるけど数学的に保証されてるのでオッケー。
