@@ -409,6 +409,10 @@ function setup(){
   // 今のままだとway5を発射した時のshotDirectionをlineに設定できない。工夫が必要。
   // でもなぁ・・
   // だめでした。way5を撃った瞬間にすべてのbulletのshotDirectionがそろわないとだめ。んー。
+  // way5で各々の弾丸のshotDirectionがaim-0で揃うようにしてみた。
+  // これで合ってるだろ。nway発射時のaim-0と実際にline撃つときの位置のずれのせいで
+  // 完全なaim-0にならないっていう、ただそれだけの話だよね。
+  // どうでもいい話だけどaim-0してから5°ずらしてそのあとrelで戻すとdirectAimになる。
   let seed4_3 = {
     x:0.5, y:0.3,
     action:{
@@ -418,11 +422,12 @@ function setup(){
             {loop:INF, back:-2}],
       fire15:[{shotAction:["set", "lineAim"]}, {speed:["set", 1, 30]}, {shotSpeed:["set", 8]}, {aim:5},
               {fire:"way5"}, {vanish:1}],
-      lineAim:[{shotAction:["set", "last"]}, {speed:["set", 1, 45]}, {shotSpeed:["set", 1]}, {aim:0},
+      lineAim:[{shotAction:["set", "last"]}, {speed:["set", 1, 45]}, {shotSpeed:["set", 1]},
               {fire:"line12"}, {vanish:1}],
       last:[{wait:30}, {speed:["add", 5, 60]}]
     },
-    fireDef:{way5:{nway:{count:5, interval:30}}, line12:{line:{count:12, upSpeed:0.5}}}
+    fireDef:{way5:{shotDirOption:["aim", 0], nway:{count:5, interval:30, shotDirDiff:0}},
+             line12:{line:{count:12, upSpeed:0.5}}}
   }
 
   // どうする？？
@@ -1104,13 +1109,20 @@ function createNWay(param, ptnArray){
   // x, yは指定角度だけ回転させる、あとdirectionも。
   ptnArray.forEach((ptn) => {
     for(let i = 0; i < param.count; i++){
+      const shotDirDiff = (param.hasOwnProperty("shotDirDiff") ? param.shotDirDiff : param.interval);
+      const shotSpeedDiff = (param.hasOwnProperty("shotSpeedDiff") ? param.shotSpeedDiff : 0);
       const diffAngle = (i - (param.count - 1) / 2) * param.interval;
-      const {x, y, direction} = ptn;
-      let newPtn = {speed:ptn.speed};
-      newPtn.x = x * cos(diffAngle) - y * sin(diffAngle);
-      newPtn.y = y * cos(diffAngle) + x * sin(diffAngle);
-      newPtn.direction = direction + diffAngle;
-      newArray.push(newPtn);
+      let obj = {};
+      Object.assign(obj, ptn);
+      const {x, y, direction, shotSpeed, shotDirection} = ptn;
+      //let newPtn = {speed:ptn.speed};
+      obj.x = x * cos(diffAngle) - y * sin(diffAngle);
+      obj.y = y * cos(diffAngle) + x * sin(diffAngle);
+      obj.direction = direction + diffAngle;
+      // shotDirection, shotSpeedについて（デフォは追従）
+      obj.shotDirection = shotDirection + (i - (param.count - 1) / 2) * shotDirDiff;
+      obj.shotSpeed = shotSpeed + (i - (param.count - 1) / 2) * shotSpeedDiff;
+      newArray.push(obj);
     }
   })
   return newArray;
@@ -1123,13 +1135,19 @@ function createRadial(param, ptnArray){
   // diffAngleに360/param.countを使うだけ。
   ptnArray.forEach((ptn) => {
     for(let i = 0; i < param.count; i++){
+      const shotDirDiff = (param.hasOwnProperty("shotDirDiff") ? param.shotDirDiff : 360 / param.count);
+      const shotSpeedDiff = (param.hasOwnProperty("shotSpeedDiff") ? param.shotSpeedDiff : 0);
       const diffAngle = 360 * i / param.count;
-      const {x, y, direction} = ptn;
-      let newPtn = {speed:ptn.speed};
-      newPtn.x = x * cos(diffAngle) - y * sin(diffAngle);
-      newPtn.y = y * cos(diffAngle) + x * sin(diffAngle);
-      newPtn.direction = direction + diffAngle;
-      newArray.push(newPtn);
+      let obj = {};
+      Object.assign(obj, ptn);
+      const {x, y, direction, shotSpeed, shotDirection} = ptn;
+      obj.x = x * cos(diffAngle) - y * sin(diffAngle);
+      obj.y = y * cos(diffAngle) + x * sin(diffAngle);
+      obj.direction = direction + diffAngle;
+      // shotSpeedとshotDirection.
+      obj.shotDirection = shotDirection + shotDirDiff * i;
+      obj.shotSpeed = shotSpeed + shotSpeedDiff * i;
+      newArray.push(obj);
     }
   })
   return newArray;
@@ -1142,9 +1160,15 @@ function createLine(param, ptnArray){
   let newArray = [];
   ptnArray.forEach((ptn) => {
     for(let i = 0; i < param.count; i++){
+      const shotDirDiff = (param.hasOwnProperty("shotDirDiff") ? param.shotDirDiff : 0);
+      const shotSpeedDiff = (param.hasOwnProperty("shotSpeedDiff") ? param.shotSpeedDiff : param.upSpeed);
       let obj = {};
       Object.assign(obj, ptn);
-      obj.speed += i * param.upSpeed;
+      const {speed, shotSpeed, shotDirection} = ptn;
+      obj.speed = speed + i * param.upSpeed;
+      obj.shotSpeed = shotSpeed + i * shotSpeedDiff;
+      obj.shotDirection = shotDirection + i * shotDirDiff;
+      // lineの各bulletについて角度を変えるなんてことも・・してどうするんだって話だけど。
       newArray.push(obj);
     }
   })
@@ -1188,6 +1212,36 @@ function createFirePattern(data){
       // ptn.direction = unit.shotDirection;
       ptn.direction = unit.shotDirection + (data.hasOwnProperty("bend") ? data.bend : 0);
       // たとえば90°ずつ曲げるとか, -90°ずつ曲げるとか。30°とかね。
+      // shotSpeedとshotDirectionのデフォの設定(follow前提)
+      // speedは"follow"ならptn.speedで数ならその値、directionは"follow"ならptn.directionで"aim"なら
+      // プレイヤー方向で["aim", 5]みたくできて数は["abs", 60]みたいに指定する["rel", 40]で曲げることも
+      // 可能・・speedも["abs", 4]ですべて4, ["rel", 2]ですべて+2みたいな。
+      // デフォは["follow"].
+      // bendはdirectionに対する作用だから必要でしょ・・まあ、別にいいけども。
+      const shotSpeedOption = (data.hasOwnProperty("shotSpeedOption") ? data.shotSpeedOption : ["follow"]);
+      const shotDirOption = (data.hasOwnProperty("shotDirOption") ? data.shotDirOption : ["follow"]);
+      switch(shotSpeedOption[0]){
+        case "follow":
+          ptn.shotSpeed = ptn.speed; break;
+        case "abs":
+          ptn.shotSpeed = shotSpeedOption[1]; break;
+        case "rel":
+          ptn.shotSpeed = ptn.speed + shotSpeedOption[1]; break;
+        case "multiple":
+          ptn.shotSpeed = ptn.speed * shotSpeedOption[1]; break;
+      }
+      switch(shotDirOption[0]){
+        case "follow":
+          ptn.shotDirection = ptn.direction; break;
+        case "aim":
+          ptn.shotDirection = getPlayerDirection(unit.position, shotDirOption[1]); break;
+        case "abs":
+          ptn.shotDirection = shotDirOption[1]; break;
+        case "rel":
+          ptn.shotDirection = ptn.direction + shotDirOption[1]; break;
+      }
+      //ptn.shotSpeed = ptn.speed;
+      //ptn.shotDirection = ptn.direction;
     })
 
     // このタイミングでunitのshotSpeedなどに指定があるなら一斉に適用する。でなければデフォルト値を使う。
@@ -1207,14 +1261,15 @@ function createFirePattern(data){
     // 実行形式のpatternを作る。略形式じゃないやつ。あれにはfireとかいろいろ入ってるけど、
     // ここで作るのはそういうのが入ってない、完全版。
     ptnArray.forEach((ptn) => {
+      // ここ、playerPositionにしたりどこか具体的な位置にしても面白そう。relとかで。
       ptn.x += unit.position.x;
       ptn.y += unit.position.y;
       ptn.delay = unit.shotDelay; // ディレイ
       ptn.behavior = {}; // ビヘイビア
       Object.assign(ptn.behavior, unit.shotBehavior); // アサインで作らないとコピー元がいじられてしまうの
       // あとでObject.values使ってあれにする。
-      ptn.shotSpeed = ptn.speed; // 基本、同じ速さ。
-      ptn.shotDirection = ptn.direction; // 基本、飛んでく方向だろうと。
+      //ptn.shotSpeed = ptn.speed; // 基本、同じ速さ。
+      //ptn.shotDirection = ptn.direction; // 基本、飛んでく方向だろうと。
       // ↑まずいよねぇ・・
       ptn.shotDelay = 0; // デフォルト
       ptn.shotBehavior = {}; // デフォルト

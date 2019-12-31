@@ -794,3 +794,7 @@ nway・・デフォルトはたとえばa-1.5x, a-0.5x, a+0.5x, a+1.5xみたい�
 line・・デフォルトはスピードがs,s+x,s+2x,...でこのxは基本upSpeedだけどこれを可変にする。
 それぞれ角度やスピードで変えてない部分はデフォルトが0であるとみなして可変にする。
 可換性が問題になるけど数学的に保証されてるのでオッケー。
+
+shotSpeedOption
+shotDirOption
+各paramのshotDirDiff, shotSpeedDiff.
