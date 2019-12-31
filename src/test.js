@@ -493,24 +493,49 @@ function setup(){
   let seed4_7 = {
     x:0.5, y:0.2, shotSpeed:2,
     action:{
-      main:[{shotDirection:["set", [-45, 45]]}, {shotAction:["set", "right"]}, {fire:""}, {wait:32},
-            {shotDirection:["set", [135, 225]]}, {shotAction:["set", "left"]}, {fire:""}, {wait:32},
+      main:[{shotDirection:["set", [-45, 45]]}, {shotAction:["set", "right"]}, {fire:""}, {wait:4}, {loop:4, back:2},
+						{wait:32},
+            {shotDirection:["set", [135, 225]]}, {shotAction:["set", "left"]}, {fire:""}, {wait:4}, {loop:4, back:2},
+						{wait:32},
             {loop:INF, back:-1}],
-      right:[{shotSpeed:["set", 4]}, {follow:true}, {direction:["add", [0.5, 1.5]]},
+      right:[{shotSpeed:["set", 4]}, {follow:true}, {direction:["add", 1.5]},
              "way2Rail", "bomb"],
-      left:[{shotSpeed:["set", 4]}, {follow:true}, {direction:["add", [-1.5, -0.5]]},
+      left:[{shotSpeed:["set", 4]}, {follow:true}, {direction:["add", -1.5]},
             "way2Rail", "bomb"],
-      fade:[{speed:["set", 0.5, 120]}, {vanish:1}]
+      fade:[{speed:["set", 2, 120]}]
     },
     short:{
       way2Rail:[{wait:2}, {loop:16, back:2}, {fire:"way2"}, {loop:8, back:4}],
-      bomb:[{shotAction:["set", "fade"]}, {aim:0}, {fire:"rad24"}, {vanish:1}]
+      bomb:[{shotAction:["set", "fade"]}, {aim:10}, {fire:"rad24"}, {vanish:1}]
     },
     fireDef:{way2:{nway:{count:2, interval:60}}, rad24:{radial:{count:24}}}
   }
+  // SnowFrake.
+  let seed4_8 = {
+		x:0.5, y:0.5, shotSpeed:2, shotDirection:90,
+		action:{
+			main:[{hide:true}, {shotAction:["set", "lim120"]}, {fire:"rad6"}, {wait:8}, {loop:INF, back:2}],
+			lim120:[{wait:20}, "branch12", {wait:24}, {shotAction:["set", "lim40"]}, {fire:"way2"}, {wait:36},
+						 {shotAction:["set", "lim24"]}, {fire:"way2"}, {wait:20}, "branch12", {wait:20}, {vanish:1}],
+			lim40:[{wait:20}, "branch12", {wait:20}, {vanish:1}],
+			lim24:[{wait:24}, {vanish:1}],
+			lim12:[{wait:12}, {vanish:1}]
+		},
+		short:{branch12:[{shotAction:["set", "lim12"]}, {fire:"way2"}]},
+		fireDef:{rad6:{radial:{count:6}}, way2:{nway:{count:2, interval:120}}}
+	}
+
+	// sevenStar.
+	let seed4_9 = {
+		x:0.5, y:0.3, shotSpeed:6, shotBehavior:["sevenStar"],
+		action:{
+			main:[{hide:true}, {fire:""}, {wait:4}, {loop:100, back:2}, {vanish:1}]
+		},
+		behaviorDef:{sevenStar:["curve", {a:2, b:-4, c:7}]}
+	}
 
   // どうする？？
-  let newPtn = parsePatternSeed(seed4_7);
+  let newPtn = parsePatternSeed(seed4_9);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -1113,7 +1138,13 @@ function spiralBehavior(param){
     unit.velocityUpdate();
   }
 }
-
+// 多彩な曲線
+function curveBehavior(param){
+	return (unit) => {
+		unit.direction += param.a + param.b * cos(param.c * unit.properFrameCount);
+		unit.velocityUpdate();
+	}
+}
 // プレーヤーに近付くと加速するくらいだったら作ってもいいかな(raidBehavior)
 
 // あとはプレイヤーが近付くとバーストするとか面白そう（いい加減にしろ）
