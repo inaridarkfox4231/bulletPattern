@@ -428,10 +428,89 @@ function setup(){
     },
     fireDef:{way5:{shotDirOption:["aim", 0], nway:{count:5, interval:30, shotDirDiff:0}},
              line12:{line:{count:12, upSpeed:0.5}}}
+  };
+  // FALさんの16.
+  // burstはspeedが0になってかつ存在が消えて(hide),ばんばん撃ってvanishですね。
+  // 違うね。間違えた。はぁ・・
+  // ああ、最初んとこ180＋[90又は-90]だ。なるほどね。
+  let seed4_4 = {
+    x:0.5, y:0.3, shotSpeed:6,
+    action:{
+      main:[{shotDirection:["set", [90, 450, 180]]}, {shotDirection:["add", [-60, 60]]},
+            {shotAction:["set", "burst1"]}, {fire:""},
+            {shotAction:["set", "burst2"]}, {fire:""}, {wait:15}, {loop:INF, back:-1}],
+      burst1:[{wait:30}, {aim:20}, "machinegun"],
+      burst2:[{shotAction:["set", "last"]}, "machinegun"],
+      last:[{wait:29}, {vanish:1}]
+    },
+    short:{machinegun:[{hide:true}, {speed:["set", 0]}, {fire:""}, {wait:3}, {loop:12, back:2}, {vanish:1}]}
+  };;
+
+  // FALさんの17. speedは60ディレイのあと0.0001から始まって120フレームで3にしている。
+  // 90と270の位置に同時に発生させたbulletが螺旋を描きながら半径は多分1ずつの増加。
+  // それを120フレーム間隔で右回り、左回り、と出している。
+  // とりあえずshotSpeed2のradiusIncrement0.5で行ってみる。
+  // ダメだ。やっぱdistance増やす感じじゃないとダメっぽい。えー・・
+  // 気持ちは分かる。半径を1ずつ増加させてるんでしょ・・多分。
+  let seed4_5 = {
+    x:0.5, y:0.3, shotSpeed:4, shotDirection:90,
+    action:{
+      main:[{shotAction:["set", "scatter"]}, {shotBehavior:["add", "spir"]}, {fire:"rad2"},
+            {wait:120}, {shotBehavior:["clear"]},
+            {shotAction:["set", "scatterInv"]}, {shotBehavior:["add", "spirInv"]}, {fire:"rad2Inv"},
+            {wait:120}, {shotBehavior:["clear"]},
+            {loop:INF, back:-1}],
+      scatter:[{shotAction:["set", "last"]}, {wait:30}, {shotDirection:["rel", -60]}, "scatter"],
+      scatterInv:[{shotAction:["set", "last"]}, {wait:30}, {shotDirection:["rel", 60]}, "scatter"],
+      last:[{wait:60}, {speed:["set", 3, 120]}]
+    },
+    short:{scatter:[{shotSpeed:["set", 0.0001]}, {fire:""}, {wait:4}, {loop:INF, back:-3}]},
+    fireDef:{rad2:{formation:{type:"points", p:[[50, 0]]}, radial:{count:2}, bend:90},
+             rad2Inv:{formation:{type:"points", p:[[50, 0]]}, radial:{count:2}, bend:-90}},
+    behaviorDef:{spir:["spiral", {radius:50, radiusIncrement:1}],
+                 spirInv:["spiral", {radius:50, radiusIncrement:1, clockwise:false}]}
+  };
+
+  // あとは自由に。
+  // ばらまき大作戦
+  let seed4_6 = {
+    x:0.5, y:0.3, shotSpeed:2,
+    action:{
+      main:[{shotAction:["set", "way4"]},
+            {shotDirection:["add", 16]}, {fire:"rad5"}, {wait:8}, {loop:16, back:3}, {wait:32},
+            {aim:10}, {fire:""}, {wait:4}, {loop:8, back:3}, {wait:16},
+            {shotDirection:["add", -16]}, {fire:"rad5"}, {wait:8}, {loop:16, back:3}, {wait:32},
+            {aim:10}, {fire:""}, {wait:4}, {loop:8, back:3}, {wait:16},
+            {loop:INF, back:-2}],
+      way4:[{wait:60}, {fire:"way4"}, {vanish:1}]
+    },
+    fireDef:{rad5:{radial:{count:5}}, way4:{nway:{count:4, interval:12}}}
+  };
+  // 花火みたいなやつ。2wayばらまきまくって最後にどかーん！
+  // followをtrueにして常にshotDirectionがdirectionと一致するようにしようね。
+  // followプロパティ追加。これは毎フレームshotDirectionをdirectionで更新するもの。
+  // behaviorの直後に行うのでfire直前のshotDirectionの変化には影響されない。
+  let seed4_7 = {
+    x:0.5, y:0.2, shotSpeed:2,
+    action:{
+      main:[{shotDirection:["set", [-45, 45]]}, {shotAction:["set", "right"]}, {fire:""}, {wait:32},
+            {shotDirection:["set", [135, 225]]}, {shotAction:["set", "left"]}, {fire:""}, {wait:32},
+            {loop:INF, back:-1}],
+      right:[{shotSpeed:["set", 4]}, {follow:true}, {direction:["add", [0.5, 1.5]]},
+             "way2Rail", "bomb"],
+      left:[{shotSpeed:["set", 4]}, {follow:true}, {direction:["add", [-1.5, -0.5]]},
+            "way2Rail", "bomb"],
+      fade:[{speed:["set", 0.5, 120]}, {vanish:1}]
+    },
+    short:{
+      way2Rail:[{wait:2}, {loop:16, back:2}, {fire:"way2"}, {loop:8, back:4}],
+      bomb:[{shotAction:["set", "fade"]}, {aim:0}, {fire:"rad24"}, {vanish:1}]
+    },
+    fireDef:{way2:{nway:{count:2, interval:60}}, rad24:{radial:{count:24}}}
   }
 
   // どうする？？
-  let newPtn = parsePatternSeed(seed4_3);
+  let newPtn = parsePatternSeed(seed4_7);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -646,6 +725,7 @@ class Unit{
     this.properFrameCount = 0;
     this.vanishFlag = false; // trueなら、消す。
     this.hide = false; // 隠したいとき // appearでも作る？disappearとか。それも面白そうね。ステルス？・・・
+    this.follow = false; // behaviorの直後、actionの直前のタイミングでshotDirectionをdirectionで更新する。
   }
   setPosition(x, y){
     this.position.set(x, y);
@@ -694,6 +774,8 @@ class Unit{
     })
     // デフォルトビヘイビア実行
     this.defaultBehavior.forEach((behavior) => { behavior(this); })
+    // followがtrueの場合はshotDirectionをいじる
+    if(this.follow){ this.shotDirection = this.direction; }
     // アクションの実行（処理が終了しているときは
     if(this.action.length > 0 && this.actionIndex < this.action.length){
       let debug = 0; // デバッグモード
@@ -1488,6 +1570,10 @@ function interpretCommand(data, command, index){
     // 隠れる. trueのとき見えなくする。falseで逆。
     result.flag = command.hide; return result;
   }
+  if(_type === "follow"){
+    // followをonoffにする
+    result.flag = command.follow; return result;
+  }
 }
 
 function execute(unit, command){
@@ -1519,6 +1605,11 @@ function execute(unit, command){
     }else if(command.mode === "mirror"){
       // 角度限定。角度をθ → 2a-θにする。speedやdelayでは使わないでね。
       unit[_type] = 2 * newParameter - unit[_type];
+    }else if(command.mode === "rel"){
+      // shotSpeedとshotDirectionで、unit自身のspeed, directionを使いたいときに使う。普通にaddする。
+      // たとえば["rel", 40]で自分のdirection+40がshotDirectionに設定される。
+      if(_type === "shotSpeed"){ unit[_type] = unit.speed + newParameter; }
+      if(_type === "shotDirection"){ unit[_type] = unit.direction + newParameter; }
     }
     if(["speed", "direction"].includes(_type)){ unit.velocityUpdate(); }
     // インデックスを増やすかどうか（countがあるならカウント進める）
@@ -1593,6 +1684,11 @@ function execute(unit, command){
   if(_type === "hide"){
     // 関数で分けて書きたいね・・
     unit.hide = command.flag;
+    unit.actionIndex++;
+    return true; // ループは抜けない
+  }
+  if(_type === "follow"){
+    unit.follow = command.flag;
     unit.actionIndex++;
     return true; // ループは抜けない
   }
