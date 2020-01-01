@@ -534,8 +534,25 @@ function setup(){
 		behaviorDef:{sevenStar:["curve", {a:2, b:-4, c:7}]}
 	}
 
+  // FALさんの14をradialのshotDirDiffを使って書き直し。
+  // めっちゃ短くなった。すげぇ。
+  let seed4_10 = {
+    x:0.5, y:0.3, shotSpeed:2*PI/3, shotDirection:0, shotBehavior:["circ"],
+    action:{
+      main:[{shotAction:["set", "way8"]}, {fire:"radgun32"}],
+      way8:[{hide:true}, {shotAction:["set", "sub"]}, {shotSpeed:["set", 4]},
+            {fire:"way8"}, {wait:240}, {loop:INF, back:2}],
+      sub:[{speed:["set", 1, 30]}, {direction:["add", 210, 60]}, {speed:["set", 2, 60]}]
+    },
+    fireDef:{
+      radgun32:{formation:{type:"points", p:[[80, 0]]}, bend:90, radial:{count:32, shotDirDiff:90}},
+      way8:{nway:{count:8, interval:12}}
+    },
+    behaviorDef:{circ:["circular", {radius:80}]}
+  };
+
   // どうする？？
-  let newPtn = parsePatternSeed(seed4_9);
+  let newPtn = parsePatternSeed(seed4_10);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
