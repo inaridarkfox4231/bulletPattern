@@ -150,8 +150,8 @@ function setup(){
     },
     short:{cannonMain:[{shotSpeed:["set", 5]}, {aim:0}, {fire:"line7"}, {wait:4}, {loop:8, back:3},
                        {wait:64}, {loop:INF, back:5}]},
-    fireDef:{setCannon1:{formation:{type:"points", p:[[48, 0]]}, bend:90, kind:"cannon"},
-             setCannon2:{formation:{type:"points", p:[[48, 0]]}, bend:-90, kind:"cannon"},
+    fireDef:{setCannon1:{formation:{type:"points", p:[[48, 0]]}, bend:90, kind:"square"},
+             setCannon2:{formation:{type:"points", p:[[48, 0]]}, bend:-90, kind:"square"},
              line7:{line:{count:7, upSpeed:0.3}}},
     behaviorDef:{circle:["circular", {radius:96, clockwise:true}],
                  circleInv:["circular", {radius:96, clockwise:false}]}
@@ -556,7 +556,8 @@ function setup(){
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
-  createUnit(newPtn, "cannon");
+  createUnit(newPtn, "square"); // いわゆるノードのようなもの. んー・・
+  // たとえば敵を配置したりする場合あえてdrawはNoneというかなくすことも考えられるわけで難しいね。
   // これを・・ね。
   // 得られたpatternをcreateCannonに放り込んでupdateで実行させる。
 }
@@ -662,31 +663,17 @@ function createUnit(pattern, typeName){
   let newUnit = unitPool.use();
   newUnit.setPattern(pattern);
   switch(typeName){
-    case "bullet":
+    case "wedge":
       entity.bulletArray.add(newUnit);
-      newUnit.setDrawFunction(drawBullet);
+      newUnit.setDrawFunction(drawWedge);
       break;
-    case "cannon":
+    case "square":
       entity.cannonArray.add(newUnit);
-      newUnit.setDrawFunction(drawCannon);
+      newUnit.setDrawFunction(drawSquare);
       newUnit.rotationSpeed = 2;
       newUnit.rotationAngle = 0;
       break;
   }
-}
-
-// 廃止
-function createBullet(pattern){
-  let newBullet = bulletPool.use();
-  newBullet.setPattern(pattern);
-  entity.bulletArray.add(newBullet);
-}
-
-// 廃止
-function createCannon(pattern){
-  let newCannon = new Cannon();
-  newCannon.setPattern(pattern);
-  entity.cannonArray.add(newCannon);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -763,7 +750,7 @@ class Unit{
     this.shotBehavior = {};
     this.shotAction = [];
     // その他の挙動を制御する固有のプロパティ
-    this.drawFunction = drawBullet; // 親かどうかで変化（一応drawBulletとかdrawCannonをセットする）。デフォdrawBullet.
+    this.drawFunction = drawWedge; // 親かどうかで変化（一応drawWedgeとかdrawSquareをセットする）。デフォdrawWedge.
     this.properFrameCount = 0;
     this.vanishFlag = false; // trueなら、消す。
     this.hide = false; // 隠したいとき // appearでも作る？disappearとか。それも面白そうね。ステルス？・・・
@@ -880,10 +867,10 @@ class Unit{
 
 // 一般的な三角形。drawWedgeの方が適切だからそのうちそうしたい。
 // drawSpearとかdrawSwordとかdrawShrikenとかと差別化したい。全部bulletなので・・・
-function drawBullet(bullet){
+function drawWedge(unit){
   // とりあえず三角形だけど別のバージョンも考えたい、あと色とか変えたいな。
-  const {x, y} = bullet.position;
-  const direction = (bullet.speed > 0 ? bullet.direction : bullet.direction + 180);
+  const {x, y} = unit.position;
+  const direction = (unit.speed > 0 ? unit.direction : unit.direction + 180);
   const c = cos(direction);
   const s = sin(direction);
   triangle(x + 6 * c, y + 6 * s, x - 6 * c + 3 * s, y - 6 * s - 3 * c, x - 6 * c - 3 * s, y - 6 * s + 3 * c);
@@ -891,12 +878,12 @@ function drawBullet(bullet){
 
 // 一般的なCannon.これもdrawSquareの方が適切だからいずれそうしたい。
 // drawTriangleとかdrawPentagonとかdrawCross(十字架)とかいろいろ考えたい感じ。
-function drawCannon(cannon){
+function drawSquare(unit){
   // directionの方向に正方形のひとつの頂点が来る感じでお願い
   // やっぱrotationAngle復活
-  const {x, y} = cannon.position;
-  const c = cos(cannon.rotationAngle) * 20;
-  const s = sin(cannon.rotationAngle) * 20;
+  const {x, y} = unit.position;
+  const c = cos(unit.rotationAngle) * 20;
+  const s = sin(unit.rotationAngle) * 20;
   quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
 }
 
@@ -1041,14 +1028,14 @@ function directionDist(d1, d2){
 // 組み合わせるのでもういちいちあれ（位置に速度プラス）を書かない。
 
 // 画面外で消える
-function frameOutBehavior(_bullet){
-  const {x, y} = _bullet.position;
-  if(x < -AREA_WIDTH * 0.2 || x > AREA_WIDTH * 1.2 || y < -AREA_HEIGHT * 0.2 || y > AREA_HEIGHT * 1.2){ _bullet.vanishFlag = true; }
+function frameOutBehavior(unit){
+  const {x, y} = unit.position;
+  if(x < -AREA_WIDTH * 0.2 || x > AREA_WIDTH * 1.2 || y < -AREA_HEIGHT * 0.2 || y > AREA_HEIGHT * 1.2){ unit.vanishFlag = true; }
 }
 
 // 速度の方向に進む
-function goBehavior(_bullet){
-  _bullet.position.add(_bullet.velocity);
+function goBehavior(unit){
+  unit.position.add(unit.velocity);
 }
 
 // 加速
@@ -1056,11 +1043,11 @@ function goBehavior(_bullet){
 // terminalSpeed用意しますね.(デフォはINF)
 function accellerateBehavior(param){
   if(!param.hasOwnProperty("terminalSpeed")){ param.terminalSpeed = INF; }
-  return (_bullet) => {
-    if(_bullet.speed < param.terminalSpeed){
-      _bullet.speed += param.accelleration;
+  return (unit) => {
+    if(unit.speed < param.terminalSpeed){
+      unit.speed += param.accelleration;
     }
-    _bullet.velocityUpdate();
+    unit.velocityUpdate();
   }
 }
 
@@ -1068,14 +1055,14 @@ function accellerateBehavior(param){
 // friction, deceleration, terminalSpeed.
 // frictionがある場合は掛け算、decelerationがある場合はその値で減速する。
 function decelerateBehavior(param){
-  return (_bullet) => {
-    if(_bullet.speed > param.terminalSpeed){
+  return (unit) => {
+    if(unit.speed > param.terminalSpeed){
       if(param.hasOwnProperty("friction")){
-        _bullet.speed *= (1 - param.friction);
+        unit.speed *= (1 - param.friction);
       }else{
-        _bullet.speed -= param.deceleration;
+        unit.speed -= param.deceleration;
       }
-      _bullet.velocityUpdate();
+      unit.velocityUpdate();
     }
   }
 }
@@ -1083,13 +1070,13 @@ function decelerateBehavior(param){
 // 一定時間減速したのち加速
 // threshold, friction, accelleration
 function brakeAccellBehavior(param){
-  return (_bullet) => {
-    if(_bullet.properFrameCount < param.threshold){
-      _bullet.speed *= (1 - param.friction);
+  return (unit) => {
+    if(unit.properFrameCount < param.threshold){
+      unit.speed *= (1 - param.friction);
     }else{
-      _bullet.speed += param.accelleration;
+      unit.speed += param.accelleration;
     }
-    _bullet.velocityUpdate();
+    unit.velocityUpdate();
   }
 }
 
@@ -1406,9 +1393,9 @@ function createFirePattern(data){
       ptn.action = unit.shotAction; // 無くても[]が入るだけ
     })
     // ここでdata.kindが未定義の場合は必然的に"bullet", "cannon"も指定できる。
-    if(!data.hasOwnProperty("kind")){ data.kind = "bullet"; }
+    if(!data.hasOwnProperty("kind")){ data.kind = "wedge"; }
     ptnArray.forEach((ptn) => {
-      createUnit(ptn, data.kind); // 作るのは、基本的にbullet.
+      createUnit(ptn, data.kind); // 形を指定する。基本的にWedge.
     })
     // お疲れさまでした。
   }
