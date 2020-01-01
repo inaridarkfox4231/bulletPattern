@@ -661,6 +661,7 @@ class System{
 
 function createUnit(pattern, typeName){
   let newUnit = unitPool.use();
+  newUnit.initialize();
   newUnit.setPattern(pattern);
   switch(typeName){
     case "wedge":
@@ -790,7 +791,7 @@ class Unit{
     if(this.vanishFlag){ this.vanish(); }
   }
   vanish(){
-    this.initialize();
+    //this.initialize();
     this.belongingArray.remove(this);
     unitPool.recycle(this); // 名称をunitPoolに変更
   }

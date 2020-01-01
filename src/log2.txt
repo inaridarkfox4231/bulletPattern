@@ -798,3 +798,13 @@ line・・デフォルトはスピードがs,s+x,s+2x,...でこのxは基本upSp
 shotSpeedOption
 shotDirOption
 各paramのshotDirDiff, shotSpeedDiff.
+
+bulletArrayとcannonArrayの区別をなくしてunitArrayで統一する。
+そのうえで、drawGroup:{blue:[], darkblue:[]}みたくして、各々の[]はCrossReferenceArrayで、
+色を表現するプロパティを用意して、作る際に登録して、
+ejectとかvanishの際にそこからはじく処理を追加することで色別の描画を実現する感じ。(弾くときに名前でヒットさせる形)
+それで、描画は色別に行う、その色がきちんと登録されてて・・そんな感じ。
+blue:{group:[], color:[]}的な？
+必要な色を最初に指定してその分作っちゃう感じね。もしくはグローバルパレットを用意するとか。
+initializeでsystemに色配列を持たせてもいいけど。同じ名前で。
+{blue:color(0, 0, 255), darkBlue:color(...), ...} とかいう？
