@@ -34,29 +34,29 @@ function setup(){
   registUnitShapes(); // 形を用意する。
 
   // 回転砲台
-  let seed1_1 = {
+  let seed0 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
     action:{main:[{shotDirection:["add", 5]}, {fire:""}, {wait:4}, {loop:INF, back:-1}]},
   };
   // 双回転砲台
-  let seed1_2 = {
+  let seed1 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
     action:{main:[{shotDirection:["add", 5]}, {fire:""}, {shotDirection:["mirror", 90]}, {fire:""},
                   {wait:4}, {shotDirection:["mirror", 90]}, {loop:INF, back:-1}]},
   };
   // いったりきたりしながら下に向けて発射. ディレイをかけて。さらにアクセルをかけて。
-  let seed1_3 = {
+  let seed2 = {
     x:0.2, y:0.2, speed:4, direction:0, shotSpeed:4, shotDirection:90, shotDelay:30, shotBehavior:["accell"],
     action:{main:[{fire:""}, {wait:4}, {loop:16, back:2}, {wait:16}, {direction:["mirror", 90]}, {loop:INF, back:-1}]},
     behaviorDef:{accell:["accellerate", {accelleration:0.2}]}
   };
   // 四角形に沿って移動（初めて作ったやつ）
-  let seed1_4 = {
+  let seed3 = {
     x:0.2, y:0.2, speed:4, direction:0,
     action:{main:[{wait:50}, {direction:["add", 90]}, {loop:INF, back:-1}]}
   };
   // 簡単な分裂
-  let seed1_5 = {
+  let seed4 = {
     x:0.5, y:0.1, shotSpeed:4, shotDirection:90,
     action:{main:[{shotAction:["set", "split2_0"]}, {fire:"way2"}, {wait:4}, {loop:INF, back:-2}],
             split2_0:[{shotAction:["set", "split2_1"]}, "split2"],
@@ -67,7 +67,7 @@ function setup(){
     fireDef:{way2:{nway:{count:2, interval:30}}}
   };
   // FALさんの7.
-  let seed1_6 = {
+  let seed5 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
     action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
                   {wait:32}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
@@ -81,7 +81,7 @@ function setup(){
   // burstSweeping.(FALさんの4)
   // 回転しながら弾をばらまく。
   // これでいいでしょ。角速度2πだから2秒で1周する。12°ずつ方向変化、速度は2.
-  let seed1_7 = {
+  let seed6 = {
     x:0.5, y:0.5, shotSpeed:2*Math.PI, shotDirection:0, shotBehavior:["circle"],
     action:{
       main:[{shotAction:["set", "sweep"]}, {fire:"rad2"}, {wait:INF}],
@@ -91,7 +91,7 @@ function setup(){
     behaviorDef:{circle:["circular", {radius:120}]}
   };
   // 失われたパターン1
-  let seed2_1 = {
+  let seed7 = {
     x:0.5, y:0.5, shotSpeed:1, shotDirection:90,
     action:{
       main:[{shotBehavior:["add", "lowAccell"]}, {shotDirection:["add", 4]}, "routine",
@@ -106,7 +106,7 @@ function setup(){
   };
   // lineのテスト(nwayと組み合わせる)
   // さらにホーミングマシンガンを組み合わせて逃げ場のない感じに。
-  let seed2_2 = {
+  let seed8 = {
     x:0.5, y:0.5,
     action:{
       main:[{shotSpeed:["set",2]}, {aim:0}, {fire:"line3_8_6"}, {wait:4},
@@ -115,7 +115,7 @@ function setup(){
     fireDef:{line3_8_6:{nway:{count:7, interval:5}, radial:{count:8}, line:{count:6,upSpeed:0.3}}}
   };
   // FALさんの1
-  let seed2_3 = {
+  let seed9 = {
     x:0.5, y:0.5,
     action:{
       main:[{shotSpeed:["set", [3, 6]]}, {shotDirection:["set", [0, 360]]}, {fire:""},
@@ -123,7 +123,7 @@ function setup(){
     },
   };
   // FALさんの2
-  let seed2_4 = {
+  let seed10 = {
     x:0.5, y:0.5, shotSpeed:2,
     action:{
       main:[{shotDirection:["set", [0, 360]]}, {fire:"fire"}, {wait:60}, {loop:INF, back:-1}]
@@ -131,7 +131,7 @@ function setup(){
     fireDef:{fire:{radial:{count:16}, nway:{count:7, interval:2}}}
   };
   // FALさんの3
-  let seed2_5 = {
+  let seed11 = {
     x:0.5, y:0.5, shotSpeed:2,
     action:{
       main:[{shotDirection:["add", 2]}, "attack", {shotDirection:["add", -2]}, "attack", {loop:INF, back:-1}]
@@ -141,14 +141,16 @@ function setup(){
   };
   // FALさんの5
   // kindをcannonに指定すると複数のcannonを生成してそれぞれに挙動させることができる
-  let seed2_6 = {
+  let seed12 = {
     x:0.5, y:0.3, shotSpeed:96*PI/180, shotDirection:90,
+    shotColorName:"plblue", shotShapeName:"squareMiddle",
     action:{
       main:[{shotAction:["set", "cannon1"]}, {shotBehavior:["add", "circle"]}, {fire:"setCannon1"},
             {shotBehavior:["clear"]}, {shotAction:["set", "cannon2"]}, {shotBehavior:["add", "circleInv"]},
             {fire:"setCannon2"}, {vanish:1}
            ],
-      cannon1:["cannonMain"], cannon2:[{wait:48}, "cannonMain"]
+      cannon1:[{shotColor:"blue"}, {shotShape:"wedgeSmall"}, "cannonMain"],
+      cannon2:[{shotColor:"blue"}, {shotShape:"wedgeSmall"}, {wait:48}, "cannonMain"]
     },
     short:{cannonMain:[{shotSpeed:["set", 5]}, {aim:0}, {fire:"line7"}, {wait:4}, {loop:8, back:3},
                        {wait:64}, {loop:INF, back:5}]},
@@ -161,7 +163,7 @@ function setup(){
   // FALさんの6.
   // margin120であらぬ方向に3wayを発射して(interval45°)速さ5で30フレーム進んでから
   // margin30でこっちに向かって・・んー。2フレームに1発、0.5ずつ速くしていって飛ばす感じ。(??)
-  let seed2_7 = {
+  let seed13 = {
     x:0.5, y:0.3, shotSpeed:5,
     action:{
       main:[{aim:120}, {shotAction:["set", "burst"]}, {fire:"way3"}, {wait:30}, {loop:INF, back:-1}],
@@ -172,7 +174,7 @@ function setup(){
   };
   // shotDelayが新しくなったんで使ってみる.
   // 直線状に弾丸を配置していっせいにばーーーーーーーん！
-  let seed2_8 = {
+  let seed14 = {
     x:0.5, y:0.2, shotSpeed:4,
     action:{
       main:[{aim:120}, {shotAction:["set", "sub1"]}, {fire:""}, {wait:30}, {loop:INF, back:-1}],
@@ -182,7 +184,7 @@ function setup(){
   };
   // homingBehaviorが新しくなったので試してみる.
   // radial12と組み合わせる感じで。
-  let seed2_9 = {
+  let seed15 = {
     x:0.5, y:0.3, shotSpeed:6, shotBehavior:["decele"],
     action:{
       main:[{shotDirection:["set", [0, 360]]}, {shotAction:["set", "delayHom"]},
@@ -197,7 +199,7 @@ function setup(){
   // 6フレームおきに120°間隔で2way発射を4回を16フレームおきにやってる？
   // とりま、16発回らせてみますか。
   // できたかな？
-  let seed2_10 = {
+  let seed16 = {
     x:0.5, y:0.5, shotSpeed:0.5*PI, shotDirection:0, shotBehavior:["circ120"],
     action:{
       main:[{hide:true}, {shotAction:["set", "way2"]}, {fire:"radial16"}, {wait:INF}],
@@ -211,7 +213,7 @@ function setup(){
   };
 
   // FALさんの9, これは16個の方向にとばしてそれに2wayさせてる、すぐに。
-  let seed2_11 = {
+  let seed17 = {
     x:0.5, y:0.5, shotSpeed:4,
     action:{
       main:[{shotAction:["set", "way2"]}, {shotDirection:["add", 11.5]}, {fire:"radial16"}, {wait:120}, {loop:INF, back:-2}],
@@ -224,7 +226,7 @@ function setup(){
   // それっぽくなった。
   // setのところを30フレームかけて1にする処理にしたらそれっぽくなった。
   // スピードが1になった直後に流れていく感じ。
-  let seed2_12 = {
+  let seed18 = {
     x:0.5, y:0.3, shotSpeed:4,
     action:{
       main:[{shotAction:["set", "line12"]},
@@ -236,7 +238,7 @@ function setup(){
   };
   // FALさんの11作ろう。
   // 手始めにスパイラル部分。
-  let seed3_1 = {
+  let seed19 = {
     x:0.5, y:0.5, shotSpeed:1, shotDirection:0,
     action:{
       main:[{shotBehavior:["add", "spiral_1"]}, "rad_24", {shotBehavior:["clear"]},
@@ -255,7 +257,7 @@ function setup(){
   // できれば色も変えたいね
   // できたけど洗練させたいな。
   // set 3 30 set 2 30にしたら滑らかさが増した（気がする）
-  let seed3_2 = {
+  let seed20 = {
     x:0.5, y:0.25,
     action:{
       main:[{shotAction:["set", "spiral"]}, {fire:"u"}, {shotAction:["set", "radial"]}, {fire:"u"}, {vanish:1}],
@@ -284,7 +286,7 @@ function setup(){
   // delayってactionのwaitじゃん・・まあ、とにかく。
   // できました。いちいちwait:INFって書くのばかばかしいから、
   // actionの終わりに来たら自動的にスルーするように仕向けるか。
-  let seed3_3 = {
+  let seed21 = {
     x:0.5, y:0.3, shotSpeed:8,
     action:{
       main:[{shotAction:["set", "sub"]}, {shotDirection:["set", [0, 360]]}, {fire:""}, {wait:90},
@@ -305,7 +307,7 @@ function setup(){
   // 加速だって本来はベクトルの足し算をやっているので・・そしてそれは座標ベースでないとしっくりこない。
   // 今って完全に極座標ベースでやってるでしょ、それってベクトルの足し算と相性最悪だからどうしようもないんよ。
   // ------- でも、極座標ベースの可能性を信じたい。もちろん、ね。 ------- //
-  let seed3_4 = {
+  let seed22 = {
     x:0.5, y:0.5, shotSpeed:4, shotDirection:-90, shotBehavior:["accell"],
     action:{
       main:[{fire:""}, {wait:30}, {loop:INF, back:2}]
@@ -315,7 +317,7 @@ function setup(){
 
   // decelerationBehaviorを一定の割合で減らせるように新しくした.
   // さらに・・これやばいね。。
-  let seed3_5 = {
+  let seed23 = {
     x:0.5, y:0.3, shotSpeed:4, shotDirection:90,
     action:{
       main:[{aim:0}, {shotBehavior:["add", "decel_3"]}, {fire:"burst"}, {shotDirection:["add", 4.5]},
@@ -333,7 +335,7 @@ function setup(){
   // FALさんの13. ベアリングからの・・機銃掃射？アーミーくさくなってきた感。
   // すげぇ。普通にradial_4でいけるんだ。
   // 360フレームで1周するように調整。
-  let seed3_6 = {
+  let seed24 = {
     x:0.5, y:0.3, shotSpeed:2*PI/3, shotDirection:0, shotBehavior:["circ3"],
     action:{
       main:[{shotAction:["set", "barricade"]}, {fire:"radgun3"}, {wait:INF}],
@@ -355,7 +357,7 @@ function setup(){
   // たとえばsubの命令、これあそこをあれにすれば4つでいける。
   // actionは変数導入すれば1行で済むし。
   // もしくは・・今、撃ちだしたあれのshotSpeedやshotDirectionが追従で決まってるからそこをいじるとか。
-  let seed3_7 = {
+  let seed25 = {
     x:0.5, y:0.3, shotSpeed:2*PI/3, shotDirection:0, shotBehavior:["circ"],
     action:{
       main:[{shotAction:["set", "way8_1"]}, "revolveFire",
@@ -382,7 +384,7 @@ function setup(){
   // 最後の所は多分、30フレームで1にしたあと60フレームで回転させて最後に60フレームで2に加速して直進させてる。
 
   // 新しいset,addメソッドのテスト。
-  let seed4_1 = {
+  let seed26 = {
     x:0, y:0.2, speed:4, direction:0, shotDirection:90, shotSpeed:10,
     action:{
       main:[{shotAction:["set", "dec1"]},
@@ -394,7 +396,7 @@ function setup(){
   };
   // FALさんの7.(メソッドを用いてやり直し)
   // 出来たと思う。多分本家のあっちの方が速いね・・48→24にするとかしないと似ない気がする。まあいいけど。
-  let seed4_2 = {
+  let seed27 = {
     x:0.5, y:0.3, shotSpeed:6, shotDirection:90,
     action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
                   {wait:48}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
@@ -415,7 +417,7 @@ function setup(){
   // これで合ってるだろ。nway発射時のaim-0と実際にline撃つときの位置のずれのせいで
   // 完全なaim-0にならないっていう、ただそれだけの話だよね。
   // どうでもいい話だけどaim-0してから5°ずらしてそのあとrelで戻すとdirectAimになる。
-  let seed4_3 = {
+  let seed28 = {
     x:0.5, y:0.3,
     action:{
       main:[{shotAction:["set", "fire15"]},
@@ -435,7 +437,7 @@ function setup(){
   // burstはspeedが0になってかつ存在が消えて(hide),ばんばん撃ってvanishですね。
   // 違うね。間違えた。はぁ・・
   // ああ、最初んとこ180＋[90又は-90]だ。なるほどね。
-  let seed4_4 = {
+  let seed29 = {
     x:0.5, y:0.3, shotSpeed:6,
     action:{
       main:[{shotDirection:["set", [90, 450, 180]]}, {shotDirection:["add", [-60, 60]]},
@@ -454,7 +456,7 @@ function setup(){
   // とりあえずshotSpeed2のradiusIncrement0.5で行ってみる。
   // ダメだ。やっぱdistance増やす感じじゃないとダメっぽい。えー・・
   // 気持ちは分かる。半径を1ずつ増加させてるんでしょ・・多分。
-  let seed4_5 = {
+  let seed30 = {
     x:0.5, y:0.3, shotSpeed:4, shotDirection:90,
     action:{
       main:[{shotAction:["set", "scatter"]}, {shotBehavior:["add", "spir"]}, {fire:"rad2"},
@@ -475,7 +477,7 @@ function setup(){
 
   // あとは自由に。
   // ばらまき大作戦
-  let seed4_6 = {
+  let seed31 = {
     x:0.5, y:0.3, shotSpeed:2,
     action:{
       main:[{shotAction:["set", "way4"]},
@@ -492,7 +494,7 @@ function setup(){
   // followをtrueにして常にshotDirectionがdirectionと一致するようにしようね。
   // followプロパティ追加。これは毎フレームshotDirectionをdirectionで更新するもの。
   // behaviorの直後に行うのでfire直前のshotDirectionの変化には影響されない。
-  let seed4_7 = {
+  let seed32 = {
     x:0.5, y:0.2, shotSpeed:2,
     action:{
       main:[{shotDirection:["set", [-45, 45]]}, {shotAction:["set", "right"]}, {fire:""}, {wait:4}, {loop:4, back:2},
@@ -513,13 +515,16 @@ function setup(){
     fireDef:{way2:{nway:{count:2, interval:60}}, rad24:{radial:{count:24}}}
   }
   // SnowFrake.
-  let seed4_8 = {
-		x:0.5, y:0.5, shotSpeed:2, shotDirection:90,
+  // 色で遊んでみたりして。いぇい。
+  let seed33 = {
+		x:0.5, y:0.5, shotSpeed:2, shotDirection:90, shotColorName:"skblue",
 		action:{
 			main:[{hide:true}, {shotAction:["set", "lim120"]}, {fire:"rad6"}, {wait:8}, {loop:INF, back:2}],
-			lim120:[{wait:20}, "branch12", {wait:24}, {shotAction:["set", "lim40"]}, {fire:"way2"}, {wait:36},
-						 {shotAction:["set", "lim24"]}, {fire:"way2"}, {wait:20}, "branch12", {wait:20}, {vanish:1}],
-			lim40:[{wait:20}, "branch12", {wait:20}, {vanish:1}],
+			lim120:[{shotColor:"blue"}, {wait:20}, "branch12",
+              {shotColor:"dkblue"}, {wait:24}, {shotAction:["set", "lim40"]}, {fire:"way2"},
+              {shotColor:"plblue"}, {wait:36}, {shotAction:["set", "lim24"]}, {fire:"way2"},
+              {wait:20}, "branch12", {wait:20}, {vanish:1}],
+			lim40:[{shotColor:"red"}, {wait:20}, "branch12", {wait:20}, {vanish:1}],
 			lim24:[{wait:24}, {vanish:1}],
 			lim12:[{wait:12}, {vanish:1}]
 		},
@@ -528,7 +533,7 @@ function setup(){
 	}
 
 	// sevenStar.
-	let seed4_9 = {
+	let seed34 = {
 		x:0.5, y:0.3, shotSpeed:6, shotBehavior:["sevenStar"],
 		action:{
 			main:[{hide:true}, {fire:""}, {wait:4}, {loop:100, back:2}, {vanish:1}]
@@ -538,7 +543,7 @@ function setup(){
 
   // FALさんの14をradialのshotDirDiffを使って書き直し。
   // めっちゃ短くなった。すげぇ。
-  let seed4_10 = {
+  let seed35 = {
     x:0.5, y:0.3, shotSpeed:2*PI/3, shotDirection:0, shotBehavior:["circ"],
     action:{
       main:[{shotAction:["set", "way8"]}, {fire:"radgun32"}],
@@ -554,11 +559,11 @@ function setup(){
   };
 
   // どうする？？
-  let newPtn = parsePatternSeed(seed1_1);
+  let newPtn = parsePatternSeed(seed33);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
-  createUnit(newPtn, "square"); // いわゆるノードのようなもの. んー・・
+  createUnit(newPtn); // いわゆるノードのようなもの. んー・・
   // たとえば敵を配置したりする場合あえてdrawはNoneというかなくすことも考えられるわけで難しいね。
   // これを・・ね。
   // 得られたpatternをcreateCannonに放り込んでupdateで実行させる。
@@ -598,6 +603,11 @@ function showPerformanceInfo(updateTime, drawTime){
   text("drawTimeAverage:" + drawTimeAverageInnerText, 40, 160);
   if(usingUnitMax < entity.getCapacity()){ usingUnitMax = entity.getCapacity(); }
   text("usingUnitMax:" + usingUnitMax, 40, 200);
+  let y = 280;
+  Object.keys(entity.drawGroup).forEach((colorName) => {
+    text(colorName + ":" + entity.drawGroup[colorName].length, 40, y);
+    y += 40;
+  })
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -641,10 +651,10 @@ function registUnitShapes(){
         .registShape("wedgeMiddle", new DrawWedgeShape(9, 4.5))
         .registShape("wedgeLarge", new DrawWedgeShape(12, 6))
         .registShape("wedgeHuge", new DrawWedgeShape(24, 12))
-        .registShape("squareSmall", new DrawSquareShape(5))
-        .registShape("squareMiddle", new DrawSquareShape(10))
-        .registShape("squareLarge", new DrawSquareShape(15))
-        .registShape("squareHuge", new DrawSquareShape(30));
+        .registShape("squareSmall", new DrawSquareShape(10))
+        .registShape("squareMiddle", new DrawSquareShape(20))
+        .registShape("squareLarge", new DrawSquareShape(30))
+        .registShape("squareHuge", new DrawSquareShape(60));
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -658,8 +668,9 @@ function registUnitShapes(){
 class System{
 	constructor(){
 		this.player = new SelfUnit();
-    this.bulletArray = new CrossReferenceArray();
-    this.cannonArray = new CrossReferenceArray();
+    //this.bulletArray = new CrossReferenceArray();
+    //this.cannonArray = new CrossReferenceArray();
+    this.unitArray = new CrossReferenceArray();
     // ↑ここを、統一して、updateは同じArrayにして、それとは別に、
     // 描画用にfill色でオブジェクトで分ける・・{red:{color:~~, array:~~}, blue:{color:~~, array:~~}}
     // みたくして、fill(red) red.array描画 fill(blue) blue.array描画 以下略。
@@ -667,20 +678,32 @@ class System{
     // その名前を各unitにも持たせておいてvanishの際にピンポイントで配列にアクセスして排除（そういう関数作る）。
     // 登録もその名前経由で、それであとはfireFunc作るときにオプションで色指定できるようにするだけ。
     // イメージ的には{fire:"fire", color:"dkblue"}みたいな感じ。this.colorName = "dkblue".
-    this.bulletColor = color(0, 0, 255);
-    this.cannonColor = color(100, 100, 255);
+    //this.bulletColor = color(0, 0, 255);
+    //this.cannonColor = color(100, 100, 255);
     this.backgroundColor = color(220, 220, 255);
     this.drawColor = {}; // 色の辞書
     this.drawShape = {}; // 形を表現する関数の辞書
+    this.drawGroup = {}; // 描画用に用意されたCrossReferenceArrayからなるオブジェクト
     // になるみたいな、それを外部関数でやる。
     // this.drawGroup = {}; hasOwnでたとえばblueがないなってなったらnew CrossReferenceArray()して放り込むとか。
     // で、そこにも登録し、vanishのときにそこからはじく、パターンチェンジの際にもこれらの内容を破棄する。
     // 破棄するときはunitをPoolに戻すのはやってるから単にclearでいい。unitArrayをclearしちゃうとPoolに戻らないので駄目。
 	}
+  registDrawGroup(unit){
+    const {colorName} = unit;
+    if(!this.drawGroup.hasOwnProperty(colorName)){
+      this.drawGroup[colorName] = new CrossReferenceArray();
+    }
+    this.drawGroup[colorName].add(unit);
+  }
 	initialize(){
 		this.player.initialize();
-    this.bulletArray.loopReverse("vanish");
-    this.cannonArray.loopReverse("vanish");
+    //this.bulletArray.loopReverse("vanish");
+    //this.cannonArray.loopReverse("vanish");
+    this.unitArray.loopReverse("vanish"); // unitすべて戻す
+    Object.keys(this.drawGroup).forEach((colorName) => {
+      this.drawGroup[colorName].clear(); // 描画グループの方はlengthを0にするだけ
+    })
 	}
   registColor(name, _color){
     this.drawColor[name] = _color;
@@ -692,31 +715,41 @@ class System{
   }
 	update(){
 		this.player.update();
-    this.cannonArray.loop("update");
-    this.bulletArray.loop("update");
-    this.cannonArray.loop("eject");
-    this.bulletArray.loopReverse("eject");
+    //this.cannonArray.loop("update");
+    //this.bulletArray.loop("update");
+    this.unitArray.loop("update");
+    //this.cannonArray.loop("eject");
+    //this.bulletArray.loopReverse("eject");
+    this.unitArray.loopReverse("eject");
 	}
 	draw(){
 		this.player.draw();
-    fill(this.bulletColor);
-    this.bulletArray.loop("draw");
-    fill(this.cannonColor);
-    this.cannonArray.loop("draw");
+    Object.keys(this.drawGroup).forEach((colorName) => {
+      fill(this.drawColor[colorName]);
+      this.drawGroup[colorName].loop("draw"); // 色別に描画
+    })
+    //fill(this.bulletColor);
+    //this.bulletArray.loop("draw");
+    //fill(this.cannonColor);
+    //this.cannonArray.loop("draw");
 	}
   getCapacity(){
-    return this.bulletArray.length + this.cannonArray.length;
+    //return this.bulletArray.length + this.cannonArray.length;
+    return this.unitArray.length;
   }
 }
 
 // ここをpattern1本にして、shape, colorプロパティを用意して文字列データ入れておいて、
 // shapeに従ってunitのshapeプロパティを設定して(クラス)、colorに従って以下略。
 // shapeの方はさっそくsetを呼び出してdrawParamに必要なら入れる、これはvanishで初期化してなくす、
-function createUnit(pattern, typeName){
+function createUnit(pattern){
   let newUnit = unitPool.use();
   newUnit.initialize();
   newUnit.setPattern(pattern);
-  // shape, colorのデフォルト設定
+  entity.unitArray.add(newUnit);
+  entity.registDrawGroup(newUnit);
+  // 色、形についてはsetPatternで行う感じ。
+  /*
   switch(typeName){
     case "wedge":
       entity.bulletArray.add(newUnit);
@@ -731,6 +764,7 @@ function createUnit(pattern, typeName){
       // initializeでnewUnit.drawParam = {}; する.
       break;
   }
+  */
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -806,8 +840,14 @@ class Unit{
     this.shotDelay = 0;
     this.shotBehavior = {};
     this.shotAction = [];
+    // 色、形. デフォルトはこんな感じ。
+    this.shapeName = "squareMiddle";
+    this.colorName = "plblue";
+    this.shotShapeName = "wedgeSmall";
+    this.shotColorName = "blue";
+    this.drawModule = undefined; // 描画用クラス
     // その他の挙動を制御する固有のプロパティ
-    this.drawFunction = drawWedge; // 親かどうかで変化（一応drawWedgeとかdrawSquareをセットする）。デフォdrawWedge.
+    //this.drawFunction = drawWedge; // 親かどうかで変化（一応drawWedgeとかdrawSquareをセットする）。デフォdrawWedge.
     this.properFrameCount = 0;
     this.vanishFlag = false; // trueなら、消す。
     this.hide = false; // 隠したいとき // appearでも作る？disappearとか。それも面白そうね。ステルス？・・・
@@ -830,9 +870,25 @@ class Unit{
     // この時点でもうx, yはキャンバス内のどこかだしspeedとかその辺もちゃんとした数だし(getNumber通し済み)
     // behaviorとshotBehaviorもちゃんと{name:関数, ...}形式になっている。
     this.position.set(x, y);
-    ["speed", "direction", "delay", "shotSpeed", "shotDirection", "shotDelay"].forEach((name) => {
-      if(ptn[name] !== undefined){ this[name] = ptn[name]; } // ランダムを考慮
+    const moveProperties = ["speed", "direction", "delay", "shotSpeed", "shotDirection", "shotDelay"];
+    moveProperties.forEach((name) => {
+      if(ptn[name] !== undefined){ this[name] = ptn[name]; } // 確定は済んでる
     })
+
+    //if(ptn.colorName !== undefined){ this.colorName = ptn.colorName; }
+    //if(ptn.shotColorName !== undefined){ this.shotColorName = ptn.shotColorName; }
+    //if(ptn.shapeName !== undefined){ this.shapeName = ptn.shapeName; }
+    //if(ptn.shotShapeName !== undefined){ this.shotShapeName = ptn.shotShapeName; }
+
+    const figureProperties = ["colorName", "shotColorName", "shapeName", "shotShapeName"]
+    figureProperties.forEach((name) => {
+      if(ptn[name] !== undefined){ this[name] = ptn[name]; } // 文字列
+    })
+
+    // drawModuleの設定とセッティング
+    this.drawModule = entity.drawShape[this.shapeName]; // drawShapeにクラスが入ってる
+    this.drawModule.set(this);
+
     this.velocityUpdate(); // 速度が決まる場合を考慮する
     if(behavior !== undefined){
       this.behavior = {};
@@ -848,7 +904,14 @@ class Unit{
   }
   vanish(){
     //this.initialize();
-    this.belongingArray.remove(this);
+    //this.belongingArray.remove(this);
+    // 複数ある場合っての今回出て来てるので・・うん。うしろから。
+    // とにかくね、remove関連は後ろからなのよ・・でないとやっぱバグるのよね。
+    for(let i = this.belongingArrayList.length - 1; i >= 0; i--){
+      this.belongingArrayList[i].remove(this);
+    }
+    if(this.belongingArrayList.length > 0){ console.log("REMOVE ERROR!"); noLoop(); } // 排除ミス
+
     unitPool.recycle(this); // 名称をunitPoolに変更
   }
   update(){
@@ -913,7 +976,8 @@ class Unit{
   }
   draw(){
     if(this.hide){ return; } // hide === trueのとき描画しない
-    this.drawFunction(this);
+    //this.drawFunction(this);
+    this.drawModule.draw(this);
   }
 }
 
@@ -975,19 +1039,19 @@ class DrawWedgeShape extends DrawShape{
     const {heightLengthHalf:h, baseLengthHalf:b} = this;
     triangle(x + h * dx,          y + h * dy,
              x - h * dx + b * dy, y - h * dy - b * dx,
-             x - h * dx - b * dy, y - h * dy + b * dy);
+             x - h * dx - b * dy, y - h * dy + b * dx);
   }
 }
 
 // rotationAngleとかはあれ、この中で更新したほうがいいと思う。プロパティ持たせて。
 // drawParamはinitializeの度に初期化する。
 // sizeは中心と頂点との距離
-// drawSquareMiddle = new SrawSquareShape(10);
-// Large:15, Huge:30, Small:5. (5, 10, 15, 30)
+// small:10, middle:20, ... 30, 60.
+// (10, 20, 30, 60)
 class DrawSquareShape extends DrawShape{
   constructor(size){
     super();
-    this.size = 10;
+    this.size = size;
   }
   set(unit){
     unit.drawParam = {rotationAngle:0, rotationSpeed:2};
@@ -1065,15 +1129,23 @@ class CrossReferenceArray extends Array{
 	}
   add(element){
     this.push(element);
-    element.belongingArray = this; // 所属配列への参照
+    // 複数のCRArrayが存在する場合に備えての仕様変更
+    if(!element.hasOwnProperty("belongingArrayList")){
+      element.belongingArrayList = [];
+    }
+    element.belongingArrayList.push(this); // 所属配列への参照
   }
   addMulti(elementArray){
     // 複数の場合
     elementArray.forEach((element) => { this.add(element); })
   }
   remove(element){
+    // 先にbelongingArrayListから排除する
+    let belongingArrayIndex = element.belongingArrayList.indexOf(this, 0);
+    element.belongingArrayList.splice(belongingArrayIndex, 1);
+    // elementを配列から排除する
     let index = this.indexOf(element, 0);
-    this.splice(index, 1); // elementを配列から排除する
+    this.splice(index, 1);
   }
   loop(methodName){
 		if(this.length === 0){ return; }
@@ -1507,9 +1579,18 @@ function createFirePattern(data){
       ptn.shotDelay = 0; // デフォルト
       ptn.shotBehavior = {}; // デフォルト
       ptn.action = unit.shotAction; // 無くても[]が入るだけ
+      // 色、形関連
+      ptn.colorName = unit.shotColorName;
+      ptn.shapeName = unit.shotShapeName;
+      // 基本的に自分の複製をする(Commandで変更可能)
+      ptn.shotColorName = ptn.colorName;
+      ptn.shotShapeName = ptn.shapeName;
     })
+    // kindは廃止。draw関連はshapeプロパティで操作するので。
     // ここでdata.kindが未定義の場合は必然的に"bullet", "cannon"も指定できる。
+    /*
     if(!data.hasOwnProperty("kind")){ data.kind = "wedge"; }
+    */
     ptnArray.forEach((ptn) => {
       createUnit(ptn, data.kind); // 形を指定する。基本的にWedge.
     })
@@ -1546,9 +1627,23 @@ function parsePatternSeed(seed){
   // ここでもう数にしてしまおうね。
   ptn.x = getNumber(x) * AREA_WIDTH;
   ptn.y = getNumber(y) * AREA_HEIGHT;
-  ["speed", "direction", "delay", "shotSpeed", "shotDirection", "shotDelay"].forEach((propName) => {
+
+  // behavior関連
+  const moveProperties = ["speed", "direction", "delay", "shotSpeed", "shotDirection", "shotDelay"]
+  moveProperties.forEach((propName) => {
     if(seed[propName] !== undefined){ ptn[propName] = getNumber(seed[propName]); }
   })
+  // 色、形関連
+  //if(seed.colorName !== undefined){ ptn.colorName = seed.colorName; }
+  //if(seed.shotColorName !== undefined){ ptn.shotColorName = seed.shotColorName; }
+  //if(seed.shapeName !== undefined){ ptn.shapeName = seed.shapeName; }
+  //if(seed.shotShapeName !== undefined){ ptn.shotShapeName = seed.shotShapeName; }
+
+  const figureProperties = ["colorName", "shotColorName", "shapeName", "shotShapeName"];
+  figureProperties.forEach((propName) => {
+    if(seed[propName] !== undefined){ ptn[propName] = seed[propName]; }
+  })
+
   // fireDef, behaviorDefの展開
   // Defを展開してdata.fire, data.behaviorにnameの形で放り込む
   // fireはseed.fireDef.name1:パターンデータ, .name2:パターンデータみたいな感じ。
@@ -1675,6 +1770,13 @@ function interpretCommand(data, command, index){
     // set:count数でその値になる. add:count数でその値だけ足す。
     return result;
   }
+
+  // 色、形関連
+  if(["shotColor", "shotShape"].includes(_type)){
+    result.style = command[_type]; // 文字列
+    return result;
+  }
+
   if(["behavior", "shotBehavior"].includes(_type)){
     result.mode = command[_type][0]; // "add" or "remove" or "clear". "clear"は全部消すやつ。
     // [1]には名前が入っててそれをプロパティ名にする。
@@ -1772,6 +1874,12 @@ function execute(unit, command){
   if(_type === "shotDelay"){
     // shotDelayをいじる
     unit.shotDelay = command.delayCount;
+    unit.actionIndex++;
+    return true; // ループは抜けない
+  }
+  // 色、形.
+  if(["shotColor", "shotShape"].includes(_type)){
+    unit[_type + "Name"] = command.style;
     unit.actionIndex++;
     return true; // ループは抜けない
   }

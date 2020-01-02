@@ -840,4 +840,6 @@ shape, shotShape, color, shotColorの4つが増えることになる。そのセ
 で、自動的に・・
 shapeのデフォ："squareMiddle" shotShapeのデフォ："wedgeSmall"
 colorのデフォ："plblue" shotColorのデフォ："blue"
-にすればほとんど変えなくて済む（一部、shotShapeを"sqaureMiddle"にしたりするけど。
+shotShapeのcreateFireにおけるデフォ：shape.
+shotColorのcreateFireにおけるデフォ：color.
+にすればほとんど変えなくて済む（一部、shotShapeを"sqaureMiddle"にしたりするけど。）
