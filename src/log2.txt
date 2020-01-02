@@ -843,3 +843,15 @@ colorのデフォ："plblue" shotColorのデフォ："blue"
 shotShapeのcreateFireにおけるデフォ：shape.
 shotColorのcreateFireにおけるデフォ：color.
 にすればほとんど変えなくて済む（一部、shotShapeを"sqaureMiddle"にしたりするけど。）
+
+できた。あとは自分のcolorを変えるメソッド（belongingArrayをいじらないといけないので大変）、
+shapeを変えるメソッド（こちらはdrawModuleを入れ替えてからsetを呼び出すだけ）の両方を定義しようね。
+イメージ：
+entity.drawGroup[this.shapeName].remove(this);
+this.shapeName = newShapeName;
+this.drawModule = entity.drawShape[newShapeName];
+entity.drawGroup[newShapeName].add(this);
+
+仕様変更の内容
+プロパティにcolorName, shapeName, shotColorName, shotShapeNameを追加、あとdrawModule.
+・・・
