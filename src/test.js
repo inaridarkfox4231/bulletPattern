@@ -30,6 +30,8 @@ function setup(){
   //preparePattern(); // jsonからあれこれするみたい(?)
   unitPool = new ObjectPool(() => { return new Unit(); }, 1024);
   entity = new System();
+  registUnitColors(); // 色を用意する。
+  registUnitShapes(); // 形を用意する。
 
   // 回転砲台
   let seed1_1 = {
@@ -612,6 +614,40 @@ function keyTyped(){
 }
 
 // ---------------------------------------------------------------------------------------- //
+// registUnitColors.
+
+function registUnitColors(){
+  entity.registColor("black", color(0))
+        .registColor("blue", color(63, 72, 204))
+        .registColor("dkblue", color(35, 43, 131))
+        .registColor("skblue", color(0, 128, 255))
+        .registColor("plblue", color(125, 133, 221))
+        .registColor("red", color(237, 28, 36))
+        .registColor("yellow", color(255, 242, 0))
+        .registColor("green", color(34, 177, 76))
+        .registColor("brown", color(128, 64, 0))
+        .registColor("purple", color(163, 73, 164))
+        .registColor("orange", color(255, 127, 39))
+        .registColor("gold", color(128, 128, 0))
+        .registColor("gray", color(128))
+        .registColor("ltgreen", color(181, 230, 29));
+}
+
+// ---------------------------------------------------------------------------------------- //
+// registUnitShapes.
+
+function registUnitShapes(){
+  entity.registShape("wedgeSmall", new DrawWedgeShape(6, 3))
+        .registShape("wedgeMiddle", new DrawWedgeShape(9, 4.5))
+        .registShape("wedgeLarge", new DrawWedgeShape(12, 6))
+        .registShape("wedgeHuge", new DrawWedgeShape(24, 12))
+        .registShape("squareSmall", new DrawSquareShape(5))
+        .registShape("squareMiddle", new DrawSquareShape(10))
+        .registShape("squareLarge", new DrawSquareShape(15))
+        .registShape("squareHuge", new DrawSquareShape(30));
+}
+
+// ---------------------------------------------------------------------------------------- //
 // System.
 // とりあえずplayerを持たせるだけ
 
@@ -634,12 +670,26 @@ class System{
     this.bulletColor = color(0, 0, 255);
     this.cannonColor = color(100, 100, 255);
     this.backgroundColor = color(220, 220, 255);
+    this.drawColor = {}; // 色の辞書
+    this.drawShape = {}; // 形を表現する関数の辞書
+    // になるみたいな、それを外部関数でやる。
+    // this.drawGroup = {}; hasOwnでたとえばblueがないなってなったらnew CrossReferenceArray()して放り込むとか。
+    // で、そこにも登録し、vanishのときにそこからはじく、パターンチェンジの際にもこれらの内容を破棄する。
+    // 破棄するときはunitをPoolに戻すのはやってるから単にclearでいい。unitArrayをclearしちゃうとPoolに戻らないので駄目。
 	}
 	initialize(){
 		this.player.initialize();
     this.bulletArray.loopReverse("vanish");
     this.cannonArray.loopReverse("vanish");
 	}
+  registColor(name, _color){
+    this.drawColor[name] = _color;
+    return this; // こういうのはメソッドチェーンで書くといい
+  }
+  registShape(name, _shape){
+    this.drawShape[name] = _shape;
+    return this; // メソッドチェーン
+  }
 	update(){
 		this.player.update();
     this.cannonArray.loop("update");
@@ -918,7 +968,7 @@ class DrawWedgeShape{
 // drawParamはinitializeの度に初期化する。
 // sizeは中心と頂点との距離
 // drawSquareMiddle = new SrawSquareShape(10);
-// Large:15, Huge:30, Small:5
+// Large:15, Huge:30, Small:5. (5, 10, 15, 30)
 class DrawSquareShape{
   constructor(size){
     this.size = 10;
