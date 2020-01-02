@@ -808,3 +808,26 @@ blue:{group:[], color:[]}的な？
 必要な色を最初に指定してその分作っちゃう感じね。もしくはグローバルパレットを用意するとか。
 initializeでsystemに色配列を持たせてもいいけど。同じ名前で。
 {blue:color(0, 0, 255), darkBlue:color(...), ...} とかいう？
+
+unitArrayで統一してupdateなどは
+drawColor:{blue:..., red:...}
+↑先にこれ用意する。
+drawGroup = {};
+drawColorのObject.keysを取って各々のkeyに対してCrossReferenceArrayを用意し、
+createUnitの際に色別に。colorプロパティを見て判別する。
+shotColorとcolorを用意。shotColorは指定が無ければ自動的にcolorが採用される感じ。
+shapeのデフォルトはwedgeとかそんな感じ。んー。
+colorのデフォルトはblueにする。
+drawGroup:{blue:[], red:[]} []・・CrossReferenceArray()
+
+たとえば初期設定でshotColorをredにしたら出てくるshotはすべてredになるし、
+greenにしたらすべてgreenになる。で、shotShapeも基本はwedgeだけどswordにすれば・・
+shapeも基本的にはshotShapeには自身のshapeが入る感じ。撃ちだした後でshotShapeをメソッドで変えれば問題ないかと。
+system.drawFunc(this.shape)でthis.shapeに"wedge"とか"square"とか"smallWedge"とか"largeSpear"とか
+入っててinitializeでsystem.drawFuncに関数を設定するイメージでいいと思うんだよね。
+できればclassで書いてパラメータ別に・・まあ、function で() => {} でもいいけど・・
+
+rotationSpeedとかrotationAngleはdrawParamとして統一して、initializeの際に{}にする感じ。
+
+んーやっぱクラスかな・・引数は文字列にしてセットするのをクラスにする。
+で、個別のプロパティを設けるとことかいろいろメソッドで書く。

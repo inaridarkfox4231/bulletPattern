@@ -673,6 +673,8 @@ function createUnit(pattern, typeName){
       newUnit.setDrawFunction(drawSquare);
       newUnit.rotationSpeed = 2;
       newUnit.rotationAngle = 0;
+      // newUnit.drawParam = {rotationSpeed:2, rotationAngle:0};
+      // initializeでnewUnit.drawParam = {}; する.
       break;
   }
 }
@@ -887,6 +889,53 @@ function drawSquare(unit){
   const s = sin(unit.rotationAngle) * 20;
   quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
 }
+
+// クラス？
+// drawWedgeSmall = new DrawWedgeShape(6, 3);
+// drawWedgeMiddle = new DraeWedgeShape(9, 4.5);
+// drawWedgeLarge = new DrawWedgeShape(12, 6);
+// drawWedgeHuge = new DrawWedgeShape(24, 12); // とかそんな感じ
+// 三角形の高さの中心に(x, y)で高さの半分が6で底辺の長さの半分が3にあたる。
+class DrawWedgeShape{
+  constructor(h, b){
+    this.heightLengthHalf = h; // 6
+    this.baseLengthHalf = b; // 3
+  }
+  set(unit){ return; }
+  draw(unit){
+    const {x, y} = unit.position;
+    const direction = (unit.speed > 0 ? unit.direction : unit.direction + 180);
+    const dx = cos(direction);
+    const dy = sin(direction);
+    const {heightLengthHalf:h, baseLengthHalf:b} = this;
+    triangle(x + h * dx,          y + h * dy,
+             x - h * dx + b * dy, y - h * dy - b * dx,
+             x - h * dx - b * dy, y - h * dy + b * dy);
+  }
+}
+
+// rotationAngleとかはあれ、この中で更新したほうがいいと思う。プロパティ持たせて。
+// drawParamはinitializeの度に初期化する。
+// sizeは中心と頂点との距離
+// drawSquareMiddle = new SrawSquareShape(10);
+// Large:15, Huge:30, Small:5
+class DrawSquareShape{
+  constructor(size){
+    this.size = 10;
+  }
+  set(unit){
+    unit.drawParam = {rotationAngle:0, rotationSpeed:2};
+  }
+  draw(unit){
+    const {x, y} = unit.position;
+    const c = cos(unit.drawParam.rotationAngle) * this.size;
+    const s = sin(unit.drawParam.rotationAngle) * this.size;
+    quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
+    unit.drawParam.rotationAngle += unit.drawParam.rotationSpeed;
+  }
+}
+
+// レーザーは撃ちだし元との間に直線を引くのでそこら辺の処理とかも重要（posデータを渡す）
 
 // ---------------------------------------------------------------------------------------- //
 // ObjectPool.
