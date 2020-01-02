@@ -831,3 +831,13 @@ rotationSpeedとかrotationAngleはdrawParamとして統一して、initialize�
 
 んーやっぱクラスかな・・引数は文字列にしてセットするのをクラスにする。
 で、個別のプロパティを設けるとことかいろいろメソッドで書く。
+
+drawFunctionをdrawModuleにして初期設定はundefined.
+createUnitのときに文字列で指定してentity経由でモジュールを登録して破棄するときに外す。
+colorは文字列で登録する、drawGroupのとこに・・登録、無ければ作る、作って放り込む、
+
+shape, shotShape, color, shotColorの4つが増えることになる。そのセット関数、も。
+で、自動的に・・
+shapeのデフォ："squareMiddle" shotShapeのデフォ："wedgeSmall"
+colorのデフォ："plblue" shotColorのデフォ："blue"
+にすればほとんど変えなくて済む（一部、shotShapeを"sqaureMiddle"にしたりするけど。

@@ -554,7 +554,7 @@ function setup(){
   };
 
   // どうする？？
-  let newPtn = parsePatternSeed(seed4_10);
+  let newPtn = parsePatternSeed(seed1_1);
   console.log(newPtn);
   //noLoop();
   //createCannon(newPtn);
@@ -709,10 +709,14 @@ class System{
   }
 }
 
+// ここをpattern1本にして、shape, colorプロパティを用意して文字列データ入れておいて、
+// shapeに従ってunitのshapeプロパティを設定して(クラス)、colorに従って以下略。
+// shapeの方はさっそくsetを呼び出してdrawParamに必要なら入れる、これはvanishで初期化してなくす、
 function createUnit(pattern, typeName){
   let newUnit = unitPool.use();
   newUnit.initialize();
   newUnit.setPattern(pattern);
+  // shape, colorのデフォルト設定
   switch(typeName){
     case "wedge":
       entity.bulletArray.add(newUnit);
@@ -920,6 +924,8 @@ class Unit{
 
 // 一般的な三角形。drawWedgeの方が適切だからそのうちそうしたい。
 // drawSpearとかdrawSwordとかdrawShrikenとかと差別化したい。全部bulletなので・・・
+
+// そのうち廃止
 function drawWedge(unit){
   // とりあえず三角形だけど別のバージョンも考えたい、あと色とか変えたいな。
   const {x, y} = unit.position;
@@ -931,6 +937,8 @@ function drawWedge(unit){
 
 // 一般的なCannon.これもdrawSquareの方が適切だからいずれそうしたい。
 // drawTriangleとかdrawPentagonとかdrawCross(十字架)とかいろいろ考えたい感じ。
+
+// そのうち廃止
 function drawSquare(unit){
   // directionの方向に正方形のひとつの頂点が来る感じでお願い
   // やっぱrotationAngle復活
@@ -940,14 +948,21 @@ function drawSquare(unit){
   quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
 }
 
+class DrawShape{
+  constructor(){}
+  set(unit){ /* drawParamに描画用のプロパティを準備 */}
+  draw(unit){ /* 形の描画関数 */ }
+}
+
 // クラス？
 // drawWedgeSmall = new DrawWedgeShape(6, 3);
 // drawWedgeMiddle = new DraeWedgeShape(9, 4.5);
 // drawWedgeLarge = new DrawWedgeShape(12, 6);
 // drawWedgeHuge = new DrawWedgeShape(24, 12); // とかそんな感じ
 // 三角形の高さの中心に(x, y)で高さの半分が6で底辺の長さの半分が3にあたる。
-class DrawWedgeShape{
+class DrawWedgeShape extends DrawShape{
   constructor(h, b){
+    super();
     this.heightLengthHalf = h; // 6
     this.baseLengthHalf = b; // 3
   }
@@ -969,8 +984,9 @@ class DrawWedgeShape{
 // sizeは中心と頂点との距離
 // drawSquareMiddle = new SrawSquareShape(10);
 // Large:15, Huge:30, Small:5. (5, 10, 15, 30)
-class DrawSquareShape{
+class DrawSquareShape extends DrawShape{
   constructor(size){
+    super();
     this.size = 10;
   }
   set(unit){
