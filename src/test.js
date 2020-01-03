@@ -20,6 +20,9 @@ let entity;
 let seedSet = {};
 const DEFAULT_PATTERN_INDEX = 0;
 const STAR_FACTOR = 2.618033988749895; // 1 + 2 * cos(36).
+// cosとsinの0, 72, 144, 216, 288における値
+const COS_PENTA = [1, 0.30901699437494745, -0.8090169943749473, -0.8090169943749473, 0.30901699437494745];
+const SIN_PENTA = [0, 0.9510565162951535, 0.5877852522924732, -0.587785252292473, -0.9510565162951536];
 
 //let testCannon;
 
@@ -1023,6 +1026,7 @@ class DrawSquareShape extends DrawShape{
 
 // drawStar. 回転する星型。
 // 3, 6, 12, 24.
+// 三角形と鋭角四角形を組み合わせてさらに加法定理も駆使したらクソ速くなった。すげー。
 class DrawStarShape extends DrawShape{
   constructor(size){
     super();
@@ -1035,20 +1039,20 @@ class DrawStarShape extends DrawShape{
     const {x, y} = unit.position;
     const r = this.size;
     const direction = unit.drawParam.rotationAngle;
-    ellipse(x, y, 2 * r, 2 * r);
     let u = [];
   	let v = [];
     // cos(direction)とsin(direction)だけ求めてあと定数使って加法定理で出せばもっと速くなりそう。
     // またはtriangle5つをquad1つとtriangle1つにすることもできるよね。高速化必要。
+    const c = cos(direction);
+    const s = sin(direction);
   	for(let i = 0; i < 5; i++){
-  		u.push([x + (r * STAR_FACTOR) * cos(direction + 72 * i),
-              y + (r * STAR_FACTOR) * sin(direction + 72 * i)]);
-  		v.push([x + r * cos(direction + 72 * i - 36),
-              y + r * sin(direction + 72 * i - 36)]);
+  		u.push([x + (r * STAR_FACTOR) * (c * COS_PENTA[i] - s * SIN_PENTA[i]),
+              y + (r * STAR_FACTOR) * (s * COS_PENTA[i] + c * SIN_PENTA[i])]);
   	}
-  	for(let i = 0; i < 5; i++){
-  		triangle(u[i][0], u[i][1], v[i][0], v[i][1], v[(i + 1) % 5][0], v[(i + 1) % 5][1]);
-  	}
+    v.push(...[x - r * c, y - r * s]);
+    // u1 u4 v(三角形), u0 u2 v u3(鋭角四角形).
+    triangle(u[1][0], u[1][1], u[4][0], u[4][1], v[0], v[1]);
+    quad(u[0][0], u[0][1], u[2][0], u[2][1], v[0], v[1], u[3][0], u[3][1]);
   }
 }
 
