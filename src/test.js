@@ -18,7 +18,8 @@ const AVERAGE_CALC_SPAN = 30;
 let unitPool;
 let entity;
 let seedSet = {};
-const DEFAULT_PATTERN_INDEX = 33;
+const DEFAULT_PATTERN_INDEX = 0;
+const STAR_FACTOR = 2.618033988749895; // 1 + 2 * cos(36).
 
 //let testCannon;
 
@@ -38,7 +39,7 @@ function setup(){
 
   // 回転砲台
   seedSet.seed0 = {
-    x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
+    x:0.5, y:0.5, shotSpeed:4, shotDirection:90, shotShapeName:"starSmall",
     action:{main:[{shotDirection:["add", 5]}, {fire:""}, {wait:4}, {loop:INF, back:-1}]},
   };
   // 双回転砲台
@@ -674,7 +675,8 @@ function registUnitShapes(){
         .registShape("squareSmall", new DrawSquareShape(10))
         .registShape("squareMiddle", new DrawSquareShape(20))
         .registShape("squareLarge", new DrawSquareShape(30))
-        .registShape("squareHuge", new DrawSquareShape(60));
+        .registShape("squareHuge", new DrawSquareShape(60))
+        .registShape("starSmall", new DrawStarShape(3));
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -839,6 +841,7 @@ class Unit{
     this.shotShapeName = "wedgeSmall";
     this.shotColorName = "blue";
     this.drawModule = undefined; // 描画用クラス
+    this.drawParam = {}; // 描画用付加データは毎回初期化する
     // その他の挙動を制御する固有のプロパティ
     this.properFrameCount = 0;
     this.vanishFlag = false; // trueなら、消す。
@@ -969,9 +972,7 @@ class Unit{
 // drawFunction. bullet, cannon用の描画関数.
 // もっと形増やしたい。剣とか槍とか手裏剣とか。3つ4つの三角形や四角形がくるくるしてるのとか面白いかも。
 // で、色とは別にすれば描画の負担が減るばかりかさらにバリエーションが増えて一石二鳥。
-
-// 一般的な三角形。drawWedgeの方が適切だからそのうちそうしたい。
-// drawSpearとかdrawSwordとかdrawShrikenとかと差別化したい。全部bulletなので・・・
+// サイズはsmall, middle, large, hugeの4種類。
 
 class DrawShape{
   constructor(){}
@@ -979,11 +980,8 @@ class DrawShape{
   draw(unit){ /* 形の描画関数 */ }
 }
 
-// クラス？
-// drawWedgeSmall = new DrawWedgeShape(6, 3);
-// drawWedgeMiddle = new DraeWedgeShape(9, 4.5);
-// drawWedgeLarge = new DrawWedgeShape(12, 6);
-// drawWedgeHuge = new DrawWedgeShape(24, 12); // とかそんな感じ
+// drawWedge
+// 三角形。(6, 3), (9, 4.5), (12, 6), (24, 12).
 // 三角形の高さの中心に(x, y)で高さの半分が6で底辺の長さの半分が3にあたる。
 class DrawWedgeShape extends DrawShape{
   constructor(h, b){
@@ -1004,11 +1002,8 @@ class DrawWedgeShape extends DrawShape{
   }
 }
 
-// rotationAngleとかはあれ、この中で更新したほうがいいと思う。プロパティ持たせて。
-// drawParamはinitializeの度に初期化する。
-// sizeは中心と頂点との距離
-// small:10, middle:20, ... 30, 60.
-// (10, 20, 30, 60)
+// drawSquare.
+// 回転する四角形。10, 20, 30, 60.
 class DrawSquareShape extends DrawShape{
   constructor(size){
     super();
@@ -1023,6 +1018,37 @@ class DrawSquareShape extends DrawShape{
     const s = sin(unit.drawParam.rotationAngle) * this.size;
     quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
     unit.drawParam.rotationAngle += unit.drawParam.rotationSpeed;
+  }
+}
+
+// drawStar. 回転する星型。
+// 3, 6, 12, 24.
+class DrawStarShape extends DrawShape{
+  constructor(size){
+    super();
+    this.size = size;
+  }
+  set(unit){
+    unit.drawParam = {rotationAngle:0, rotationSpeed:2};
+  }
+  draw(unit){
+    const {x, y} = unit.position;
+    const r = this.size;
+    const direction = unit.drawParam.rotationAngle;
+    ellipse(x, y, 2 * r, 2 * r);
+    let u = [];
+  	let v = [];
+    // cos(direction)とsin(direction)だけ求めてあと定数使って加法定理で出せばもっと速くなりそう。
+    // またはtriangle5つをquad1つとtriangle1つにすることもできるよね。高速化必要。
+  	for(let i = 0; i < 5; i++){
+  		u.push([x + (r * STAR_FACTOR) * cos(direction + 72 * i),
+              y + (r * STAR_FACTOR) * sin(direction + 72 * i)]);
+  		v.push([x + r * cos(direction + 72 * i - 36),
+              y + r * sin(direction + 72 * i - 36)]);
+  	}
+  	for(let i = 0; i < 5; i++){
+  		triangle(u[i][0], u[i][1], v[i][0], v[i][1], v[(i + 1) % 5][0], v[(i + 1) % 5][1]);
+  	}
   }
 }
 
