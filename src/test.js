@@ -10,6 +10,8 @@ const AREA_HEIGHT = 600; // あとでCanvasSizeをこれよりおおきく・・
 let isLoop = true;
 let showInfo = true;
 
+let updateTimeMax = 0;
+
 let drawTimeSum = 0;
 let drawTimeAverage = 0;
 let usingUnitMax = 0;
@@ -625,14 +627,24 @@ function draw(){
 // PerformanceInfomation.
 
 function showPerformanceInfo(updateTime, drawTime){
+  let y = 0; // こうすれば新しいデータを挿入しやすくなる。指定しちゃうといろいろとね・・
+  // ほんとは紐付けとかしないといけないんだろうけど。
 	fill(entity.infoColor);
-	text("using:" + entity.getCapacity(), 40, 40);
+  y += 40;
+	text("using:" + entity.getCapacity(), 40, y);
   const updateTimeStr = updateTime.toPrecision(4);
   const updateInnerText = `${updateTimeStr}ms`;
-  text("updateTime:" + updateInnerText, 40, 80);
+  y += 40;
+  text("updateTime:" + updateInnerText, 40, y);
+  if(updateTimeMax < updateTime){ updateTimeMax = updateTime; }
+  const updateTimeMaxStr = updateTimeMax.toPrecision(4);
+  const updateTimeMaxInnerText = `${updateTimeMaxStr}ms`;
+  y += 40;
+  text("updateTimeMax:" + updateTimeMaxInnerText, 40, y)
   const drawTimeStr = drawTime.toPrecision(4);
   const drawInnerText = `${drawTimeStr}ms`;
-  text("drawTime:" + drawInnerText, 40, 120);
+  y += 40;
+  text("drawTime:" + drawInnerText, 40, y);
 	drawTimeSum += drawTime;
 	if(frameCount % AVERAGE_CALC_SPAN === 0){
 		drawTimeAverage = drawTimeSum / AVERAGE_CALC_SPAN;
@@ -640,11 +652,13 @@ function showPerformanceInfo(updateTime, drawTime){
 	}
 	const drawTimeAverageStr = drawTimeAverage.toPrecision(4);
   const drawTimeAverageInnerText = `${drawTimeAverageStr}ms`;
-  text("drawTimeAverage:" + drawTimeAverageInnerText, 40, 160);
+  y += 40;
+  text("drawTimeAverage:" + drawTimeAverageInnerText, 40, y);
   if(usingUnitMax < entity.getCapacity()){ usingUnitMax = entity.getCapacity(); }
-  text("usingUnitMax:" + usingUnitMax, 40, 200);
+  y += 40;
+  text("usingUnitMax:" + usingUnitMax, 40, y);
   // 色について内訳表示
-  let y = 280;
+  y += 80;
   Object.keys(entity.drawGroup).forEach((colorName) => {
     text(colorName + ":" + entity.drawGroup[colorName].length, 40, y);
     y += 40;
@@ -781,6 +795,7 @@ class System{
 		this.player.initialize();
     this.unitArray.loopReverse("vanish"); // unitすべて戻す
     this.drawGroup = {};
+    updateTimeMax = 0; // 必要。
     // これ↓要らないかも。unitArrayから各unitに対してvanish命令出してその中で排除してる、
     // だからこの時点でdrawGroupの各々はすっからかんのハズ。
     // 要らなかったですね。やはり。そりゃ、そう・・
