@@ -780,6 +780,7 @@ class System{
 	initialize(){
 		this.player.initialize();
     this.unitArray.loopReverse("vanish"); // unitすべて戻す
+    this.drawGroup = {};
     // これ↓要らないかも。unitArrayから各unitに対してvanish命令出してその中で排除してる、
     // だからこの時点でdrawGroupの各々はすっからかんのハズ。
     // 要らなかったですね。やはり。そりゃ、そう・・
@@ -988,8 +989,6 @@ class Unit{
         if(this.actionIndex === this.action.length){ break; }
       }
     }
-    // 回転する場合は回転角を更新
-    if(this.rotationAngle !== undefined){ this.rotationAngle += this.rotationSpeed; }
     // カウントの進行
     this.properFrameCount++;
   }
