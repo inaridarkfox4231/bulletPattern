@@ -8,7 +8,7 @@ const AREA_HEIGHT = 600; // あとでCanvasSizeをこれよりおおきく・・
 // 1列に・・これだと15だから、パターン60個できるね！（しないけど）
 
 let isLoop = true;
-let showInfo = true;
+let showInfo = false;
 
 let updateTimeSum = 0;
 let updateTimeAverage = 0;
@@ -20,9 +20,10 @@ let drawTimeSum = 0;
 let drawTimeAverage = 0;
 let drawTimeMax = 0;
 let usingUnitMax = 0;
+let timeTotalMax = 0;
 const INDENT = 40;
-const AVERAGE_CALC_SPAN = 30;
-const TEXT_INTERVAL = 30;
+const AVERAGE_CALC_SPAN = 10;
+const TEXT_INTERVAL = 25;
 
 let unitPool;
 let entity;
@@ -689,8 +690,14 @@ function showPerformanceInfo(updateTime, ejectTime, drawTime){
   y += TEXT_INTERVAL;
   displayRealNumber(drawTimeMax, INDENT, y, "drawTimeMax");
 
-  if(usingUnitMax < entity.getCapacity()){ usingUnitMax = entity.getCapacity(); }
+  if(timeTotalMax < updateTime + ejectTime + drawTime){ timeTotalMax = updateTime + ejectTime + drawTime; }
   y += TEXT_INTERVAL;
+  displayRealNumber(timeTotalMax, INDENT, y, "timeTotalMax");
+  y += TEXT_INTERVAL;
+  displayRealNumber(updateTimeAverage + ejectTimeAverage + drawTimeAverage, INDENT, y, "totalTimeAverage");
+
+  if(usingUnitMax < entity.getCapacity()){ usingUnitMax = entity.getCapacity(); }
+  y += TEXT_INTERVAL * 2;
   displayInteger(usingUnitMax, INDENT, y, "usingUnitMax");
 
   // 色について内訳表示
@@ -849,6 +856,7 @@ class System{
     updateTimeMax = 0;
     drawTimeMax = 0;
     ejectTimeMax = 0;
+    timeTotalMax = 0;
 	}
   registColor(name, _color){
     this.drawColor[name] = _color;
