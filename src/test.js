@@ -20,6 +20,7 @@ let drawTimeSum = 0;
 let drawTimeAverage = 0;
 let drawTimeMax = 0;
 let usingUnitMax = 0;
+const INDENT = 40;
 const AVERAGE_CALC_SPAN = 30;
 const TEXT_INTERVAL = 30;
 
@@ -643,10 +644,10 @@ function showPerformanceInfo(updateTime, ejectTime, drawTime){
   // ほんとは紐付けとかしないといけないんだろうけど。
 	fill(entity.infoColor);
   y += TEXT_INTERVAL;
-  displayInteger(entity.getCapacity(), 40, y, "using");
+  displayInteger(entity.getCapacity(), INDENT, y, "using");
 
   y += TEXT_INTERVAL;
-  displayRealNumber(updateTime, 40, y, "updateTime");
+  displayRealNumber(updateTime, INDENT, y, "updateTime");
 
   //if(updateTimeMax < updateTime){ updateTimeMax = updateTime; }
   updateTimeSum += updateTime;
@@ -655,13 +656,13 @@ function showPerformanceInfo(updateTime, ejectTime, drawTime){
 		updateTimeSum = 0;
 	}
   y += TEXT_INTERVAL;
-  displayRealNumber(updateTimeAverage, 40, y, "updateTimeAverage");
+  displayRealNumber(updateTimeAverage, INDENT, y, "updateTimeAverage");
   if(updateTimeMax < updateTime){ updateTimeMax = updateTime; }
   y += TEXT_INTERVAL;
-  displayRealNumber(updateTimeMax, 40, y, "updateTimeMax");
+  displayRealNumber(updateTimeMax, INDENT, y, "updateTimeMax");
 
   y += TEXT_INTERVAL * 2;
-  displayRealNumber(ejectTime, 40, y, "ejectTime");
+  displayRealNumber(ejectTime, INDENT, y, "ejectTime");
 
   ejectTimeSum += ejectTime;
 	if(frameCount % AVERAGE_CALC_SPAN === 0){
@@ -669,13 +670,13 @@ function showPerformanceInfo(updateTime, ejectTime, drawTime){
 		ejectTimeSum = 0;
 	}
   y += TEXT_INTERVAL;
-  displayRealNumber(ejectTimeAverage, 40, y, "ejectTimeAverage");
+  displayRealNumber(ejectTimeAverage, INDENT, y, "ejectTimeAverage");
   if(ejectTimeMax < ejectTime){ ejectTimeMax = ejectTime; }
   y += TEXT_INTERVAL;
-  displayRealNumber(ejectTimeMax, 40, y, "ejectTimeMax");
+  displayRealNumber(ejectTimeMax, INDENT, y, "ejectTimeMax");
 
   y += TEXT_INTERVAL * 2;
-  displayRealNumber(drawTime, 40, y, "drawTime");
+  displayRealNumber(drawTime, INDENT, y, "drawTime");
 
 	drawTimeSum += drawTime;
 	if(frameCount % AVERAGE_CALC_SPAN === 0){
@@ -683,19 +684,19 @@ function showPerformanceInfo(updateTime, ejectTime, drawTime){
 		drawTimeSum = 0;
 	}
   y += TEXT_INTERVAL;
-  displayRealNumber(drawTimeAverage, 40, y, "drawTimeAverage");
+  displayRealNumber(drawTimeAverage, INDENT, y, "drawTimeAverage");
   if(drawTimeMax < drawTime){ drawTimeMax = drawTime; }
   y += TEXT_INTERVAL;
-  displayRealNumber(drawTimeMax, 40, y, "drawTimeMax");
+  displayRealNumber(drawTimeMax, INDENT, y, "drawTimeMax");
 
   if(usingUnitMax < entity.getCapacity()){ usingUnitMax = entity.getCapacity(); }
   y += TEXT_INTERVAL;
-  displayInteger(usingUnitMax, 40, y, "usingUnitMax");
+  displayInteger(usingUnitMax, INDENT, y, "usingUnitMax");
 
   // 色について内訳表示
   y += TEXT_INTERVAL * 2;
   Object.keys(entity.drawGroup).forEach((colorName) => {
-    displayInteger(entity.drawGroup[colorName].length, 40, y, colorName);
+    displayInteger(entity.drawGroup[colorName].length, INDENT, y, colorName);
     y += TEXT_INTERVAL;
   })
 }
