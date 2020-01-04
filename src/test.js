@@ -10,12 +10,18 @@ const AREA_HEIGHT = 600; // あとでCanvasSizeをこれよりおおきく・・
 let isLoop = true;
 let showInfo = true;
 
+let updateTimeSum = 0;
+let updateTimeAverage = 0;
 let updateTimeMax = 0;
-
+let ejectTimeSum = 0;
+let ejectTimeAverage = 0;
+let ejectTimeMax = 0;
 let drawTimeSum = 0;
 let drawTimeAverage = 0;
+let drawTimeMax = 0;
 let usingUnitMax = 0;
 const AVERAGE_CALC_SPAN = 30;
+const TEXT_INTERVAL = 30;
 
 let unitPool;
 let entity;
@@ -613,56 +619,98 @@ function setup(){
 function draw(){
   background(entity.backgroundColor);
 
-	const updateStart = performance.now(); // 時間表示。
-  entity.update();
+	const updateStart = performance.now();
+  entity.update(); // 更新
   const updateEnd = performance.now();
+
+  const ejectStart = performance.now();
+  entity.eject(); // 排除
+  const ejectEnd = performance.now();
+
 	const drawStart = performance.now(); // 時間表示。
-  entity.draw();
+  entity.draw(); // 描画
   const drawEnd = performance.now();
-	if(showInfo){ showPerformanceInfo(updateEnd - updateStart, drawEnd - drawStart); }
+
+	if(showInfo){ showPerformanceInfo(updateEnd - updateStart, ejectEnd - ejectStart, drawEnd - drawStart); }
   drawConfig();
 }
 
 // ---------------------------------------------------------------------------------------- //
 // PerformanceInfomation.
 
-function showPerformanceInfo(updateTime, drawTime){
+function showPerformanceInfo(updateTime, ejectTime, drawTime){
   let y = 0; // こうすれば新しいデータを挿入しやすくなる。指定しちゃうといろいろとね・・
   // ほんとは紐付けとかしないといけないんだろうけど。
 	fill(entity.infoColor);
-  y += 40;
-	text("using:" + entity.getCapacity(), 40, y);
-  const updateTimeStr = updateTime.toPrecision(4);
-  const updateInnerText = `${updateTimeStr}ms`;
-  y += 40;
-  text("updateTime:" + updateInnerText, 40, y);
+  y += TEXT_INTERVAL;
+  displayInteger(entity.getCapacity(), 40, y, "using");
+
+  y += TEXT_INTERVAL;
+  displayRealNumber(updateTime, 40, y, "updateTime");
+
+  //if(updateTimeMax < updateTime){ updateTimeMax = updateTime; }
+  updateTimeSum += updateTime;
+  if(frameCount % AVERAGE_CALC_SPAN === 0){
+		updateTimeAverage = updateTimeSum / AVERAGE_CALC_SPAN;
+		updateTimeSum = 0;
+	}
+  y += TEXT_INTERVAL;
+  displayRealNumber(updateTimeAverage, 40, y, "updateTimeAverage");
   if(updateTimeMax < updateTime){ updateTimeMax = updateTime; }
-  const updateTimeMaxStr = updateTimeMax.toPrecision(4);
-  const updateTimeMaxInnerText = `${updateTimeMaxStr}ms`;
-  y += 40;
-  text("updateTimeMax:" + updateTimeMaxInnerText, 40, y)
-  const drawTimeStr = drawTime.toPrecision(4);
-  const drawInnerText = `${drawTimeStr}ms`;
-  y += 40;
-  text("drawTime:" + drawInnerText, 40, y);
+  y += TEXT_INTERVAL;
+  displayRealNumber(updateTimeMax, 40, y, "updateTimeMax");
+
+  y += TEXT_INTERVAL * 2;
+  displayRealNumber(ejectTime, 40, y, "ejectTime");
+
+  ejectTimeSum += ejectTime;
+	if(frameCount % AVERAGE_CALC_SPAN === 0){
+		ejectTimeAverage = ejectTimeSum / AVERAGE_CALC_SPAN;
+		ejectTimeSum = 0;
+	}
+  y += TEXT_INTERVAL;
+  displayRealNumber(ejectTimeAverage, 40, y, "ejectTimeAverage");
+  if(ejectTimeMax < ejectTime){ ejectTimeMax = ejectTime; }
+  y += TEXT_INTERVAL;
+  displayRealNumber(ejectTimeMax, 40, y, "ejectTimeMax");
+
+  y += TEXT_INTERVAL * 2;
+  displayRealNumber(drawTime, 40, y, "drawTime");
+
 	drawTimeSum += drawTime;
 	if(frameCount % AVERAGE_CALC_SPAN === 0){
 		drawTimeAverage = drawTimeSum / AVERAGE_CALC_SPAN;
 		drawTimeSum = 0;
 	}
-	const drawTimeAverageStr = drawTimeAverage.toPrecision(4);
-  const drawTimeAverageInnerText = `${drawTimeAverageStr}ms`;
-  y += 40;
-  text("drawTimeAverage:" + drawTimeAverageInnerText, 40, y);
+  y += TEXT_INTERVAL;
+  displayRealNumber(drawTimeAverage, 40, y, "drawTimeAverage");
+  if(drawTimeMax < drawTime){ drawTimeMax = drawTime; }
+  y += TEXT_INTERVAL;
+  displayRealNumber(drawTimeMax, 40, y, "drawTimeMax");
+
   if(usingUnitMax < entity.getCapacity()){ usingUnitMax = entity.getCapacity(); }
-  y += 40;
-  text("usingUnitMax:" + usingUnitMax, 40, y);
+  y += TEXT_INTERVAL;
+  displayInteger(usingUnitMax, 40, y, "usingUnitMax");
+
   // 色について内訳表示
-  y += 80;
+  y += TEXT_INTERVAL * 2;
   Object.keys(entity.drawGroup).forEach((colorName) => {
-    text(colorName + ":" + entity.drawGroup[colorName].length, 40, y);
-    y += 40;
+    displayInteger(entity.drawGroup[colorName].length, 40, y, colorName);
+    y += TEXT_INTERVAL;
   })
+}
+
+// 表示関数（実数版）
+function displayRealNumber(value, x, y, explanation, precision = 4){
+  // 与えられた実数を(x, y)の位置に小数点以下precisionまで表示する感じ(explanation:~~~って感じ)
+  const valueStr = value.toPrecision(precision);
+  const innerText = `${valueStr}ms`;
+  text(explanation + ":" + innerText, x, y);
+}
+
+// 整数版
+function displayInteger(value, x, y, explanation){
+  text(explanation + ":" + value, x, y);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -795,10 +843,11 @@ class System{
 		this.player.initialize();
     this.unitArray.loopReverse("vanish"); // unitすべて戻す
     this.drawGroup = {};
-    updateTimeMax = 0; // 必要。
-    // これ↓要らないかも。unitArrayから各unitに対してvanish命令出してその中で排除してる、
-    // だからこの時点でdrawGroupの各々はすっからかんのハズ。
-    // 要らなかったですね。やはり。そりゃ、そう・・
+    usingUnitMax = 0; // 毎回初期化する
+    // 各種情報
+    updateTimeMax = 0;
+    drawTimeMax = 0;
+    ejectTimeMax = 0;
 	}
   registColor(name, _color){
     this.drawColor[name] = _color;
@@ -811,8 +860,10 @@ class System{
 	update(){
 		this.player.update();
     this.unitArray.loop("update");
-    this.unitArray.loopReverse("eject");
 	}
+  eject(){
+    this.unitArray.loopReverse("eject");
+  }
 	draw(){
 		this.player.draw();
     Object.keys(this.drawGroup).forEach((colorName) => {
