@@ -7,8 +7,12 @@ const AREA_WIDTH = 480;
 const AREA_HEIGHT = 600; // あとでCanvasSizeをこれよりおおきく・・もしくは横かもだけど。んー。
 // 1列に・・これだと15だから、パターン60個できるね！（しないけど）
 
+// update用の配列やめてもうそれぞれ別々の色配列の中でupdateとdrawやっちゃった方が速そう。
+// で、removeも行う感じ。ポインタつなげて。すべて、一本。
+// それとは別にオールクリアも用意する。
+
 let isLoop = true;
-let showInfo = false;
+let showInfo = true;
 
 let updateTimeSum = 0;
 let updateTimeAverage = 0;
@@ -28,7 +32,7 @@ const TEXT_INTERVAL = 25;
 let unitPool;
 let entity;
 let seedSet = {};
-const DEFAULT_PATTERN_INDEX = 36;
+const DEFAULT_PATTERN_INDEX = 0;
 const STAR_FACTOR = 2.618033988749895; // 1 + 2 * cos(36).
 // cosとsinの0, 72, 144, 216, 288における値
 const COS_PENTA = [1, 0.30901699437494745, -0.8090169943749473, -0.8090169943749473, 0.30901699437494745];
@@ -51,7 +55,9 @@ function setup(){
   registUnitShapes(); // 形を用意する。
 
   // FALさんの1
+  // 中心からばーっと乱射（タイル：濃い灰色）
   seedSet.seed0 = {
+    colorName:"dkgray", shotColorName:"black", bgColor:"gray",
     x:0.5, y:0.5,
     action:{
       main:[{shotSpeed:["set", [3, 6]]}, {shotDirection:["set", [0, 360]]}, {fire:""},
@@ -59,7 +65,9 @@ function setup(){
     },
   };
   // FALさんの2
+  // カミソリ。（タイル：濃い緑）
   seedSet.seed1 = {
+    colorName:"dkgreen", shotColorName:"green", bgColor:"ltgreen", shotShapeName:"wedgeMiddle",
     x:0.5, y:0.5, shotSpeed:2,
     action:{
       main:[{shotDirection:["set", [0, 360]]}, {fire:"fire"}, {wait:60}, {loop:INF, back:-1}]
@@ -67,7 +75,9 @@ function setup(){
     fireDef:{fire:{radial:{count:16}, nway:{count:7, interval:2}}}
   };
   // FALさんの3
+  // ぐらーーっ。（タイル：赤）
   seedSet.seed2 = {
+    colorName:"red", shotColorName:"orange", bgColor: "plorange",
     x:0.5, y:0.5, shotSpeed:2,
     action:{
       main:[{shotDirection:["add", 2]}, "attack", {shotDirection:["add", -2]}, "attack", {loop:INF, back:-1}]
@@ -77,7 +87,7 @@ function setup(){
   };
 
   // burstSweeping.(FALさんの4)
-  // 回転しながら弾をばらまく。
+  // 回転しながら弾をばらまく。（タイル：青）
   // これでいいでしょ。角速度2πだから2秒で1周する。12°ずつ方向変化、速度は2.
   seedSet.seed3 = {
     x:0.5, y:0.5, shotSpeed:2*Math.PI, shotDirection:0, shotBehavior:["circle"],
@@ -92,16 +102,19 @@ function setup(){
 
   // FALさんの5
   // kindをcannonに指定すると複数のcannonを生成してそれぞれに挙動させることができる
+  // （タイル：薄い緑）
   seedSet.seed4 = {
+    bgColor:"plgreen",
     x:0.5, y:0.3, shotSpeed:96*PI/180, shotDirection:90,
     shotColorName:"plblue", shotShapeName:"squareMiddle",
     action:{
-      main:[{shotAction:["set", "cannon1"]}, {shotBehavior:["add", "circle"]}, {fire:"setCannon1"},
+      main:[{shotColor:"green"},
+            {shotAction:["set", "cannon1"]}, {shotBehavior:["add", "circle"]}, {fire:"setCannon1"},
             {shotBehavior:["clear"]}, {shotAction:["set", "cannon2"]}, {shotBehavior:["add", "circleInv"]},
             {fire:"setCannon2"}, {vanish:1}
            ],
-      cannon1:[{shotColor:"blue"}, {shotShape:"wedgeSmall"}, "cannonMain"],
-      cannon2:[{shotColor:"blue"}, {shotShape:"wedgeSmall"}, {wait:48}, "cannonMain"]
+      cannon1:[{shotColor:"dkgreen"}, {shotShape:"wedgeSmall"}, "cannonMain"],
+      cannon2:[{shotColor:"dkgreen"}, {shotShape:"wedgeSmall"}, {wait:48}, "cannonMain"]
     },
     short:{cannonMain:[{shotSpeed:["set", 5]}, {aim:0}, {fire:"line7"}, {wait:4}, {loop:8, back:3},
                         {wait:64}, {loop:INF, back:5}]},
@@ -114,7 +127,9 @@ function setup(){
   // FALさんの6.
   // margin120であらぬ方向に3wayを発射して(interval45°)速さ5で30フレーム進んでから
   // margin30でこっちに向かって・・んー。2フレームに1発、0.5ずつ速くしていって飛ばす感じ。(??)
+  // タイル：紫
   seedSet.seed5 = {
+    colorName:"purple", shotColorName:"red", bgColor:"plred",
     x:0.5, y:0.3, shotSpeed:5,
     action:{
       main:[{aim:120}, {shotAction:["set", "burst"]}, {fire:"way3"}, {wait:30}, {loop:INF, back:-1}],
@@ -126,7 +141,9 @@ function setup(){
 
   // FALさんの7.(メソッドを用いてやり直し)
   // 出来たと思う。多分本家のあっちの方が速いね・・48→24にするとかしないと似ない気がする。まあいいけど。
+  // タイル：水色
   seedSet.seed6 = {
+    colorName:"dkskblue", shotColorName:"skblue", bgColor:"plskblue",
     x:0.5, y:0.3, shotSpeed:6, shotDirection:90,
     action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
                   {wait:48}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
@@ -143,7 +160,9 @@ function setup(){
   // 6フレームおきに120°間隔で2way発射を4回を16フレームおきにやってる？
   // とりま、16発回らせてみますか。
   // できたかな？
+  // タイル：黄色
   seedSet.seed7 = {
+    bgColor:"plorange", shotColorName:"dkyellow",
     x:0.5, y:0.5, shotSpeed:0.5*PI, shotDirection:0, shotBehavior:["circ120"],
     action:{
       main:[{hide:true}, {shotAction:["set", "way2"]}, {fire:"radial16"}, {wait:INF}],
@@ -157,7 +176,9 @@ function setup(){
   };
 
   // FALさんの9, これは16個の方向にとばしてそれに2wayさせてる、すぐに。
+  // タイル：濃い赤
   seedSet.seed8 = {
+    bgColor:"plred", colorName:"red", shotColorName:"dkred",
     x:0.5, y:0.5, shotSpeed:4,
     action:{
       main:[{shotAction:["set", "way2"]}, {shotDirection:["add", 11.5]},
@@ -171,7 +192,9 @@ function setup(){
   // それっぽくなった。
   // setのところを30フレームかけて1にする処理にしたらそれっぽくなった。
   // スピードが1になった直後に流れていく感じ。
+  // タイル：濃い紫
   seedSet.seed9 = {
+    bgColor:"plblue", shotColorName:"dkpurple", colorName:"dkblue",
     x:0.5, y:0.3, shotSpeed:4,
     action:{
       main:[{shotAction:["set", "line12"]},
@@ -187,14 +210,16 @@ function setup(){
   // できれば色も変えたいね
   // できたけど洗練させたいな。
   // set 3 30 set 2 30にしたら滑らかさが増した（気がする）
+  // タイル：薄い赤
   seedSet.seed10 = {
+    bgColor:"plred",
     x:0.5, y:0.25,
     action:{
       main:[{shotAction:["set", "spiral"]}, {fire:"u"}, {shotAction:["set", "radial"]}, {fire:"u"}, {vanish:1}],
-      spiral:[{hide:true}, {shotSpeed:["set", 1]}, {shotDirection:["set", 0]},
+      spiral:[{shotColor:"dkred"}, {hide:true}, {shotSpeed:["set", 1]}, {shotDirection:["set", 0]},
               {shotBehavior:["add", "spiral_1"]}, "rad_24", {shotBehavior:["clear"]},
               {shotBehavior:["add", "spiral_1_Inv"]}, "rad_24", {shotBehavior:["clear"]}, {loop:INF, back:-1}],
-      radial:[{hide:true}, {shotSpeed:["set", 4]}, {shotDirection:["set", 0]},
+      radial:[{shotColor:"dkorange"}, {hide:true}, {shotSpeed:["set", 4]}, {shotDirection:["set", 0]},
               {shotAction:["set", "decel_3"]}, {fire:"u"}, {shotDirection:["add", 1.5]}, {loop:3, back:2},
               {shotAction:["set", "decel_2"]}, {fire:"u"}, {shotDirection:["add", 1.5]}, {loop:3, back:2},
               {loop:40, back:8}, {wait:90}, {loop:INF, back:-3}],
@@ -217,7 +242,9 @@ function setup(){
   // delayってactionのwaitじゃん・・まあ、とにかく。
   // できました。いちいちwait:INFって書くのばかばかしいから、
   // actionの終わりに来たら自動的にスルーするように仕向けるか。
+  // タイル：濃い水色
   seedSet.seed11 = {
+    shotColorName:"dkskblue", colorName:"skblue",
     x:0.5, y:0.3, shotSpeed:8,
     action:{
       main:[{shotAction:["set", "sub"]}, {shotDirection:["set", [0, 360]]}, {fire:""}, {wait:90},
@@ -597,7 +624,7 @@ function setup(){
   // frontVerticalで5つの場所に配置したユニットが左下方に星型の弾丸を発射してそれが
   // 後ろ方向に小さめの弾丸を発射しながら落ちていくイメージ。方向はすこしずつブレさせる。
   seedSet.seed36 = {
-    bgColor:{r:60, g:60, b:60}, infoColor:{r:255, g:255, b:255},
+    bgColor:"dkgray", infoColor:{r:255, g:255, b:255},
     x:0.7, y:0, shotDirection:90,
     action:{
       main:[{shotAction:["set", "generator"]}, {fire:"v5"}, {vanish:1}],
@@ -764,14 +791,25 @@ function registUnitColors(){
         .registColor("blue", color(63, 72, 204))
         .registColor("dkblue", color(35, 43, 131))
         .registColor("skblue", color(0, 128, 255))
+        .registColor("dkskblue", color(0, 107, 153))
+        .registColor("plskblue", color(159, 226, 255))
         .registColor("plblue", color(125, 133, 221))
         .registColor("red", color(237, 28, 36))
+        .registColor("plred", color(247, 153, 157))
+        .registColor("dkred", color(146, 12, 18))
         .registColor("yellow", color(255, 242, 0))
+        .registColor("dkyellow", color(142, 135, 0))
+        .registColor("dkgreen", color(17, 91, 39))
         .registColor("green", color(34, 177, 76))
+        .registColor("plgreen", color(108, 227, 145))
         .registColor("brown", color(128, 64, 0))
         .registColor("purple", color(163, 73, 164))
+        .registColor("dkpurple", color(95, 41, 95))
+        .registColor("plorange", color(255, 179, 128))
         .registColor("orange", color(255, 127, 39))
+        .registColor("dkorange", color(180, 70, 0))
         .registColor("gold", color(128, 128, 0))
+        .registColor("dkgray", color(64))
         .registColor("gray", color(128))
         .registColor("ltgreen", color(181, 230, 29));
 }
@@ -824,7 +862,7 @@ class System{
     let seed = seedSet["seed" + newPatternIndex];
     // 背景色
     if(seed.hasOwnProperty("bgColor")){
-      this.backgroundColor = color(seed.bgColor.r, seed.bgColor.g, seed.bgColor.b);
+      this.backgroundColor = this.drawColor[seed.bgColor];
     }else{
       this.backgroundColor = color(220, 220, 255);
     }
