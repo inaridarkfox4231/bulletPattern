@@ -7,24 +7,18 @@ const AREA_WIDTH = 480;
 const AREA_HEIGHT = 600; // あとでCanvasSizeをこれよりおおきく・・もしくは横かもだけど。んー。
 // 1列に・・これだと15だから、パターン60個できるね！（しないけど）
 
-// update用の配列やめてもうそれぞれ別々の色配列の中でupdateとdrawやっちゃった方が速そう。
-// で、removeも行う感じ。ポインタつなげて。すべて、一本。
-// それとは別にオールクリアも用意する。
+// 今のままでいいからとりあえず関数化とか変数化、やる。
 
 let isLoop = true;
 let showInfo = true;
 
-let updateTimeSum = 0;
-let updateTimeAverage = 0;
-let updateTimeMax = 0;
-let ejectTimeSum = 0;
-let ejectTimeAverage = 0;
-let ejectTimeMax = 0;
-let drawTimeSum = 0;
-let drawTimeAverage = 0;
-let drawTimeMax = 0;
+let runTimeSum = 0;
+let runTimeAverage = 0;
+let runTimeMax = 0;
+let updateTimeAtMax = 0;
+let ejectTimeAtMax = 0;
+let drawTimeAtMax = 0;
 let usingUnitMax = 0;
-let timeTotalMax = 0;
 const INDENT = 40;
 const AVERAGE_CALC_SPAN = 10;
 const TEXT_INTERVAL = 25;
@@ -32,7 +26,7 @@ const TEXT_INTERVAL = 25;
 let unitPool;
 let entity;
 let seedSet = {};
-const DEFAULT_PATTERN_INDEX = 0;
+const DEFAULT_PATTERN_INDEX = 37;
 const STAR_FACTOR = 2.618033988749895; // 1 + 2 * cos(36).
 // cosとsinの0, 72, 144, 216, 288における値
 const COS_PENTA = [1, 0.30901699437494745, -0.8090169943749473, -0.8090169943749473, 0.30901699437494745];
@@ -641,6 +635,36 @@ function setup(){
     fireDef:{v5:{formation:{type:"frontVertical", count:5, distance:40, interval:120}}}
   }
 
+  // rainbow. red, orange, yellow, ltgreen, blue, dkblue, purple.
+  // 課題1：このコードをもっと簡潔に書く仕様を作れ。
+  // 課題2:そのうえで、周期ごとに回転方向を逆に出来るようにせよ。
+  seedSet.seed37 = {
+    x:0.5, y:0.3, shotDirection:90, colorName:"dkgray", shotSpeed:4,
+    shotShapeName:"wedgeMiddle", bgColor:"plgray",
+    action:{
+      main:[{shotAction:["set", "split2"]},
+            {shotColor:"red"}, {fire:""}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"orange"}, {fire:""}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"yellow"}, {fire:""}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"ltgreen"}, {fire:""}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"blue"}, {fire:""}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"dkblue"}, {fire:""}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"purple"}, {fire:""}, {shotDirection:["add", 360 / 7]},
+            {shotDirection:["add", 2]}, {wait:4}, {loop:8, back:-1}, {wait:32}, {loop:4, back:-1},
+            {shotSpeed:["set", 2]}, {aim:0},
+            {shotColor:"red"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"orange"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"yellow"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"ltgreen"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"blue"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"dkblue"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
+            {shotColor:"purple"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
+            {shotSpeed:["set", 4]}, {wait:64}, {loop:INF, back:-1}],
+      split2:[{speed:["set", 1, 60]}, {fire:"way2"}, {vanish:1}],
+    },
+    fireDef:{way2:{nway:{count:2, interval:30}}, way6:{nway:{count:6, interval:8}}}
+  }
+
   // どうする？？
   entity.setPattern(DEFAULT_PATTERN_INDEX);
 }
@@ -648,26 +672,27 @@ function setup(){
 function draw(){
   background(entity.backgroundColor);
 
+	const runStart = performance.now();
 	const updateStart = performance.now();
   entity.update(); // 更新
-  const updateEnd = performance.now();
-
-  const ejectStart = performance.now();
+	const updateEnd = performance.now();
+	const ejectStart = performance.now();
   entity.eject(); // 排除
-  const ejectEnd = performance.now();
-
-	const drawStart = performance.now(); // 時間表示。
+	const ejectEnd = performance.now();
+	const drawStart = performance.now();
   entity.draw(); // 描画
-  const drawEnd = performance.now();
+	const drawEnd = performance.now();
+  const runEnd = performance.now();
 
-	if(showInfo){ showPerformanceInfo(updateEnd - updateStart, ejectEnd - ejectStart, drawEnd - drawStart); }
+	if(showInfo){ showPerformanceInfo(runEnd - runStart,
+                                    updateEnd - updateStart, ejectEnd - ejectStart, drawEnd - drawStart); }
   drawConfig();
 }
 
 // ---------------------------------------------------------------------------------------- //
 // PerformanceInfomation.
 
-function showPerformanceInfo(updateTime, ejectTime, drawTime){
+function showPerformanceInfo(runTime, updateTime, ejectTime, drawTime){
   let y = 0; // こうすれば新しいデータを挿入しやすくなる。指定しちゃうといろいろとね・・
   // ほんとは紐付けとかしないといけないんだろうけど。
 	fill(entity.infoColor);
@@ -675,53 +700,30 @@ function showPerformanceInfo(updateTime, ejectTime, drawTime){
   displayInteger(entity.getCapacity(), INDENT, y, "using");
 
   y += TEXT_INTERVAL;
-  displayRealNumber(updateTime, INDENT, y, "updateTime");
+  displayRealNumber(runTime, INDENT, y, "runTime");
 
-  //if(updateTimeMax < updateTime){ updateTimeMax = updateTime; }
-  updateTimeSum += updateTime;
+  runTimeSum += runTime;
   if(frameCount % AVERAGE_CALC_SPAN === 0){
-		updateTimeAverage = updateTimeSum / AVERAGE_CALC_SPAN;
-		updateTimeSum = 0;
+		runTimeAverage = runTimeSum / AVERAGE_CALC_SPAN;
+		runTimeSum = 0;
 	}
   y += TEXT_INTERVAL;
-  displayRealNumber(updateTimeAverage, INDENT, y, "updateTimeAverage");
-  if(updateTimeMax < updateTime){ updateTimeMax = updateTime; }
+  displayRealNumber(runTimeAverage, INDENT, y, "runTimeAverage");
+  if(runTimeMax < runTime){
+    runTimeMax = runTime;
+    updateTimeAtMax = updateTime;
+    ejectTimeAtMax = ejectTime;
+    drawTimeAtMax = drawTime;
+  }
   y += TEXT_INTERVAL;
-  displayRealNumber(updateTimeMax, INDENT, y, "updateTimeMax");
-
-  y += TEXT_INTERVAL * 2;
-  displayRealNumber(ejectTime, INDENT, y, "ejectTime");
-
-  ejectTimeSum += ejectTime;
-	if(frameCount % AVERAGE_CALC_SPAN === 0){
-		ejectTimeAverage = ejectTimeSum / AVERAGE_CALC_SPAN;
-		ejectTimeSum = 0;
-	}
+  displayRealNumber(runTimeMax, INDENT, y, "runTimeMax");
   y += TEXT_INTERVAL;
-  displayRealNumber(ejectTimeAverage, INDENT, y, "ejectTimeAverage");
-  if(ejectTimeMax < ejectTime){ ejectTimeMax = ejectTime; }
+  displayRealNumber(updateTimeAtMax, INDENT, y, "---update");
   y += TEXT_INTERVAL;
-  displayRealNumber(ejectTimeMax, INDENT, y, "ejectTimeMax");
-
-  y += TEXT_INTERVAL * 2;
-  displayRealNumber(drawTime, INDENT, y, "drawTime");
-
-	drawTimeSum += drawTime;
-	if(frameCount % AVERAGE_CALC_SPAN === 0){
-		drawTimeAverage = drawTimeSum / AVERAGE_CALC_SPAN;
-		drawTimeSum = 0;
-	}
+  displayRealNumber(ejectTimeAtMax, INDENT, y, "---eject");
   y += TEXT_INTERVAL;
-  displayRealNumber(drawTimeAverage, INDENT, y, "drawTimeAverage");
-  if(drawTimeMax < drawTime){ drawTimeMax = drawTime; }
-  y += TEXT_INTERVAL;
-  displayRealNumber(drawTimeMax, INDENT, y, "drawTimeMax");
-
-  if(timeTotalMax < updateTime + ejectTime + drawTime){ timeTotalMax = updateTime + ejectTime + drawTime; }
-  y += TEXT_INTERVAL;
-  displayRealNumber(timeTotalMax, INDENT, y, "timeTotalMax");
-  y += TEXT_INTERVAL;
-  displayRealNumber(updateTimeAverage + ejectTimeAverage + drawTimeAverage, INDENT, y, "totalTimeAverage");
+  displayRealNumber(drawTimeAtMax, INDENT, y, "---draw");
+  // 別にいいけど、runTimeMaxになった時だけあれ、内訳を更新して表示してもいいと思う。--とか付けて。
 
   if(usingUnitMax < entity.getCapacity()){ usingUnitMax = entity.getCapacity(); }
   y += TEXT_INTERVAL * 2;
@@ -810,6 +812,7 @@ function registUnitColors(){
         .registColor("dkorange", color(180, 70, 0))
         .registColor("gold", color(128, 128, 0))
         .registColor("dkgray", color(64))
+        .registColor("plgray", color(200))
         .registColor("gray", color(128))
         .registColor("ltgreen", color(181, 230, 29));
 }
@@ -891,10 +894,7 @@ class System{
     this.drawGroup = {};
     usingUnitMax = 0; // 毎回初期化する
     // 各種情報
-    updateTimeMax = 0;
-    drawTimeMax = 0;
-    ejectTimeMax = 0;
-    timeTotalMax = 0;
+    runTimeMax = 0;
 	}
   registColor(name, _color){
     this.drawColor[name] = _color;
