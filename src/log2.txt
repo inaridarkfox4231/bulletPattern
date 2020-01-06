@@ -855,3 +855,7 @@ entity.drawGroup[newShapeName].add(this);
 仕様変更の内容
 プロパティにcolorName, shapeName, shotColorName, shotShapeNameを追加、あとdrawModule.
 ・・・
+
+shortで変数使えるようにした。テストはまだ。
+fireでも変数使えるようにしたい。これやばいな・・fireDefからそのまま作っちゃってるね。うーん。
+クラス使うべきだね・・そうね・・うん。んー。

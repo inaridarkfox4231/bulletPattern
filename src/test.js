@@ -1852,8 +1852,9 @@ function parsePatternSeed(seed){
   if(seed.fireDef !== undefined){
     Object.keys(seed.fireDef).forEach((name) => {
       // いろいろ
-      let fireFunc = createFirePattern(seed.fireDef[name])
-      data.fire[name] = fireFunc;
+      //let fireFunc = createFirePattern(seed.fireDef[name])
+      //data.fire[name] = fireFunc;
+      data.fire[name] = seed.fireDef[name];
     })
   }
 
@@ -1937,23 +1938,13 @@ function getExpansion(shortcut, action, dict){
       })
     }else{
       // shortでない場合は普通に。ここでオブジェクトになんか書いてあるときはそこら辺の処理も行う。
-      let copyObj = {};
-      Object.assign(copyObj, command);
-      propertyInterpret(copyObj, dict);
-      actionArray.push(copyObj);
+      // dictが{}でないのはcommandがshortを持っててさらにそれ以外を持ってる時。これを使って、
+      // 文字列で"$fire1"みたいになってるやつをいじる、つもり・・
+      let result = interpretNestedData(command, dict);
+      actionArray.push(result);
     }
   }
   return actionArray;
-}
-
-function propertyInterpret(obj, dict){
-  let keyArray = Object.keys(dict);
-  if(keyArray.length < 2){ return; } // {}の場合、{short:"hoge"} の場合はすることが無い。
-  keyArray.forEach((key) => {
-    if(typeof(obj[key]) === "string" && obj[key][0] === '$'){
-      obj[key] = dict[key];
-    }
-  })
 }
 
 // 応用すれば、一定ターン移動するとかそういうのもbackupで表現できそう（waitの派生形）
@@ -2007,8 +1998,17 @@ function interpretCommand(data, command, index){
   if(_type === "fire"){
     // fire:名前, の名前を関数にするだけ。
     // ライブラリに存在しない場合は自動的にデフォルトになる（書き忘れ対策）
+    // ここで翻訳すればいい。data.fire[name]にはfiredef[name]を入れておいて。
+    // で、dictがあるとき（command.fireの他にcommand.~~があるとき）、data.fire[name]の中の"$eee"を
+    // dict.eeeで置き換える。そんな感じ。dictって言ってもcommandの中のfire以外のプロパティのことだけど。
+    // 具体例
+    // fireDef:{ways:{nway:{count:"$count", interval:30}}} で {fire:"ways", count:4} みたいなね。
     if(data.fire[command.fire] === undefined){ result.fire = createFirePattern({}); }
-    else{ result.fire = data.fire[command.fire]; }
+    else{
+      //result.fire = data.fire[command.fire];
+      let fireData = interpretNestedData(data.fire[command.fire], command);
+      result.fire = createFirePattern(fireData); // 変更
+    }
     return result;
   }
   // action.
@@ -2044,6 +2044,39 @@ function interpretCommand(data, command, index){
   if(_type === "follow"){
     // followをonoffにする
     result.flag = command.follow; return result;
+  }
+}
+
+// fireのところに変数使ってて、それを翻訳する関数。
+// ネストを掘り下げないといけないので若干めんどくさくなってる。
+// たぶん、behaviorにも使えるけどそのためにはaddBehaviorとかしてaddやらなんやらをやめないといけないね。
+
+// dataが配列か、stringか、numberか、オブジェクトか。
+function interpretNestedData(data, dict){
+  if(typeof(data) !== "string" && data.hasOwnProperty("length")){ // 配列かどうかを見ている
+    let result = [];
+    data.forEach((elem) => {
+      result.push(interpretNestedData(elem, dict));
+    })
+    return result;
+  }
+  const dataType = typeof(data);
+  switch(dataType){
+    case "string": // 文字列のケース
+      if(data[0] === '$'){
+        return dict[data.substr(1)];
+      }else{
+        return data;
+      }
+    case "number": // 数字のケース
+      return data;
+    default: // オブジェクトのケース
+      let result = {};
+      const keyArray = Object.keys(data);
+      keyArray.forEach((key) => {
+        result[key] = interpretNestedData(data[key], dict);
+      })
+      return result;
   }
 }
 
