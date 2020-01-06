@@ -1,3 +1,5 @@
+// SolidAetherのコピー練習帳
+
 "use strict";
 
 const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
@@ -49,633 +51,9 @@ function setup(){
   registUnitColors(); // 色を用意する。
   registUnitShapes(); // 形を用意する。
 
-  // FALさんの1
-  // 中心からばーっと乱射（タイル：濃い灰色）
-  seedSet.seed0 = {
-    colorName:"dkgrey", shotColorName:"black", bgColor:"grey",
-    x:0.5, y:0.5,
-    action:{
-      main:[{shotSpeed:["set", [3, 6]]}, {shotDirection:["set", [0, 360]]}, {fire:""},
-            {loop:2, back:-1}, {wait:1}, {loop:INF, back:-1}]
-    },
-  };
-  // FALさんの2
-  // カミソリ。（タイル：濃い緑）
-  seedSet.seed1 = {
-    colorName:"dkgreen", shotColorName:"green", bgColor:"ltgreen", shotShapeName:"wedgeMiddle",
-    x:0.5, y:0.5, shotSpeed:2,
-    action:{
-      main:[{shotDirection:["set", [0, 360]]}, {fire:"fire"}, {wait:60}, {loop:INF, back:-1}]
-    },
-    fireDef:{fire:{radial:{count:16}, nway:{count:7, interval:2}}}
-  };
-  // FALさんの3
-  // ぐらーーっ。（タイル：赤）
-  seedSet.seed2 = {
-    colorName:"red", shotColorName:"orange", bgColor: "plorange",
-    x:0.5, y:0.5, shotSpeed:2,
-    action:{
-      main:[{shotDirection:["add", 2]}, {short:"attack"},
-            {shotDirection:["add", -2]}, {short:"attack"}, {loop:INF, back:-1}]
-    },
-    short:{attack:[{fire:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}]},
-    fireDef:{radial16:{radial:{count:16}}}
-  };
-
-  // burstSweeping.(FALさんの4)
-  // 回転しながら弾をばらまく。（タイル：青）
-  // これでいいでしょ。角速度2πだから2秒で1周する。12°ずつ方向変化、速度は2.
-  seedSet.seed3 = {
-    x:0.5, y:0.5, shotSpeed:2*Math.PI, shotDirection:0, shotBehavior:["circle"],
-    action:{
-      main:[{shotAction:["set", "sweep"]}, {fire:"rad2"}, {wait:INF}],
-      sweep:[{hide:true}, {shotSpeed:["set", 2]}, {shotDirection:["add", 12]}, {fire:""}, {wait:1}, {loop:INF, back:-2}]
-    },
-    fireDef:{rad2:{formation:{type:"points", p:[[120, 0]]}, bend:90, radial:{count:2}}},
-    behaviorDef:{circle:["circular", {radius:120}]}
-  };
-
-
-  // FALさんの5
-  // kindをcannonに指定すると複数のcannonを生成してそれぞれに挙動させることができる
-  // （タイル：薄い緑）
-  seedSet.seed4 = {
-    bgColor:"plgreen",
-    x:0.5, y:0.3, shotSpeed:96*PI/180, shotDirection:90,
-    shotColorName:"plblue", shotShapeName:"squareMiddle",
-    action:{
-      main:[{shotColor:"green"},
-            {shotAction:["set", "cannon1"]}, {shotBehavior:["add", "circle"]}, {fire:"setCannon1"},
-            {shotBehavior:["clear"]}, {shotAction:["set", "cannon2"]}, {shotBehavior:["add", "circleInv"]},
-            {fire:"setCannon2"}, {vanish:1}
-           ],
-      cannon1:[{shotColor:"dkgreen"}, {shotShape:"wedgeSmall"}, {short:"cannonMain"}],
-      cannon2:[{shotColor:"dkgreen"}, {shotShape:"wedgeSmall"}, {wait:48}, {short:"cannonMain"}]
-    },
-    short:{cannonMain:[{shotSpeed:["set", 5]}, {aim:0}, {fire:"line7"}, {wait:4}, {loop:8, back:3},
-                        {wait:64}, {loop:INF, back:5}]},
-    fireDef:{setCannon1:{formation:{type:"points", p:[[48, 0]]}, bend:90, kind:"square"},
-             setCannon2:{formation:{type:"points", p:[[48, 0]]}, bend:-90, kind:"square"},
-             line7:{line:{count:7, upSpeed:0.3}}},
-    behaviorDef:{circle:["circular", {radius:96, clockwise:true}],
-                 circleInv:["circular", {radius:96, clockwise:false}]}
-  };
-  // FALさんの6.
-  // margin120であらぬ方向に3wayを発射して(interval45°)速さ5で30フレーム進んでから
-  // margin30でこっちに向かって・・んー。2フレームに1発、0.5ずつ速くしていって飛ばす感じ。(??)
-  // タイル：紫
-  seedSet.seed5 = {
-    colorName:"purple", shotColorName:"red", bgColor:"plred",
-    x:0.5, y:0.3, shotSpeed:5,
-    action:{
-      main:[{aim:120}, {shotAction:["set", "burst"]}, {fire:"way3"}, {wait:30}, {loop:INF, back:-1}],
-      burst:[{wait:30}, {aim:10}, {shotAction:["set", "burst2"]}, {fire:"u"}, {vanish:1}],
-      burst2:[{shotSpeed:["add", 0.5]}, {fire:""}, {wait:2}, {loop:24, back:3}, {vanish:1}]
-    },
-    fireDef:{way3:{nway:{count:3, interval:45}}}
-  };
-
-  // FALさんの7.(メソッドを用いてやり直し)
-  // 出来たと思う。多分本家のあっちの方が速いね・・48→24にするとかしないと似ない気がする。まあいいけど。
-  // タイル：水色
-  seedSet.seed6 = {
-    colorName:"dkskblue", shotColorName:"skblue", bgColor:"plskblue",
-    x:0.5, y:0.3, shotSpeed:6, shotDirection:90,
-    action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
-                  {wait:48}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
-            split2_0:[{shotAction:["set", "split2_1"]}, {short:"split2"}],
-            split2_1:[{shotAction:["set", "split2_2"]}, {short:"split2"}],
-            split2_2:[{shotAction:["set", "last"]}, {short:"split2"}],
-            last:[{speed:["set", 3, 30]}, {wait:INF}]
-           },
-    short:{split2:[{speed:["set", 1, 30]}, {shotSpeed:["set", 6]}, {fire:"way2"}, {vanish:1}]},
-    fireDef:{radial7:{radial:{count:7}}, way2:{nway:{count:2, interval:120}}}
-  };
-
-  // FALさんの8, 多分だけど円周上をぐるぐるまわる16個の砲台が
-  // 6フレームおきに120°間隔で2way発射を4回を16フレームおきにやってる？
-  // とりま、16発回らせてみますか。
-  // できたかな？
-  // タイル：黄色
-  seedSet.seed7 = {
-    bgColor:"plorange", shotColorName:"dkyellow",
-    x:0.5, y:0.5, shotSpeed:0.5*PI, shotDirection:0, shotBehavior:["circ120"],
-    action:{
-      main:[{hide:true}, {shotAction:["set", "way2"]}, {fire:"radial16"}, {wait:INF}],
-      way2:[{shotSpeed:["set", 2]}, {fire:"way2"}, {wait:6}, {loop:4, back:2}, {wait:16}, {loop:INF, back:-2}]
-    },
-    fireDef:{
-      radial16:{formation:{type:"points", p:[[120, 0]]}, radial:{count:16}, bend:90},
-      way2:{nway:{count:2, interval:120}}
-    },
-    behaviorDef:{circ120:["circular", {radius:120}]}
-  };
-
-  // FALさんの9, これは16個の方向にとばしてそれに2wayさせてる、すぐに。
-  // タイル：濃い赤
-  seedSet.seed8 = {
-    bgColor:"plred", colorName:"red", shotColorName:"dkred",
-    x:0.5, y:0.5, shotSpeed:4,
-    action:{
-      main:[{shotAction:["set", "way2"]}, {shotDirection:["add", 11.5]},
-            {fire:"radial16"}, {wait:120}, {loop:INF, back:-2}],
-      way2:[{wait:15}, {shotSpeed:["set", 2]}, {fire:"way2"}, {wait:4}, {loop:8, back:2}, {wait:INF}]
-    },
-    fireDef:{radial16:{radial:{count:16}}, way2:{nway:{count:2, interval:120}}}
-  };
-
-  // FALさんの10, lineをターゲットホーミングでlineしている。
-  // それっぽくなった。
-  // setのところを30フレームかけて1にする処理にしたらそれっぽくなった。
-  // スピードが1になった直後に流れていく感じ。
-  // タイル：濃い紫
-  seedSet.seed9 = {
-    bgColor:"plblue", shotColorName:"dkpurple", colorName:"dkblue",
-    x:0.5, y:0.3, shotSpeed:4,
-    action:{
-      main:[{shotAction:["set", "line12"]},
-            {aim:0}, {shotDirection:["add", [-105, -45]]}, {fire:"line12"}, {wait:45},
-            {aim:0}, {shotDirection:["add", [45, 105]]}, {fire:"line12"}, {wait:45}, {loop:INF, back:-2}],
-      line12:[{speed:["set", 1, 30]}, {shotSpeed:["set", 4]}, {aim:0}, {fire:"line10"}, {vanish:1}]
-    },
-    fireDef:{line12:{line:{count:12, upSpeed:1}}, line10:{line:{count:10, upSpeed:0.5}}}
-  };
-
-  // FALさんの11. スパイラルは120フレームおき（回転方向チェンジ）、ラジアルは終端速度2と3が
-  // 3つおきに入れ替わる形で1.5°ずつ, 1.5 * 6 = 9で40サイクル。これが90フレームおき。
-  // できれば色も変えたいね
-  // できたけど洗練させたいな。
-  // set 3 30 set 2 30にしたら滑らかさが増した（気がする）
-  // タイル：薄い赤
-  seedSet.seed10 = {
-    bgColor:"plred",
-    x:0.5, y:0.25,
-    action:{
-      main:[{shotAction:["set", "spiral"]}, {fire:"u"}, {shotAction:["set", "radial"]}, {fire:"u"}, {vanish:1}],
-      spiral:[{shotColor:"dkred"}, {hide:true}, {shotSpeed:["set", 1]}, {shotDirection:["set", 0]},
-              {shotBehavior:["add", "spiral_1"]}, {short:"rad_24"}, {shotBehavior:["clear"]},
-              {shotBehavior:["add", "spiral_1_Inv"]}, {short:"rad_24"}, {shotBehavior:["clear"]},
-              {loop:INF, back:-1}],
-      radial:[{shotColor:"dkorange"}, {hide:true}, {shotSpeed:["set", 4]}, {shotDirection:["set", 0]},
-              {shotAction:["set", "decel_3"]}, {fire:"u"}, {shotDirection:["add", 1.5]}, {loop:3, back:2},
-              {shotAction:["set", "decel_2"]}, {fire:"u"}, {shotDirection:["add", 1.5]}, {loop:3, back:2},
-              {loop:40, back:8}, {wait:90}, {loop:INF, back:-3}],
-      decel_3:[{wait:60}, {speed:["set", 3, 30]}, {wait:INF}],
-      decel_2:[{wait:60}, {speed:["set", 2, 30]}, {wait:INF}]
-    },
-    short:{rad_24:[{fire:"radial_24"}, {wait:6}, {loop:2, back:2}, {wait:120}]},
-    fireDef:{radial_24:{radial:{count:24}}},
-    behaviorDef:{
-      spiral_1:["spiral", {radius:1, radiusIncrement:1}],
-      spiral_1_Inv:["spiral", {radius:1, radiusIncrement:1, clockwise:false}],
-    }
-  };
-
-
-  // FALさんの12
-  // これ書いたら洗練させる作業に入るしpatternチェンジも実装したい。
-  // set[1, 30]は30フレームかけて1にするとかそういう意味？
-  // accellerateでterminalSpeed実装した.
-  // delayってactionのwaitじゃん・・まあ、とにかく。
-  // できました。いちいちwait:INFって書くのばかばかしいから、
-  // actionの終わりに来たら自動的にスルーするように仕向けるか。
-  // タイル：濃い水色
-  seedSet.seed11 = {
-    shotColorName:"dkskblue", colorName:"skblue",
-    x:0.5, y:0.3, shotSpeed:8,
-    action:{
-      main:[{shotAction:["set", "sub"]}, {shotDirection:["set", [0, 360]]}, {fire:""}, {wait:90},
-            {loop:INF, back:-2}],
-      sub:[{speed:["set", 1, 30]}, {shotAction:["set", "trap"]},
-           {shotSpeed:["set", 12]}, {aim:0}, {shotDirection:["add", [-30, 30]]}, {fire:""},
-           {vanish:1}],
-      trap:[{hide:true}, {shotSpeed:["set", 0.001]}, {shotAction:["set", "last"]},
-            {shotDirection:["add", 20]}, {fire:""}, {wait:1}, {loop:INF, back:3}],
-      last:[{wait:60}, {speed:["set", 2, 60]}]
-    },
-  }; // できた。wait:INFがなくてもエラー出ない。
-
-  // FALさんの13. ベアリングからの・・機銃掃射？アーミーくさくなってきた感。
-  // すげぇ。普通にradial_4でいけるんだ。
-  // 360フレームで1周するように調整。
-  seedSet.seed12 = {
-    x:0.5, y:0.3, shotSpeed:2*PI/3, shotDirection:0, shotBehavior:["circ3"],
-    action:{
-      main:[{shotAction:["set", "barricade"]}, {fire:"radgun3"}, {wait:INF}],
-      barricade:[{hide:true}, {shotSpeed:["set", 10]}, {fire:"rad4"}, {wait:1}, {loop:INF, back:2}]
-    },
-    fireDef:{
-      radgun3:{formation:{type:"points", p:[[120, 0]]}, bend:90, radial:{count:3}},
-      rad4:{radial:{count:4}}
-    },
-    behaviorDef:{circ3:["circular", {radius:120}]}
-  };
-
-  // FALさんの14をradialのshotDirDiffを使って書き直し。
-  // めっちゃ短くなった。すげぇ。
-  seedSet.seed13 = {
-    x:0.5, y:0.3, shotSpeed:2*PI/3, shotDirection:0, shotBehavior:["circ"],
-    action:{
-      main:[{shotAction:["set", "way8"]}, {fire:"radgun32"}],
-      way8:[{hide:true}, {shotAction:["set", "sub"]}, {shotSpeed:["set", 4]},
-            {fire:"way8"}, {wait:240}, {loop:INF, back:2}],
-      sub:[{speed:["set", 1, 30]}, {direction:["add", 210, 60]}, {speed:["set", 2, 60]}]
-    },
-    fireDef:{
-      radgun32:{formation:{type:"points", p:[[80, 0]]}, bend:90, radial:{count:32, shotDirDiff:90}},
-      way8:{nway:{count:8, interval:12}}
-    },
-    behaviorDef:{circ:["circular", {radius:80}]}
-  };
-
-  // FALさんの15.
-  // 今のままだとway5を発射した時のshotDirectionをlineに設定できない。工夫が必要。
-  // でもなぁ・・
-  // だめでした。way5を撃った瞬間にすべてのbulletのshotDirectionがそろわないとだめ。んー。
-  // way5で各々の弾丸のshotDirectionがaim-0で揃うようにしてみた。
-  // これで合ってるだろ。nway発射時のaim-0と実際にl// 完全なaim-0にならないっていう、ただそれだけの話だよね。
-  // どうでもいい話だけどaim-0してから5°ずらしてそのあとrelで戻すとdirectAimになる。
-  seedSet.seed14 = {
-    x:0.5, y:0.3,
-    action:{
-      main:[{shotAction:["set", "fire15"]},
-            {shotSpeed:["set", [6, 11]]}, {shotDirection:["set", [45, 135]]}, {fire:""}, {wait:40},
-            {shotSpeed:["set", [6, 11]]}, {shotDirection:["set", [225, 315]]}, {fire:""}, {wait:40},
-            {loop:INF, back:-2}],
-      fire15:[{shotAction:["set", "lineAim"]}, {speed:["set", 1, 30]}, {shotSpeed:["set", 8]}, {aim:5},
-              {fire:"way5"}, {vanish:1}],
-      lineAim:[{shotAction:["set", "last"]}, {speed:["set", 1, 45]}, {shotSpeed:["set", 1]},
-               {fire:"line12"}, {vanish:1}],
-      last:[{wait:30}, {speed:["add", 5, 60]}]
-    },
-    fireDef:{way5:{shotDirOption:["aim", 0], nway:{count:5, interval:30, shotDirDiff:0}},
-             line12:{line:{count:12, upSpeed:0.5}}}
-  };
-
-  // FALさんの16.
-  // burstはspeedが0になってかつ存在が消えて(hide),ばんばん撃ってvanishですね。
-  // 違うね。間違えた。はぁ・・
-  // ああ、最初んとこ180＋[90又は-90]だ。なるほどね。
-  seedSet.seed15 = {
-    x:0.5, y:0.3, shotSpeed:6,
-    action:{
-      main:[{shotDirection:["set", [90, 450, 180]]}, {shotDirection:["add", [-60, 60]]},
-            {shotAction:["set", "burst1"]}, {fire:""},
-            {shotAction:["set", "burst2"]}, {fire:""}, {wait:15}, {loop:INF, back:-1}],
-      burst1:[{wait:30}, {aim:20}, {short:"machinegun"}],
-      burst2:[{shotAction:["set", "last"]}, {short:"machinegun"}],
-      last:[{wait:29}, {vanish:1}]
-    },
-    short:{machinegun:[{hide:true}, {speed:["set", 0]}, {fire:""}, {wait:3}, {loop:12, back:2}, {vanish:1}]}
-  };;
-
-  // FALさんの17. speedは60ディレイのあと0.0001から始まって120フレームで3にしている。
-  // 90と270の位置に同時に発生させたbulletが螺旋を描きながら半径は多分1ずつの増加。
-  // それを120フレーム間隔で右回り、左回り、と出している。
-  // とりあえずshotSpeed2のradiusIncrement0.5で行ってみる。
-  // ダメだ。やっぱdistance増やす感じじゃないとダメっぽい。えー・・
-  // 気持ちは分かる。半径を1ずつ増加させてるんでしょ・・多分。
-  seedSet.seed16 = {
-    x:0.5, y:0.3, shotSpeed:4, shotDirection:90,
-    action:{
-      main:[{shotAction:["set", "scatter"]}, {shotBehavior:["add", "spir"]}, {fire:"rad2"},
-            {wait:120}, {shotBehavior:["clear"]},
-            {shotAction:["set", "scatterInv"]}, {shotBehavior:["add", "spirInv"]}, {fire:"rad2Inv"},
-            {wait:120}, {shotBehavior:["clear"]},
-            {loop:INF, back:-1}],
-      scatter:[{shotAction:["set", "last"]}, {wait:30}, {shotDirection:["rel", -60]}, {short:"scatter"}],
-      scatterInv:[{shotAction:["set", "last"]}, {wait:30}, {shotDirection:["rel", 60]}, {short:"scatter"}],
-      last:[{wait:60}, {speed:["set", 3, 120]}]
-    },
-    short:{scatter:[{shotSpeed:["set", 0.0001]}, {fire:""}, {wait:4}, {loop:INF, back:-3}]},
-    fireDef:{rad2:{formation:{type:"points", p:[[50, 0]]}, radial:{count:2}, bend:90},
-             rad2Inv:{formation:{type:"points", p:[[50, 0]]}, radial:{count:2}, bend:-90}},
-    behaviorDef:{spir:["spiral", {radius:50, radiusIncrement:1}],
-                 spirInv:["spiral", {radius:50, radiusIncrement:1, clockwise:false}]}
-  };
-
-
-  // FALさんの11作ろう。
-  // 手始めにスパイラル部分。
-  seedSet.seed17 = {
-    x:0.5, y:0.5, shotSpeed:1, shotDirection:0,
-    action:{
-      main:[{shotBehavior:["add", "spiral_1"]}, {short:"rad_24"}, {shotBehavior:["clear"]},
-            {shotBehavior:["add", "spiral_1_Inv"]}, {short:"rad_24"}, {shotBehavior:["clear"]},
-            {loop:INF, back:-1}],
-    },
-      short:{rad_24:[{fire:"radial_24"}, {wait:6}, {loop:2, back:2}, {wait:120}]},
-      fireDef:{radial_24:{radial:{count:24}}},
-      behaviorDef:{
-      spiral_1:["spiral", {radius:1, radiusIncrement:1}],
-      spiral_1_Inv:["spiral", {radius:1, radiusIncrement:1, clockwise:false}]
-    }
-  };
-
-  // 回転砲台
-  seedSet.seed18 = {
-    x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
-    colorName:"red", shotShapeName:"starSmall", shotColorName:"black",
-    action:{main:[{shotDirection:["add", 5]}, {fire:""}, {wait:4}, {loop:INF, back:-1}]},
-  };
-  // 双回転砲台
-  seedSet.seed19 = {
-    x:0.5, y:0.5, shotSpeed:4, shotDirection:90, shotShapeName:"diaSmall",
-    action:{main:[{shotDirection:["add", 5]}, {fire:""}, {shotDirection:["mirror", 90]}, {fire:""},
-                  {wait:4}, {shotDirection:["mirror", 90]}, {loop:INF, back:-1}]},
-  };
-  // いったりきたりしながら下に向けて発射. ディレイをかけて。さらにアクセルをかけて。
-  seedSet.seed20 = {
-    x:0.2, y:0.2, speed:4, direction:0, shotSpeed:4, shotDirection:90, shotDelay:30, shotBehavior:["accell"],
-    action:{main:[{fire:""}, {wait:4}, {loop:16, back:2}, {wait:16}, {direction:["mirror", 90]}, {loop:INF, back:-1}]},
-    behaviorDef:{accell:["accellerate", {accelleration:0.2}]}
-  };
-  // 四角形に沿って移動（初めて作ったやつ）
-  seedSet.seed21 = {
-    x:0.2, y:0.2, speed:4, direction:0,
-    action:{main:[{wait:50}, {direction:["add", 90]}, {loop:INF, back:-1}]}
-  };
-  // 簡単な分裂
-  seedSet.seed22 = {
-    x:0.5, y:0.1, shotSpeed:4, shotDirection:90,
-    action:{main:[{shotAction:["set", "split2_0"]}, {fire:"way2"}, {wait:4}, {loop:INF, back:-2}],
-            split2_0:[{shotAction:["set", "split2_1"]}, {short:"split2"}],
-            split2_1:[{shotAction:["set", "split2_2"]}, {short:"split2"}],
-            split2_2:[{short:"split2"}]
-           },
-    short:{split2:[{wait:30}, {fire:"way2"}, {vanish:1}]},
-    fireDef:{way2:{nway:{count:2, interval:30}}}
-  };
-  // FALさんの7.
-  seedSet.seed23 = {
-    x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
-    action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
-                  {wait:32}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
-            split2_0:[{shotAction:["set", "split2_1"]}, {short:"split2"}],
-            split2_1:[{shotAction:["set", "split2_2"]}, {short:"split2"}],
-            split2_2:[{short:"split2"}]
-           },
-    short:{split2:[{wait:20}, {fire:"way2"}, {vanish:1}]},
-    fireDef:{radial7:{radial:{count:7}}, way2:{nway:{count:2, interval:120}}}
-  };
-
-  // 失われたパターン1
-  seedSet.seed24 = {
-    x:0.5, y:0.5, shotSpeed:1, shotDirection:90,
-    action:{
-      main:[{shotBehavior:["add", "lowAccell"]}, {shotDirection:["add", 4]}, {short:"routine"},
-            {shotBehavior:["add", "highAccell"]}, {shotDirection:["add", -4]}, {short:"routine"},
-            {loop:INF, back:-1}]
-    },
-    short:{routine:[{fire:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}, {shotBehavior:["clear"]}]},
-    fireDef:{radial16:{radial:{count:16}}},
-    behaviorDef:{
-      lowAccell:["accellerate", {accelleration:0.05}],
-      highAccell:["accellerate", {accelleration:0.1}]
-    }
-  };
-  // lineのテスト(nwayと組み合わせる)
-  // さらにホーミングマシンガンを組み合わせて逃げ場のない感じに。
-  seedSet.seed25 = {
-    x:0.5, y:0.5,
-    action:{
-      main:[{shotSpeed:["set",2]}, {aim:0}, {fire:"line3_8_6"}, {wait:4},
-            {shotSpeed:["set", 5]}, {aim:10}, {fire:""}, {wait:4}, {loop:29,back:3}, {loop:INF,back:-1}]
-      },
-    fireDef:{line3_8_6:{nway:{count:7, interval:5}, radial:{count:8}, line:{count:6,upSpeed:0.3}}}
-  };
-
-  // shotDelayが新しくなったんで使ってみる.
-  // 直線状に弾丸を配置していっせいにばーーーーーーーん！
-  seedSet.seed26 = {
-    x:0.5, y:0.2, shotSpeed:4,
-    action:{
-      main:[{aim:120}, {shotAction:["set", "sub1"]}, {fire:""}, {wait:30}, {loop:INF, back:-1}],
-      sub1:[{wait:30}, {aim:10}, {shotAction:["set", "trap"]}, {fire:""}, {vanish:1}],
-      trap:[{shotDelay:["set", 120]}, {shotDelay:["add", -3]}, {shotDirection:["add", 15]}, {fire:""}, {wait:3}, {loop:40, back:4}, {vanish:1}]
-    },
-  };
-  // homingBehaviorが新しくなったので試してみる.
-  // radial12と組み合わせる感じで。
-  seedSet.seed27 = {
-    x:0.5, y:0.3, shotSpeed:6, shotBehavior:["decele"],
-    action:{
-      main:[{shotDirection:["set", [0, 360]]}, {shotAction:["set", "delayHom"]},
-            {fire:"radial12"}, {wait:30}, {loop:INF, back:4}],
-      delayHom:[{wait:60}, {behavior:["add", "hom1"]}, {wait:INF}]
-    },
-    fireDef:{radial12:{radial:{count:12}}},
-    behaviorDef:{decele:["decelerate", {terminalSpeed:1, friction:0.05}],
-                 hom1:["homing", {rotationSpeed:2, threshold:120}]}
-  };
-
-
-
-  // 速度反転のテスト.
-  // 上向きにぽーんと出た弾丸が逆方向に落ちてくるイメージ。まあどうでもいい・・。
-  // 描画の所でspeedが負の時に逆向きに描画するようにしてみた。とりあえず応急処置って感じで。
-  // 実際の所加速度ってベクトルだからね・・スカラーで扱うのはどうしたって無理がある。
-  // 加速だって本来はベクトルの足し算をやっているので・・そしてそれは座標ベースでないとしっくりこない。
-  // 今って完全に極座標ベースでやってるでしょ、それってベクトルの足し算と相性最悪だからどうしようもないんよ。
-  // ------- でも、極座標ベースの可能性を信じたい。もちろん、ね。 ------- //
-  seedSet.seed28 = {
-    x:0.5, y:0.5, shotSpeed:4, shotDirection:-90, shotBehavior:["accell"],
-    action:{
-      main:[{fire:""}, {wait:30}, {loop:INF, back:2}]
-    },
-    behaviorDef:{accell:["accellerate", {accelleration:-0.1}]}
-  };
-
-  // decelerationBehaviorを一定の割合で減らせるように新しくした.
-  // さらに・・これやばいね。。
-  seedSet.seed29 = {
-    x:0.5, y:0.3, shotSpeed:4, shotDirection:90,
-    action:{
-      main:[{aim:0}, {shotBehavior:["add", "decel_3"]}, {fire:"burst"}, {shotDirection:["add", 4.5]},
-            {shotBehavior:["clear"]}, {shotBehavior:["add", "decel_2"]}, {fire:"burst"}, {shotBehavior:["clear"]},
-            {shotDirection:["add", -60]}, {fire:""}, {shotDirection:["add", 8]}, {wait:2}, {loop:15, back:3},
-            {wait:15}, {fire:""}, {shotDirection:["add", -8]}, {wait:2}, {loop:15, back:3}, {wait:15},
-            {shotBehavior:["clear"]}, {loop:INF, back:-1}]
-    },
-    fireDef:{burst:{radial:{count:40}, nway:{count:3, interval:1.5}}},
-    behaviorDef:{
-      decel_2:["decelerate", {deceleration:0.05, terminalSpeed:2}],
-      decel_3:["decelerate", {deceleration:0.05, terminalSpeed:3}]
-    }
-  };
-
-  // FALさんの14やりたいけど準備が足りないかも。
-  // waitの変種でsetとadd使うやつ・・んー。引数が2つ以上で配列でない時そういう処理にしてもいいかな・・
-  // って気がする。そうしたいね。どうしようね。先にそっち？
-  // 周囲80πx2で160πだから240で割って・・240フレームで1周するように調整。
-  // これ、順繰りにshotDirectionが90°ずつずれてる・・・・どうしよ。異なるわけね。まあでも・・んー。
-  // 仕方ないので8個ずつまとめてそれぞれ90°ずつ射出方向を変える荒業で解決しました。でも、
-  // なげぇ・・actionも変数導入して・・もうちょっとパースの所を洗練させないとだめだこりゃ。
-  // たとえばsubの命令、これあそこをあれにすれば4つでいける。
-  // actionは変数導入すれば1行で済むし。
-  // もしくは・・今、撃ちだしたあれのshotSpeedやshotDirectionが追従で決まってるからそこをいじるとか。
-  seedSet.seed30 = {
-    x:0.5, y:0.3, shotSpeed:2*PI/3, shotDirection:0, shotBehavior:["circ"],
-    action:{
-      main:[{shotAction:["set", "way8_1"]}, {short:"revolveFire"},
-            {shotAction:["set", "way8_2"]}, {short:"revolveFire"},
-            {shotAction:["set", "way8_3"]}, {short:"revolveFire"},
-            {shotAction:["set", "way8_4"]}, {short:"revolveFire"}, {wait:INF}],
-      way8_1:[{shotDirection:["add", 0]}, {short:"way8routine"}],
-      way8_2:[{shotDirection:["add", 90]}, {short:"way8routine"}],
-      way8_3:[{shotDirection:["add", 180]}, {short:"way8routine"}],
-      way8_4:[{shotDirection:["add", 270]}, {short:"way8routine"}],
-      sub:[{speed:["set", 1, 30]}, {direction:["add", 210, 60]}, {speed:["set", 2, 60]}]
-    },
-    short:{way8routine:[{hide:true}, {shotAction:["set", "sub"]}, {shotSpeed:["set", 4]},
-                        {fire:"way8"}, {wait:240}, {loop:INF, back:2}],
-           revolveFire:[{shotDirection:["add", 22.5]}, {fire:"radgun8"}]
-    },
-    fireDef:{
-      radgun8:{formation:{type:"points", p:[[80, 0]]}, bend:90, radial:{count:8}},
-      way8:{nway:{count:8, interval:12}}
-    },
-    behaviorDef:{circ:["circular", {radius:80}]}
-  };
-  // できたよー
-  // 最後の所は多分、30フレームで1にしたあと60フレームで回転させて最後に60フレームで2に加速して直進させてる。
-
-  // 新しいset,addメソッドのテスト。
-  seedSet.seed31 = {
-    x:0, y:0.2, speed:4, direction:0, shotDirection:90, shotSpeed:10,
-    action:{
-      main:[{shotAction:["set", "dec1"]},
-            {fire:""}, {wait:3}, {loop:30, back:2},
-            {wait:30}, // やめなさい
-            {direction:["mirror", 90]}, {loop:INF, back:-2}],
-      dec1:[{speed:["set", 1, 30]}, {wait:INF}]
-    }
-  };
-
-  // あとは自由に。
-  // ばらまき大作戦
-  seedSet.seed32 = {
-    x:0.5, y:0.3, shotSpeed:2,
-    action:{
-      main:[{shotAction:["set", "way4"]},
-            {shotDirection:["add", 16]}, {fire:"rad5"}, {wait:8}, {loop:16, back:3}, {wait:32},
-            {aim:10}, {fire:""}, {wait:4}, {loop:8, back:3}, {wait:16},
-            {shotDirection:["add", -16]}, {fire:"rad5"}, {wait:8}, {loop:16, back:3}, {wait:32},
-            {aim:10}, {fire:""}, {wait:4}, {loop:8, back:3}, {wait:16},
-            {loop:INF, back:-2}],
-      way4:[{wait:60}, {fire:"way4"}, {vanish:1}]
-    },
-    fireDef:{rad5:{radial:{count:5}}, way4:{nway:{count:4, interval:12}}}
-  };
-  // 花火みたいなやつ。2wayばらまきまくって最後にどかーん！
-  // followをtrueにして常にshotDirectionがdirectionと一致するようにしようね。
-  // followプロパティ追加。これは毎フレームshotDirectionをdirectionで更新するもの。
-  // behaviorの直後に行うのでfire直前のshotDirectionの変化には影響されない。
-  seedSet.seed33 = {
-    x:0.5, y:0.2, shotSpeed:2,
-    action:{
-      main:[{shotDirection:["set", [-45, 45]]}, {shotAction:["set", "right"]}, {fire:""}, {wait:4}, {loop:4, back:2},
-						{wait:32},
-            {shotDirection:["set", [135, 225]]}, {shotAction:["set", "left"]}, {fire:""}, {wait:4}, {loop:4, back:2},
-						{wait:32},
-            {loop:INF, back:-1}],
-      right:[{shotSpeed:["set", 4]}, {follow:true}, {direction:["add", 1.5]},
-             {short:"way2Rail"}, {short:"bomb"}],
-      left:[{shotSpeed:["set", 4]}, {follow:true}, {direction:["add", -1.5]},
-            {short:"way2Rail"}, {short:"bomb"}],
-      fade:[{speed:["set", 2, 120]}]
-    },
-    short:{
-      way2Rail:[{wait:2}, {loop:16, back:2}, {fire:"way2"}, {loop:8, back:4}],
-      bomb:[{shotAction:["set", "fade"]}, {aim:10}, {fire:"rad24"}, {vanish:1}]
-    },
-    fireDef:{way2:{nway:{count:2, interval:60}}, rad24:{radial:{count:24}}}
-  }
-  // SnowFrake.
-  // 色で遊んでみたりして。いぇい。
-  seedSet.seed34 = {
-		x:0.5, y:0.5, shotSpeed:2, shotDirection:90, shotColorName:"skblue",
-		action:{
-			main:[{hide:true}, {shotAction:["set", "lim120"]}, {fire:"rad6"}, {wait:8}, {loop:INF, back:2}],
-			lim120:[{shotColor:"blue"}, {wait:20}, {short:"branch12"},
-              {shotColor:"dkblue"}, {wait:24}, {shotAction:["set", "lim40"]}, {fire:"way2"},
-              {shotColor:"plblue"}, {wait:36}, {shotAction:["set", "lim24"]}, {fire:"way2"},
-              {wait:20}, {short:"branch12"}, {wait:20}, {vanish:1}],
-			lim40:[{shotColor:"red"}, {wait:20}, {short:"branch12"}, {wait:20}, {vanish:1}],
-			lim24:[{wait:24}, {vanish:1}],
-			lim12:[{wait:12}, {vanish:1}]
-		},
-		short:{branch12:[{shotAction:["set", "lim12"]}, {fire:"way2"}]},
-		fireDef:{rad6:{radial:{count:6}}, way2:{nway:{count:2, interval:120}}}
-	}
-
-	// sevenStar.
-	seedSet.seed35 = {
-		x:0.5, y:0.3, shotSpeed:6, shotBehavior:["sevenStar"],
-    shotShapeName: "starSmall", shotColorName:"orange",
-		action:{
-			main:[{hide:true}, {fire:""}, {wait:4}, {loop:100, back:2}, {vanish:1}]
-		},
-		behaviorDef:{sevenStar:["curve", {a:2, b:-4, c:7}]}
-	}
-
-  // ながれぼし
-  // frontVerticalで5つの場所に配置したユニットが左下方に星型の弾丸を発射してそれが
-  // 後ろ方向に小さめの弾丸を発射しながら落ちていくイメージ。方向はすこしずつブレさせる。
-  seedSet.seed36 = {
-    bgColor:"dkgrey", infoColor:{r:255, g:255, b:255},
-    x:0.7, y:0, shotDirection:90,
-    action:{
-      main:[{shotAction:["set", "generator"]}, {fire:"v5"}, {vanish:1}],
-      generator:[{hide:true},
-                 {shotAction:["set", "shootingStar"]}, {shotShape:"starMiddle"}, {shotColor:"yellow"},
-                 {shotSpeed:["set", 2]}, {shotDirection:["set", [110, 140]]}, {fire:""},
-                 {wait:30}, {loop:INF, back:3}],
-      shootingStar:[{follow:true},
-                    {shotAction:["set", "spur"]}, {shotShape:"wedgeMiddle"}, {shotColor:"yellow"},
-                    {direction:["add", [-1, 1]]}, {shotSpeed:["set", 6]}, {shotDirection:["add", 180]}, {fire:""},
-                    {wait:2}, {loop:INF, back:5}],
-      spur:[{shotSpeed:["set", 0, 10]}, {vanish:1}]
-    },
-    fireDef:{v5:{formation:{type:"frontVertical", count:5, distance:40, interval:120}}}
-  }
-
-  // rainbow. red, orange, yellow, ltgreen, blue, dkblue, purple.
-  // 課題1：このコードをもっと簡潔に書く仕様を作れ。
-  // 課題2:そのうえで、回転方向を逆に出来るようにせよ。
-  seedSet.seed37 = {
-    x:0.5, y:0.3, shotDirection:90, colorName:"dkgrey", shotSpeed:4,
-    shotShapeName:"wedgeMiddle", bgColor:"plgrey",
-    action:{
-      main:[{shotAction:["set", "split2"]},
-            {short:"rainbow", type:"", dirDiff:360/7},
-            {shotDirection:["add", 4]}, {wait:4}, {loop:8, back:23}, {wait:32}, {loop:4, back:25},
-            {shotSpeed:["set", 2]}, {aim:0},
-            {short:"rainbow", type:"way6", dirDiff:360/7},
-            {shotSpeed:["set", 4]}, {wait:64},
-            {short:"rainbow", type:"", dirDiff:360/7},
-            {shotDirection:["add", -4]}, {wait:4}, {loop:8, back:23}, {wait:32}, {loop:4, back:25},
-            {shotSpeed:["set", 2]}, {aim:0},
-            {short:"rainbow", type:"way6", dirDiff:360/7},
-            {shotSpeed:["set", 4]}, {wait:64},
-            {loop:INF, back:-2}],
-      split2:[{speed:["set", 1, 60]}, {fire:"way2"}, {vanish:1}],
-    },
-    short:{
-      rainbow:[{shotColor:"red"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
-               {shotColor:"orange"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
-               {shotColor:"yellow"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
-               {shotColor:"ltgreen"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
-               {shotColor:"blue"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
-               {shotColor:"dkblue"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
-               {shotColor:"purple"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]}],
-    },
-    fireDef:{way2:{nway:{count:2, interval:30}}, way6:{nway:{count:6, interval:8}}}
-  }
-
   // 省略の実験.
   // うまくいってるね。てかうまくいきすぎやん・・・
-  seedSet.seed38 = {
+  seedSet.seed0 = {
     x:0.5, y:0.3, shotSpeed:4, shotDirection:90,
     action:{
       main:[{short:"waygun", count:3}, {short:"waygun", count:5},
@@ -685,6 +63,90 @@ function setup(){
     short:{waygun:[{fire:"waygun", count:"$count"}, {wait:4}, {shotDirection:["add", 5]}]},
     fireDef:{waygun:{nway:{count:"$count", interval:20}}}
   }
+
+  // デモ画面1. 90°ずつ回転するやつ。
+  seedSet.seed1 = {
+    x:0.5, y:0.5, shotSpeed:2, shotDirection:90,
+    action:{
+      main:[{shotAction:["set", "way3burst"]}, {fire:"rad2"}, {wait:8}, {loop:10, back:2}, {wait:32},
+            {shotDirection:["add", 45]}, {loop:INF, back:-2}],
+      way3burst:[{wait:16}, {shotAction:["set", "fade"]}, {fire:"way3"}, {vanish:1}],
+      fade:[{vanish:60}]
+    },
+    fireDef:{way3:{nway:{count:3, interval:90}}, rad2:{radial:{count:2}}}
+  }
+
+  // clear忘れてたのね。
+  // でもcircularとspiral組み合わせるとこうなるんだ・・ちょっと面白いかも。
+  // まあそもそもbehaviorは組み合わせることが前提だし（ちっとも組み合わせてない）
+  // bendいじると面白いな。どうしてこうなるのか分からん（おい）
+
+  // え、うそ、、circularで大きいradius指定するとそこまで広がっていくの。初めて知った。すげぇー。
+  // ・・・何で挙動把握してないの。わぁすごい。INF? 単に方向変えてないだけだよ・・・
+  seedSet.seed2 = {
+    x:0.5, y:0.5, shotSpeed:2,
+    action:{
+      main:[{shotAction:["set", "burst"]}, {fire:"rad24", bend:90}, {wait:90},
+            {shotAction:["set", "burstInv"]}, {fire:"rad24", bend:-90}, {wait:90},
+            {loop:INF, back:-1}],
+      burst:[{behavior:["add", "circ"]}, {wait:60}, {behavior:["clear"]}, {behavior:["add", "spir"]}],
+      burstInv:[{behavior:["add", "circInv"]}, {wait:60}, {behavior:["clear"]}, {behavior:["add", "spirInv"]}]
+    },
+    fireDef:{rad24:{formation:{type:"points", p:[[60, 0]]}, bend:"$bend", radial:{count:24}}},
+    behaviorDef:{
+      circ:["circular", {radius:60}], circInv:["circular", {radius:60, clockwise:false}],
+      spir:["spiral", {radius:60, radiusIncrement:1}],
+      spirInv:["spiral", {radius:60, radiusIncrement:1, clockwise:false}]}
+  }
+
+  // circular実験
+  // 謎の挙動を始めてしまった。
+  seedSet.seed3 = {
+    x:0.5, y:0.5, shotSpeed:2,
+    action:{
+      main:[{shotAction:["set", "burst"]}, {fire:"rad24", bend:90}, {vanish:1}],
+      burst:[{behavior:["add", "circ120"]}, {wait:300}, {behavior:["clear"]},
+             {behavior:["add", "circ60"]}, {wait:300}, {behavior:["clear"]}, {loop:INF, back:-1}]
+    },
+    fireDef:{rad24:{formation:{type:"points", p:[[60, 0]]}, bend:"$bend", radial:{count:24}}},
+    behaviorDef:{
+      circ60:["circular", {radius:60}], circ120:["circular", {radius:120}]
+    }
+  }
+
+  // ボスの攻撃
+  // 20発ガトリングを13way, これを真ん中から放ったり、両脇から放ったり。
+  seedSet.seed4 = {
+    x:0.5, y:0.2,
+    action:{
+      main:[{shotAction:["set", "fire"]},
+            {shotSpeed:["set", 0]}, {fire:""}, {wait:120},
+            {shotDirection:["set", 0]}, {shotSpeed:["set", 120]}, {fire:"rad2"}, {wait:120},
+            {loop:INF, back:-2}],
+      fire:[{speed:["set", 0]}, {aim:0}, {shotSpeed:["set", 4]}, {fire:"way20"}, {wait:4}, {loop:20, back:2},
+                {vanish:1}]
+    },
+    fireDef:{way20:{nway:{count:13, interval:8}}, rad2:{radial:{count:2}}}
+  }
+
+  // ランダムに9匹？
+  seedSet.seed5 = {
+    x:0.5, y:-0.1,
+    action:{
+      main:[{hide:true}, {shotAction:["set", "fireGo"]}, {shotShape:"squareMiddle"}, {shotColor:"grey"},
+            {short:"setEnemy1", dir:0}, {wait:240}, {short:"setEnemy1", dir:180}, {wait:240},
+            {loop:INF, back:-5}],
+      fireGo:[{shotShape:"wedgeSmall"}, {shotColor:"black"}, {shotSpeed:["set", 4]}, {aim:5},
+              {speed:["set", 6]}, {direction:["set", 90]}, {speed:["set", 1, 60]},
+              {fire:"way3"}, {wait:300}, {loop:INF, back:2}]
+    },
+    short:{
+      setEnemy1:[{shotDirection:["set", "$dir"]}, {shotSpeed:["set", [60, 180]]},
+                 {fire:""}, {wait:16}, {loop:9, back:3}]
+    },
+    fireDef:{way3:{nway:{count:3, interval:45}}}
+  }
+
 
   // パターン総数の計算
   seedCapacity = Object.keys(seedSet).length;
@@ -1532,6 +994,8 @@ function raidBehavior(param){
     }
   }
 }
+
+// circularとspiralがイミフなのでなんとかして（汗
 
 // formationで速度の方向を円の接線方向にしてradiusで増やせばそれっぽくなるよ。
 // 円の接線方向に発射される弾丸を中心の周りに巻き付ける処理ですね。
