@@ -637,7 +637,7 @@ function setup(){
 
   // rainbow. red, orange, yellow, ltgreen, blue, dkblue, purple.
   // 課題1：このコードをもっと簡潔に書く仕様を作れ。
-  // 課題2:そのうえで、周期ごとに回転方向を逆に出来るようにせよ。
+  // 課題2:そのうえで、回転方向を逆に出来るようにせよ。
   seedSet.seed37 = {
     x:0.5, y:0.3, shotDirection:90, colorName:"dkgray", shotSpeed:4,
     shotShapeName:"wedgeMiddle", bgColor:"plgray",
@@ -2049,12 +2049,6 @@ function execute(unit, command){
     const indexAdvanceFlag = (hasCount ? unit.loopCheck(command.count) : true);
     if(indexAdvanceFlag){ unit.actionIndex++; }
     return loopAdvanceFlag; // フラグによる
-  }
-  if(_type === "shotDelay"){
-    // shotDelayをいじる
-    unit.shotDelay = command.delayCount;
-    unit.actionIndex++;
-    return true; // ループは抜けない
   }
   // 色、形.
   if(["shotColor", "shotShape"].includes(_type)){
