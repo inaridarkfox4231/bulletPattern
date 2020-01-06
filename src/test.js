@@ -26,6 +26,7 @@ const TEXT_INTERVAL = 25;
 let unitPool;
 let entity;
 let seedSet = {};
+let seedCapacity = 0; // パターンの総数（中で計算）
 const DEFAULT_PATTERN_INDEX = 37;
 const STAR_FACTOR = 2.618033988749895; // 1 + 2 * cos(36).
 // cosとsinの0, 72, 144, 216, 288における値
@@ -669,6 +670,11 @@ function setup(){
     fireDef:{way2:{nway:{count:2, interval:30}}, way6:{nway:{count:6, interval:8}}}
   }
 
+  // shortの練習
+
+  // パターン総数の計算
+  seedCapacity = Object.keys(seedSet).length;
+
   // どうする？？
   entity.setPattern(DEFAULT_PATTERN_INDEX);
 }
@@ -783,10 +789,18 @@ function mouseClicked(){
 function drawConfig(){
   fill(220);
   rect(AREA_WIDTH, 0, 160, AREA_HEIGHT);
-  fill(120)
-  rect(AREA_WIDTH, 0, 40, 40);
-  fill(180);
-  rect(AREA_WIDTH, 40, 40, 40);
+  const cur = entity.getPatternIndex();
+  for(let i = 0; i < seedCapacity; i++){
+    const x = AREA_WIDTH + Math.floor(i / 15) * 40;
+    const y = (i % 15) * 40;
+    if(i !== cur){
+      fill((i % 4) * 50);
+      rect(x, y, 40, 40);
+    }else{
+      fill(255, 0, 0, 140 + sin(frameCount * 6) * 80);
+      rect(x, y, 40, 40);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -863,6 +877,9 @@ class System{
     // 破棄するときはunitをPoolに戻すのはやってるから単にclearでいい。unitArrayをclearしちゃうとPoolに戻らないので駄目。
     this.patternIndex = 0;
 	}
+  getPatternIndex(){
+    return this.patternIndex;
+  }
   setPattern(newPatternIndex){
     // パターンを作る部分をメソッド化
     if(seedSet["seed" + newPatternIndex] === undefined){ return; } // 存在しない時。
@@ -1873,7 +1890,7 @@ function parsePatternSeed(seed){
   // actionの各valueの展開(main, その他, その他, ...)
   if(seed.hasOwnProperty("short")){
     actionKeys.forEach((name) => {
-      seed.action[name] = getExpansion(seed.short, seed.action[name]);
+      seed.action[name] = getExpansion(seed.short, seed.action[name], {});
     })
   }
 
@@ -1904,13 +1921,14 @@ function parsePatternSeed(seed){
 // {short:"文字列", option....} たとえば{short:"eee", fire1:"gratony"}とかすると、
 // プロパティで"$fire1"とかあったときに, str="$fire1"からstr[0]==='$'でチェック、さらにstr.substr(1)で
 // "fire1"になる。これを使って置き換えを行う仕組みですよ。多分ね。
-function getExpansion(shortcut, action){
+// 新しい引数としてdictを設ける（shortのときだけ{}でなくなる感じ）
+function getExpansion(shortcut, action, dict){
   let actionArray = [];
   for(let i = 0; i < action.length; i++){
     const command = action[i];
     const _type = getTopKey(command);
     if(_type === "short"){
-      const commandArray = getExpansion(shortcut, shortcut[command.short]);
+      const commandArray = getExpansion(shortcut, shortcut[command.short], command);
       commandArray.forEach((obj) => {
         // objはオブジェクトなので普通にアサイン
         let copyObj = {};
@@ -1918,13 +1936,24 @@ function getExpansion(shortcut, action){
         actionArray.push(copyObj);
       })
     }else{
-      // shortでない場合は普通に。
+      // shortでない場合は普通に。ここでオブジェクトになんか書いてあるときはそこら辺の処理も行う。
       let copyObj = {};
       Object.assign(copyObj, command);
+      propertyInterpret(copyObj, dict);
       actionArray.push(copyObj);
     }
   }
   return actionArray;
+}
+
+function propertyInterpret(obj, dict){
+  let keyArray = Object.keys(dict);
+  if(keyArray.length < 2){ return; } // {}の場合、{short:"hoge"} の場合はすることが無い。
+  keyArray.forEach((key) => {
+    if(typeof(obj[key]) === "string" && obj[key][0] === '$'){
+      obj[key] = dict[key];
+    }
+  })
 }
 
 // 応用すれば、一定ターン移動するとかそういうのもbackupで表現できそう（waitの派生形）
@@ -2017,6 +2046,9 @@ function interpretCommand(data, command, index){
     result.flag = command.follow; return result;
   }
 }
+
+// ---------------------------------------------------------------------------------------- //
+// execute.
 
 function execute(unit, command){
   const _type = command.type;
