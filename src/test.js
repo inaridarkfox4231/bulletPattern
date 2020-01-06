@@ -27,7 +27,7 @@ let unitPool;
 let entity;
 let seedSet = {};
 let seedCapacity = 0; // パターンの総数（中で計算）
-const DEFAULT_PATTERN_INDEX = 37;
+const DEFAULT_PATTERN_INDEX = 0;
 const STAR_FACTOR = 2.618033988749895; // 1 + 2 * cos(36).
 // cosとsinの0, 72, 144, 216, 288における値
 const COS_PENTA = [1, 0.30901699437494745, -0.8090169943749473, -0.8090169943749473, 0.30901699437494745];
@@ -648,29 +648,43 @@ function setup(){
     shotShapeName:"wedgeMiddle", bgColor:"plgray",
     action:{
       main:[{shotAction:["set", "split2"]},
-            {shotColor:"red"}, {fire:""}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"orange"}, {fire:""}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"yellow"}, {fire:""}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"ltgreen"}, {fire:""}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"blue"}, {fire:""}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"dkblue"}, {fire:""}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"purple"}, {fire:""}, {shotDirection:["add", 360 / 7]},
-            {shotDirection:["add", 2]}, {wait:4}, {loop:8, back:-1}, {wait:32}, {loop:4, back:-1},
+            {short:"rainbow", type:"", dirDiff:360/7},
+            {shotDirection:["add", 4]}, {wait:4}, {loop:8, back:23}, {wait:32}, {loop:4, back:25},
             {shotSpeed:["set", 2]}, {aim:0},
-            {shotColor:"red"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"orange"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"yellow"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"ltgreen"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"blue"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"dkblue"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
-            {shotColor:"purple"}, {fire:"way6"}, {shotDirection:["add", 360 / 7]},
-            {shotSpeed:["set", 4]}, {wait:64}, {loop:INF, back:-1}],
+            {short:"rainbow", type:"way6", dirDiff:360/7},
+            {shotSpeed:["set", 4]}, {wait:64},
+            {short:"rainbow", type:"", dirDiff:360/7},
+            {shotDirection:["add", -4]}, {wait:4}, {loop:8, back:23}, {wait:32}, {loop:4, back:25},
+            {shotSpeed:["set", 2]}, {aim:0},
+            {short:"rainbow", type:"way6", dirDiff:360/7},
+            {shotSpeed:["set", 4]}, {wait:64},
+            {loop:INF, back:-2}],
       split2:[{speed:["set", 1, 60]}, {fire:"way2"}, {vanish:1}],
+    },
+    short:{
+      rainbow:[{shotColor:"red"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
+               {shotColor:"orange"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
+               {shotColor:"yellow"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
+               {shotColor:"ltgreen"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
+               {shotColor:"blue"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
+               {shotColor:"dkblue"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]},
+               {shotColor:"purple"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]}],
     },
     fireDef:{way2:{nway:{count:2, interval:30}}, way6:{nway:{count:6, interval:8}}}
   }
 
-  // shortの練習
+  // 省略の実験.
+  // うまくいってるね。てかうまくいきすぎやん・・・
+  seedSet.seed38 = {
+    x:0.5, y:0.3, shotSpeed:4, shotDirection:90,
+    action:{
+      main:[{short:"waygun", count:3}, {short:"waygun", count:5},
+            {short:"waygun", count:7}, {short:"waygun", count:9},
+            {wait:16}, {loop:INF, back:-1}]
+    },
+    short:{waygun:[{fire:"waygun", count:"$count"}, {wait:4}, {shotDirection:["add", 5]}]},
+    fireDef:{waygun:{nway:{count:"$count", interval:20}}}
+  }
 
   // パターン総数の計算
   seedCapacity = Object.keys(seedSet).length;
@@ -1923,6 +1937,8 @@ function parsePatternSeed(seed){
 // プロパティで"$fire1"とかあったときに, str="$fire1"からstr[0]==='$'でチェック、さらにstr.substr(1)で
 // "fire1"になる。これを使って置き換えを行う仕組みですよ。多分ね。
 // 新しい引数としてdictを設ける（shortのときだけ{}でなくなる感じ）
+
+// dictを重ねたい？わがままがすぎるな・・
 function getExpansion(shortcut, action, dict){
   let actionArray = [];
   for(let i = 0; i < action.length; i++){
