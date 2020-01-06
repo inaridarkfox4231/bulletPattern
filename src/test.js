@@ -74,7 +74,8 @@ function setup(){
     colorName:"red", shotColorName:"orange", bgColor: "plorange",
     x:0.5, y:0.5, shotSpeed:2,
     action:{
-      main:[{shotDirection:["add", 2]}, "attack", {shotDirection:["add", -2]}, "attack", {loop:INF, back:-1}]
+      main:[{shotDirection:["add", 2]}, {short:"attack"},
+            {shotDirection:["add", -2]}, {short:"attack"}, {loop:INF, back:-1}]
     },
     short:{attack:[{fire:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}]},
     fireDef:{radial16:{radial:{count:16}}}
@@ -107,8 +108,8 @@ function setup(){
             {shotBehavior:["clear"]}, {shotAction:["set", "cannon2"]}, {shotBehavior:["add", "circleInv"]},
             {fire:"setCannon2"}, {vanish:1}
            ],
-      cannon1:[{shotColor:"dkgreen"}, {shotShape:"wedgeSmall"}, "cannonMain"],
-      cannon2:[{shotColor:"dkgreen"}, {shotShape:"wedgeSmall"}, {wait:48}, "cannonMain"]
+      cannon1:[{shotColor:"dkgreen"}, {shotShape:"wedgeSmall"}, {short:"cannonMain"}],
+      cannon2:[{shotColor:"dkgreen"}, {shotShape:"wedgeSmall"}, {wait:48}, {short:"cannonMain"}]
     },
     short:{cannonMain:[{shotSpeed:["set", 5]}, {aim:0}, {fire:"line7"}, {wait:4}, {loop:8, back:3},
                         {wait:64}, {loop:INF, back:5}]},
@@ -141,9 +142,9 @@ function setup(){
     x:0.5, y:0.3, shotSpeed:6, shotDirection:90,
     action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
                   {wait:48}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
-            split2_0:[{shotAction:["set", "split2_1"]}, "split2"],
-            split2_1:[{shotAction:["set", "split2_2"]}, "split2"],
-            split2_2:[{shotAction:["set", "last"]}, "split2"],
+            split2_0:[{shotAction:["set", "split2_1"]}, {short:"split2"}],
+            split2_1:[{shotAction:["set", "split2_2"]}, {short:"split2"}],
+            split2_2:[{shotAction:["set", "last"]}, {short:"split2"}],
             last:[{speed:["set", 3, 30]}, {wait:INF}]
            },
     short:{split2:[{speed:["set", 1, 30]}, {shotSpeed:["set", 6]}, {fire:"way2"}, {vanish:1}]},
@@ -211,8 +212,9 @@ function setup(){
     action:{
       main:[{shotAction:["set", "spiral"]}, {fire:"u"}, {shotAction:["set", "radial"]}, {fire:"u"}, {vanish:1}],
       spiral:[{shotColor:"dkred"}, {hide:true}, {shotSpeed:["set", 1]}, {shotDirection:["set", 0]},
-              {shotBehavior:["add", "spiral_1"]}, "rad_24", {shotBehavior:["clear"]},
-              {shotBehavior:["add", "spiral_1_Inv"]}, "rad_24", {shotBehavior:["clear"]}, {loop:INF, back:-1}],
+              {shotBehavior:["add", "spiral_1"]}, {short:"rad_24"}, {shotBehavior:["clear"]},
+              {shotBehavior:["add", "spiral_1_Inv"]}, {short:"rad_24"}, {shotBehavior:["clear"]},
+              {loop:INF, back:-1}],
       radial:[{shotColor:"dkorange"}, {hide:true}, {shotSpeed:["set", 4]}, {shotDirection:["set", 0]},
               {shotAction:["set", "decel_3"]}, {fire:"u"}, {shotDirection:["add", 1.5]}, {loop:3, back:2},
               {shotAction:["set", "decel_2"]}, {fire:"u"}, {shotDirection:["add", 1.5]}, {loop:3, back:2},
@@ -319,8 +321,8 @@ function setup(){
       main:[{shotDirection:["set", [90, 450, 180]]}, {shotDirection:["add", [-60, 60]]},
             {shotAction:["set", "burst1"]}, {fire:""},
             {shotAction:["set", "burst2"]}, {fire:""}, {wait:15}, {loop:INF, back:-1}],
-      burst1:[{wait:30}, {aim:20}, "machinegun"],
-      burst2:[{shotAction:["set", "last"]}, "machinegun"],
+      burst1:[{wait:30}, {aim:20}, {short:"machinegun"}],
+      burst2:[{shotAction:["set", "last"]}, {short:"machinegun"}],
       last:[{wait:29}, {vanish:1}]
     },
     short:{machinegun:[{hide:true}, {speed:["set", 0]}, {fire:""}, {wait:3}, {loop:12, back:2}, {vanish:1}]}
@@ -340,8 +342,8 @@ function setup(){
             {shotAction:["set", "scatterInv"]}, {shotBehavior:["add", "spirInv"]}, {fire:"rad2Inv"},
             {wait:120}, {shotBehavior:["clear"]},
             {loop:INF, back:-1}],
-      scatter:[{shotAction:["set", "last"]}, {wait:30}, {shotDirection:["rel", -60]}, "scatter"],
-      scatterInv:[{shotAction:["set", "last"]}, {wait:30}, {shotDirection:["rel", 60]}, "scatter"],
+      scatter:[{shotAction:["set", "last"]}, {wait:30}, {shotDirection:["rel", -60]}, {short:"scatter"}],
+      scatterInv:[{shotAction:["set", "last"]}, {wait:30}, {shotDirection:["rel", 60]}, {short:"scatter"}],
       last:[{wait:60}, {speed:["set", 3, 120]}]
     },
     short:{scatter:[{shotSpeed:["set", 0.0001]}, {fire:""}, {wait:4}, {loop:INF, back:-3}]},
@@ -357,8 +359,9 @@ function setup(){
   seedSet.seed17 = {
     x:0.5, y:0.5, shotSpeed:1, shotDirection:0,
     action:{
-      main:[{shotBehavior:["add", "spiral_1"]}, "rad_24", {shotBehavior:["clear"]},
-            {shotBehavior:["add", "spiral_1_Inv"]}, "rad_24", {shotBehavior:["clear"]}, {loop:INF, back:-1}],
+      main:[{shotBehavior:["add", "spiral_1"]}, {short:"rad_24"}, {shotBehavior:["clear"]},
+            {shotBehavior:["add", "spiral_1_Inv"]}, {short:"rad_24"}, {shotBehavior:["clear"]},
+            {loop:INF, back:-1}],
     },
       short:{rad_24:[{fire:"radial_24"}, {wait:6}, {loop:2, back:2}, {wait:120}]},
       fireDef:{radial_24:{radial:{count:24}}},
@@ -395,9 +398,9 @@ function setup(){
   seedSet.seed22 = {
     x:0.5, y:0.1, shotSpeed:4, shotDirection:90,
     action:{main:[{shotAction:["set", "split2_0"]}, {fire:"way2"}, {wait:4}, {loop:INF, back:-2}],
-            split2_0:[{shotAction:["set", "split2_1"]}, "split2"],
-            split2_1:[{shotAction:["set", "split2_2"]}, "split2"],
-            split2_2:["split2"]
+            split2_0:[{shotAction:["set", "split2_1"]}, {short:"split2"}],
+            split2_1:[{shotAction:["set", "split2_2"]}, {short:"split2"}],
+            split2_2:[{short:"split2"}]
            },
     short:{split2:[{wait:30}, {fire:"way2"}, {vanish:1}]},
     fireDef:{way2:{nway:{count:2, interval:30}}}
@@ -407,9 +410,9 @@ function setup(){
     x:0.5, y:0.5, shotSpeed:4, shotDirection:90,
     action:{main:[{shotAction:["set", "split2_0"]}, {fire:"radial7"}, {wait:4}, {loop:8, back:2},
                   {wait:32}, {shotDirection:["add", 15]}, {loop:INF, back:-2}],
-            split2_0:[{shotAction:["set", "split2_1"]}, "split2"],
-            split2_1:[{shotAction:["set", "split2_2"]}, "split2"],
-            split2_2:["split2"]
+            split2_0:[{shotAction:["set", "split2_1"]}, {short:"split2"}],
+            split2_1:[{shotAction:["set", "split2_2"]}, {short:"split2"}],
+            split2_2:[{short:"split2"}]
            },
     short:{split2:[{wait:20}, {fire:"way2"}, {vanish:1}]},
     fireDef:{radial7:{radial:{count:7}}, way2:{nway:{count:2, interval:120}}}
@@ -419,8 +422,9 @@ function setup(){
   seedSet.seed24 = {
     x:0.5, y:0.5, shotSpeed:1, shotDirection:90,
     action:{
-      main:[{shotBehavior:["add", "lowAccell"]}, {shotDirection:["add", 4]}, "routine",
-            {shotBehavior:["add", "highAccell"]}, {shotDirection:["add", -4]}, "routine", {loop:INF, back:-1}]
+      main:[{shotBehavior:["add", "lowAccell"]}, {shotDirection:["add", 4]}, {short:"routine"},
+            {shotBehavior:["add", "highAccell"]}, {shotDirection:["add", -4]}, {short:"routine"},
+            {loop:INF, back:-1}]
     },
     short:{routine:[{fire:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}, {shotBehavior:["clear"]}]},
     fireDef:{radial16:{radial:{count:16}}},
@@ -512,14 +516,14 @@ function setup(){
   seedSet.seed30 = {
     x:0.5, y:0.3, shotSpeed:2*PI/3, shotDirection:0, shotBehavior:["circ"],
     action:{
-      main:[{shotAction:["set", "way8_1"]}, "revolveFire",
-            {shotAction:["set", "way8_2"]}, "revolveFire",
-            {shotAction:["set", "way8_3"]}, "revolveFire",
-            {shotAction:["set", "way8_4"]}, "revolveFire", {wait:INF}],
-      way8_1:[{shotDirection:["add", 0]}, "way8routine"],
-      way8_2:[{shotDirection:["add", 90]}, "way8routine"],
-      way8_3:[{shotDirection:["add", 180]}, "way8routine"],
-      way8_4:[{shotDirection:["add", 270]}, "way8routine"],
+      main:[{shotAction:["set", "way8_1"]}, {short:"revolveFire"},
+            {shotAction:["set", "way8_2"]}, {short:"revolveFire"},
+            {shotAction:["set", "way8_3"]}, {short:"revolveFire"},
+            {shotAction:["set", "way8_4"]}, {short:"revolveFire"}, {wait:INF}],
+      way8_1:[{shotDirection:["add", 0]}, {short:"way8routine"}],
+      way8_2:[{shotDirection:["add", 90]}, {short:"way8routine"}],
+      way8_3:[{shotDirection:["add", 180]}, {short:"way8routine"}],
+      way8_4:[{shotDirection:["add", 270]}, {short:"way8routine"}],
       sub:[{speed:["set", 1, 30]}, {direction:["add", 210, 60]}, {speed:["set", 2, 60]}]
     },
     short:{way8routine:[{hide:true}, {shotAction:["set", "sub"]}, {shotSpeed:["set", 4]},
@@ -575,9 +579,9 @@ function setup(){
 						{wait:32},
             {loop:INF, back:-1}],
       right:[{shotSpeed:["set", 4]}, {follow:true}, {direction:["add", 1.5]},
-             "way2Rail", "bomb"],
+             {short:"way2Rail"}, {short:"bomb"}],
       left:[{shotSpeed:["set", 4]}, {follow:true}, {direction:["add", -1.5]},
-            "way2Rail", "bomb"],
+            {short:"way2Rail"}, {short:"bomb"}],
       fade:[{speed:["set", 2, 120]}]
     },
     short:{
@@ -592,11 +596,11 @@ function setup(){
 		x:0.5, y:0.5, shotSpeed:2, shotDirection:90, shotColorName:"skblue",
 		action:{
 			main:[{hide:true}, {shotAction:["set", "lim120"]}, {fire:"rad6"}, {wait:8}, {loop:INF, back:2}],
-			lim120:[{shotColor:"blue"}, {wait:20}, "branch12",
+			lim120:[{shotColor:"blue"}, {wait:20}, {short:"branch12"},
               {shotColor:"dkblue"}, {wait:24}, {shotAction:["set", "lim40"]}, {fire:"way2"},
               {shotColor:"plblue"}, {wait:36}, {shotAction:["set", "lim24"]}, {fire:"way2"},
-              {wait:20}, "branch12", {wait:20}, {vanish:1}],
-			lim40:[{shotColor:"red"}, {wait:20}, "branch12", {wait:20}, {vanish:1}],
+              {wait:20}, {short:"branch12"}, {wait:20}, {vanish:1}],
+			lim40:[{shotColor:"red"}, {wait:20}, {short:"branch12"}, {wait:20}, {vanish:1}],
 			lim24:[{wait:24}, {vanish:1}],
 			lim12:[{wait:12}, {vanish:1}]
 		},
@@ -1895,12 +1899,18 @@ function parsePatternSeed(seed){
 // 一本の配列を再帰的に構成する流れ。要はstringが出てくるたびにshortから引っ張り出してassignでクローンして
 // 放り込んでいくだけ。
 // action内のmainやらなんやらすべてに対して適用。
+
+// shortもプロパティにしますね。
+// {short:"文字列", option....} たとえば{short:"eee", fire1:"gratony"}とかすると、
+// プロパティで"$fire1"とかあったときに, str="$fire1"からstr[0]==='$'でチェック、さらにstr.substr(1)で
+// "fire1"になる。これを使って置き換えを行う仕組みですよ。多分ね。
 function getExpansion(shortcut, action){
   let actionArray = [];
   for(let i = 0; i < action.length; i++){
     const command = action[i];
-    if(typeof(command) === "string"){
-      const commandArray = getExpansion(shortcut, shortcut[command]);
+    const _type = getTopKey(command);
+    if(_type === "short"){
+      const commandArray = getExpansion(shortcut, shortcut[command.short]);
       commandArray.forEach((obj) => {
         // objはオブジェクトなので普通にアサイン
         let copyObj = {};
@@ -1908,7 +1918,7 @@ function getExpansion(shortcut, action){
         actionArray.push(copyObj);
       })
     }else{
-      // stringでなければオブジェクト
+      // shortでない場合は普通に。
       let copyObj = {};
       Object.assign(copyObj, command);
       actionArray.push(copyObj);
@@ -2125,3 +2135,9 @@ function execute(unit, command){
     return true; // ループは抜けない
   }
 }
+
+// セッター型はunitのあるプロパティをある値（文字列だったりboolだったり数だったり）にするもの。
+// アド型はあるプロパティ（数）にある値を足す（もしくは、引く）。
+// グラデーション型はあるプロパティ（数）を徐々にその値に近付けていくもの。
+// "gradShotSpeed", 1, 30とか"gradSpeed", 1, 60の方がいいのかもね。別立てでとらえる感じ。
+// "grad"で始まるかどうかは文字列判定でできる。
