@@ -590,7 +590,7 @@ function setup(){
       bomb:[{shotAction:["set", "fade"]}, {aim:10}, {fire:"rad24"}, {vanish:1}]
     },
     fireDef:{way2:{nway:{count:2, interval:60}}, rad24:{radial:{count:24}}}
-  }
+  };
   // SnowFrake.
   // 色で遊んでみたりして。いぇい。
   seedSet.seed34 = {
@@ -617,7 +617,7 @@ function setup(){
 			main:[{hide:true}, {fire:""}, {wait:4}, {loop:100, back:2}, {vanish:1}]
 		},
 		behaviorDef:{sevenStar:["curve", {a:2, b:-4, c:7}]}
-	}
+	};
 
   // ながれぼし
   // frontVerticalで5つの場所に配置したユニットが左下方に星型の弾丸を発射してそれが
@@ -638,7 +638,7 @@ function setup(){
       spur:[{shotSpeed:["set", 0, 10]}, {vanish:1}]
     },
     fireDef:{v5:{formation:{type:"frontVertical", count:5, distance:40, interval:120}}}
-  }
+  };
 
   // rainbow. red, orange, yellow, ltgreen, blue, dkblue, purple.
   // 課題1：このコードをもっと簡潔に書く仕様を作れ。
@@ -671,7 +671,7 @@ function setup(){
                {shotColor:"purple"}, {fire:"$type"}, {shotDirection:["add", "$dirDiff"]}],
     },
     fireDef:{way2:{nway:{count:2, interval:30}}, way6:{nway:{count:6, interval:8}}}
-  }
+  };
 
   // 省略の実験.
   // うまくいってるね。てかうまくいきすぎやん・・・
@@ -684,7 +684,7 @@ function setup(){
     },
     short:{waygun:[{fire:"waygun", count:"$count"}, {wait:4}, {shotDirection:["add", 5]}]},
     fireDef:{waygun:{nway:{count:"$count", interval:20}}}
-  }
+  };
 
   // パターン総数の計算
   seedCapacity = Object.keys(seedSet).length;

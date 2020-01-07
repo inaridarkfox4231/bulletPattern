@@ -62,7 +62,7 @@ function setup(){
     },
     short:{waygun:[{fire:"waygun", count:"$count"}, {wait:4}, {shotDirection:["add", 5]}]},
     fireDef:{waygun:{nway:{count:"$count", interval:20}}}
-  }
+  };
 
   // デモ画面1. 90°ずつ回転するやつ。
   seedSet.seed1 = {
@@ -74,7 +74,7 @@ function setup(){
       fade:[{vanish:60}]
     },
     fireDef:{way3:{nway:{count:3, interval:90}}, rad2:{radial:{count:2}}}
-  }
+  };
 
   // clear忘れてたのね。
   // でもcircularとspiral組み合わせるとこうなるんだ・・ちょっと面白いかも。
@@ -97,7 +97,7 @@ function setup(){
       circ:["circular", {radius:60}], circInv:["circular", {radius:60, clockwise:false}],
       spir:["spiral", {radius:60, radiusIncrement:1}],
       spirInv:["spiral", {radius:60, radiusIncrement:1, clockwise:false}]}
-  }
+  };
 
   // circular実験
   // 謎の挙動を始めてしまった。
@@ -112,7 +112,7 @@ function setup(){
     behaviorDef:{
       circ60:["circular", {radius:60}], circ120:["circular", {radius:120}]
     }
-  }
+  };
 
   // ボスの攻撃
   // 20発ガトリングを13way, これを真ん中から放ったり、両脇から放ったり。
@@ -127,7 +127,7 @@ function setup(){
                 {vanish:1}]
     },
     fireDef:{way20:{nway:{count:13, interval:8}}, rad2:{radial:{count:2}}}
-  }
+  };
 
   // ランダムに9匹？
   seedSet.seed5 = {
@@ -145,8 +145,60 @@ function setup(){
                  {fire:""}, {wait:16}, {loop:9, back:3}]
     },
     fireDef:{way3:{nway:{count:3, interval:45}}}
-  }
+  };
 
+  // デモ画面のカミソリrad8が4ずつ方向逆転するやつ
+  seedSet.seed6 = {
+    x:0.5, y:0.5, shotSpeed:1, shotDirection:90,
+    action:{
+      main:[{short:"routine", dirDiff:4}, {short:"routine", dirDiff:-4}, {loop:INF, back:-1}]
+    },
+    short:{
+      routine:[{fire:"rad8"}, {shotDirection:["add", "$dirDiff"]}, {wait:8}, {loop:4, back:3}, {wait:16}]
+    },
+    fireDef:{rad8:{radial:{count:8}}}
+  };
+
+  // 折り返して15匹、パターンを変える。
+  seedSet.seed7 = {
+    x:0.2, y:0, speed:4, direction:0, shotSpeed:8, shotDirection:90,
+    action:{
+      main:[{hide:true}, {shotShape:"squareMiddle"}, {shotColor:"black"},
+            {shotAction:["set", "attack1"]}, {short:"createEnemy"},
+            {speed:["set", 0]}, {wait:240}, {speed:["set", 4]},
+            {shotAction:["set", "attack2"]}, {short:"createEnemy"}, {vanish:1}],
+      attack1:[{short:"pattern", fire:"way3"}],
+      attack2:[{short:"pattern", fire:"lineway3"}]
+    },
+    short:{
+      createEnemy:[{fire:""}, {wait:12}, {loop:7, back:2}, {fire:""}, {direction:["mirror", 90]},
+                    {wait:12}, {fire:""}, {loop:7, back:2}, {direction:["mirror", 90]}],
+      pattern:[{shotShape:"wedgeSmall"}, {shotColor:"red"}, {shotSpeed:["set", 2]},
+               {speed:["set", 1, 30]}, {aim:5}, {fire:"$fire"}, {wait:60}, {loop:3, back:2},
+               {speed:["set", 8, 30]}]
+    },
+    fireDef:{way3:{nway:{count:3, interval:45}},
+             lineway3:{nway:{count:5, interval:40}, line:{count:3, upSpeed:0.2}}}
+  };
+
+  // 上下に4発ずつline飛ばして止めてから90°方向に8line飛ばして消滅するパターン
+  seedSet.seed8 = {
+    x:0.5, y:0.5, shotSpeed:1, shotDirection:90,
+    action:{
+      main:[{shotAction:["set", "lin8"]}, {short:"linshot", angle:90}, {short:"linshot", angle:-90},
+            {wait:30}, {shotDirection:["add", 45]}, {loop:INF, back:6}],
+      lin8:[{shotSpeed:["set", 1]}, {speed:["set", 0, 30]}, {fire:"lin8"}, {vanish:1}]
+    },
+    short:{linshot:[{fire:"lin4", angle:"$angle"}, {shotDirection:["add", 180]}]},
+    fireDef:{lin4:{line:{count:4, upSpeed:1}, shotDirOption:["rel", "$angle"]},
+             lin8:{line:{count:8, upSpeed:0.5}}
+    }
+  };
+
+  // 13方向wayで角度10°でaim5で5lineを60間隔、3line2wayを90間隔で放つ感じ。
+  seedSet.seed9 = {
+ x:0.5,y:0.1,shotSpeed:4,action:{main:[{aim:0},{fire:"weapon1"}, {wait:30},{aim:0},{fire:"weapon2"}, {wait:40},{loop:INF, back:-1}]},fireDef:{weapon1:{nway:{count:13,interval:8}, line:{count:5,upSpeed:0.2}},weapon2:{nway:{count:[13,2],interval:[8,2]},line:{count:3,upSpeed:0.2}}}
+  };
 
   // パターン総数の計算
   seedCapacity = Object.keys(seedSet).length;
@@ -1241,8 +1293,20 @@ function createFirePattern(data){
     // ...あれ？
 
     // nwayとかradialとかする(data.decorateに情報が入っている)
+    // nwayは唯一重複が効くので仕様変更する。
     if(data.hasOwnProperty("nway")){
-      ptnArray = createNWay(data.nway, ptnArray); // とりあえずnway.
+      // data.nway.countが3とか7だったらそのままでいいけど[13, 2]とかの場合には
+      // 繰り返し適用する。その場合intervalも[8, 5]とかなってて対応させる感じ。
+      if(typeof(data.nway.count) === "number"){
+        ptnArray = createNWay(data.nway, ptnArray);
+      }else{
+        const kindNum = data.nway.count.length;
+        const wayData = data.nway;
+        for(let i = 0; i < kindNum; i++){
+          ptnArray = createNWay({count:wayData.count[i], interval:wayData.interval[i]}, ptnArray);
+        }
+      }
+      //ptnArray = createNWay(data.nway, ptnArray); // とりあえずnway.
     }
     if(data.hasOwnProperty("radial")){
       ptnArray = createRadial(data.radial, ptnArray); // とりあえずradial.
