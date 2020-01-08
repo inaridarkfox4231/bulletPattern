@@ -1,0 +1,13 @@
+位置ベースの移動
+今、behaviorに
+「this.position.add(this.velocity)」
+使ってるけど、これを選択式にして、デフォはこれでいいとして、これとは別に、たとえば、
+「
+  this.position.x = this.move.r * cos(this.move.angle) + this.move.cx;
+  this.position.y = this.move.r * sin(this.move.angle) + this.move.cy;
+  this.move.angle += this.move.angleSpeed;
+」(rを増やせば螺旋もらくらく)
+みたいに、位置ベースで・・this.moveには動きを表現するパラメータが入る感じ。他にも、
+「this.position.x += this.move.vx, this.move.vx += this.move.ax」
+的な？そういうのを・・んー。
+shotDirectionはこれとは別に。directionがないと表示の時に困るけどそれは適宜計算するのもあり・・とか？

@@ -1,5 +1,9 @@
 // SolidAetherのコピー練習帳
 
+// runTimeが完全にアウト
+
+// 当たり判定：hide:trueのものは除外。hitPointが無いか、あっても0のものは除外。inFrameを満たさなくても除外。
+
 "use strict";
 
 const EMPTY_SLOT = Object.freeze(Object.create(null)); // ダミーオブジェクト
@@ -50,6 +54,7 @@ function setup(){
   entity = new System();
   registUnitColors(); // 色を用意する。
   registUnitShapes(); // 形を用意する。
+  entity.createPlayer();
 
   // 省略の実験.
   // うまくいってるね。てかうまくいきすぎやん・・・
@@ -123,8 +128,8 @@ function setup(){
             {shotSpeed:["set", 0]}, {fire:""}, {wait:120},
             {shotDirection:["set", 0]}, {shotSpeed:["set", 120]}, {fire:"rad2"}, {wait:120},
             {loop:INF, back:-2}],
-      fire:[{speed:["set", 0]}, {aim:0}, {shotSpeed:["set", 4]}, {fire:"way20"}, {wait:4}, {loop:20, back:2},
-                {vanish:1}]
+      fire:[{hide:true}, {speed:["set", 0]}, {aim:0}, {shotSpeed:["set", 4]},
+            {fire:"way20"}, {wait:4}, {loop:20, back:2}, {vanish:1}]
     },
     fireDef:{way20:{nway:{count:13, interval:8}}, rad2:{radial:{count:2}}}
   };
@@ -168,12 +173,13 @@ function setup(){
             {speed:["set", 0]}, {wait:240}, {speed:["set", 4]},
             {shotAction:["set", "attack2"]}, {short:"createEnemy"}, {vanish:1}],
       attack1:[{short:"pattern", fire:"way3"}],
-      attack2:[{short:"pattern", fire:"lineway3"}]
+      attack2:[{shotAction:"stay"}, {short:"pattern", fire:"lineway3"}],
+      stay:[{speed:["set", 1, 30]}]
     },
     short:{
       createEnemy:[{fire:""}, {wait:12}, {loop:7, back:2}, {fire:""}, {direction:["mirror", 90]},
                     {wait:12}, {fire:""}, {loop:7, back:2}, {direction:["mirror", 90]}],
-      pattern:[{shotShape:"wedgeSmall"}, {shotColor:"red"}, {shotSpeed:["set", 2]},
+      pattern:[{shotShape:"wedgeSmall"}, {shotColor:"red"}, {shotSpeed:["set", 4]},
                {speed:["set", 1, 30]}, {aim:5}, {fire:"$fire"}, {wait:60}, {loop:3, back:2},
                {speed:["set", 8, 30]}]
     },
@@ -197,8 +203,74 @@ function setup(){
 
   // 13方向wayで角度10°でaim5で5lineを60間隔、3line2wayを90間隔で放つ感じ。
   seedSet.seed9 = {
- x:0.5,y:0.1,shotSpeed:4,action:{main:[{aim:0},{fire:"weapon1"}, {wait:30},{aim:0},{fire:"weapon2"}, {wait:40},{loop:INF, back:-1}]},fireDef:{weapon1:{nway:{count:13,interval:8}, line:{count:5,upSpeed:0.2}},weapon2:{nway:{count:[13,2],interval:[8,2]},line:{count:3,upSpeed:0.2}}}
+    x:0.5, y:0.1, shotSpeed:4,
+    action:{
+      main:[{aim:0}, {fire:"weapon1"}, {wait:30}, {aim:0}, {fire:"weapon2"}, {wait:40},
+            {loop:INF, back:-1}]
+    },
+    fireDef:{weapon1:{nway:{count:13, interval:8}, line:{count:5, upSpeed:0.2}},
+             weapon2:{nway:{count:[13, 2], interval:[8, 2]}, line:{count:3, upSpeed:0.2}}
+    }
   };
+
+  // 敵がいっぱい
+  seedSet.seed10 = {
+    x:-0.1, y:0.1,
+    action:{
+      main:[{hide:true}, {shotShape:"squareMiddle"},
+            {shotColor:"orange"},
+            {shotSpeed:["set", 8]}, {shotAction:["set", "enemy1"]}, {fire:""}, {wait:8},
+            {shotColor:"dkorange"},
+            {shotSpeed:["set", [48 + 80, 48 + 400]]}, {shotAction:["set", "enemy2"]}, {fire:""}, {wait:4},
+            {loop:16, back:10}, {vanish:1}],
+      enemy1:[{shotSpeed:["set", 4]}, {shotShape:"wedgeSmall"}, {shotColor:"red"}, {shotAction:"stay"},
+              {wait:10}, {aim:0}, {fire:"way5"}, {speed:["set", 3, 60]}, {direction:["set", 180, 60]},
+              {wait:10}, {aim:0}, {fire:"way5"}, {speed:["set", 8, 60]}],
+      enemy2:[{speed:["set", 1]}, {direction:["set", 90]}, {shotDirection:["set", 90]}, {shotSpeed:["set", 2]},
+              {shotShape:"wedgeSmall"}, {shotColor:"dkred"}, {wait:1},
+              {fire:"way3"}, {wait:120}, {loop:2, back:2}, {speed:["set", 8, 60]}],
+      stay:[{speed:["set", 1, 30]}]
+    },
+    fireDef:{
+      way5:{nway:{count:5, interval:20}, line:{count:3, upSpeed:0.5}},
+      way3:{nway:{count:3, interval:10}}
+    }
+  };
+
+  // 何がしたいのか分からなくなってきた
+  seedSet.seed11 = {
+    bgColor:"plgreen",
+    x:0.5, y:0.05, shotSpeed:3, shotBehavior:["brAc1"], colorName:"green", shotColorName:"dkgreen",
+    action:{
+      main:[{aim:0}, {fire:"way7"}, {wait:4}, {shotSpeed:["add", 0.5]}, {shotDirection:["add", 0.3]},
+            {loop:20, back:4}, {wait:90}, {shotSpeed:["set", 3]}, {loop:INF, back:-1}]
+    },
+    fireDef:{way7:{nway:{count:13, interval:10}}},
+    behaviorDef:{
+      brAc1:["brakeAccell", {threshold:60, friction:0.01, accelleration:0.1}]
+    }
+  };
+
+  // カーブを使ってみる
+  seedSet.seed12 = {
+    x:0.5, y:0.1, shotSpeed:200,
+    action:{
+      main:[{hide:true}, {shotDirection:["set", 0]}, {shotAction:["set", "right"]}, {fire:""},
+            {shotDirection:["set", 180]}, {shotAction:["set", "left"]}, {fire:""}, {vanish:1}],
+      right:[{short:"preparate", behavior:"curve2", dir:180}, {short:"fire1"}, {vanish:1}],
+      left:[{short:"preparate", behavior:"curve1", dir:0}, {short:"fire1"}, {vanish:1}],
+      attack:[{shotSpeed:["set", 3]}, {shotShape:"wedgeSmall"}, {shotColor:"dkblue"},
+              {aim:5}, {fire:"way3"}, {wait:16}, {loop:8, back:3}]
+    },
+    short:{
+      preparate:[{speed:["set", 0]}, {shotShape:"squareMiddle"},
+                 {shotBehavior:["add", "$behavior"]}, {shotAction:["set", "attack"]},
+                 {shotDirection:["set", "$dir"]}, {shotSpeed:["set", 6]}],
+      fire1:[{fire:""}, {wait:8}, {loop:8, back:2}]
+    },
+    fireDef:{way3:{nway:{count:3, interval:20}}},
+    behaviorDef:{curve1:["curve", {a:1, b:4, c:3}], curve2:["curve", {a:-1, b:-4, c:3}]}
+  }
 
   // パターン総数の計算
   seedCapacity = Object.keys(seedSet).length;
@@ -392,7 +464,6 @@ function registUnitShapes(){
 
 class System{
 	constructor(){
-		this.player = new SelfUnit();
     this.unitArray = new CrossReferenceArray();
     this.backgroundColor = color(220, 220, 255); // デフォルト（薄い青）
     this.infoColor = color(0); // デフォルト（情報表示の色、黒）
@@ -405,6 +476,9 @@ class System{
     // 破棄するときはunitをPoolに戻すのはやってるから単にclearでいい。unitArrayをclearしちゃうとPoolに戻らないので駄目。
     this.patternIndex = 0;
 	}
+  createPlayer(){
+    this.player = new SelfUnit();
+  }
   getPatternIndex(){
     return this.patternIndex;
   }
@@ -429,6 +503,7 @@ class System{
     let ptn = parsePatternSeed(seed);
     console.log(ptn);
     createUnit(ptn);
+    // プレイヤーになんかしないの？って話。
   }
   registDrawGroup(unit){
     const {colorName} = unit;
@@ -490,13 +565,31 @@ function createUnit(pattern){
 class SelfUnit{
 	constructor(){
 		this.position = createVector(0, 0);
+    this.weapon = []; // 武器庫
+    this.fire = undefined; // 関数を入れる
+    this.prepareWeapon();
 		this.initialize();
 	}
+  prepareWeapon(){
+    let weaponSeed0 = {formation:{type:"frontVertical", count:4, distance:15, interval:15}};
+    this.weapon.push(createFirePattern(weaponSeed0));
+    this.fire = this.weapon[0];
+  }
 	initialize(){
 		this.position.set(AREA_WIDTH * 0.5, AREA_HEIGHT * 0.875);
 		this.speed = 4;
 		this.rotationAngle = 0;
 		this.rotationSpeed = 2;
+    this.wait = 0; // fire時のwaitTime. 連射を防ぐ感じ。
+    // ショット関連
+    this.shotSpeed = 8;
+    this.shotDirection = -90;
+    this.shotBehavior = {};
+    this.shotAction = [];
+    this.shotColorName = "black";
+    this.bodyColor = entity.drawColor[this.shotColorName];
+    this.shotShapeName = "wedgeSmall";
+    this.shotDelay = 0;
 	}
 	setPosition(x, y){
 		this.position.set(x, y);
@@ -507,17 +600,22 @@ class SelfUnit{
 		else if(keyIsDown(RIGHT_ARROW)){ this.position.x += this.speed; }
 		else if(keyIsDown(UP_ARROW)){ this.position.y -= this.speed; }
 		else if(keyIsDown(DOWN_ARROW)){ this.position.y += this.speed; }
+    if(this.wait > 0){ this.wait--; }
+    if(keyIsDown(32) && this.wait === 0){
+      this.fire(this);
+      this.wait = 4;
+    }
 	  this.frameIn();
 	}
 	frameIn(){
-		this.position.x = constrain(this.position.x, 0, width);
-		this.position.y = constrain(this.position.y, 0, height);
+		this.position.x = constrain(this.position.x, 0, AREA_WIDTH);
+		this.position.y = constrain(this.position.y, 0, AREA_HEIGHT);
 	}
 	draw(){
 		const {x, y} = this.position;
 		const c = cos(this.rotationAngle) * 16;
 		const s = sin(this.rotationAngle) * 16;
-		stroke(0);
+		stroke(this.bodyColor);
 		noFill();
 		strokeWeight(2);
 		quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
@@ -706,8 +804,8 @@ class DrawShape{
 class DrawWedgeShape extends DrawShape{
   constructor(h, b){
     super();
-    this.heightLengthHalf = h; // 6
-    this.baseLengthHalf = b; // 3
+    this.h = h; // 6
+    this.b = b; // 3
   }
   set(unit){ return; }
   draw(unit){
@@ -715,10 +813,9 @@ class DrawWedgeShape extends DrawShape{
     const direction = (unit.speed > 0 ? unit.direction : unit.direction + 180);
     const dx = cos(direction);
     const dy = sin(direction);
-    const {heightLengthHalf:h, baseLengthHalf:b} = this;
-    triangle(x + h * dx,          y + h * dy,
-             x - h * dx + b * dy, y - h * dy - b * dx,
-             x - h * dx - b * dy, y - h * dy + b * dx);
+    triangle(x + this.h * dx,          y + this.h * dy,
+             x - this.h * dx + this.b * dy, y - this.h * dy - this.b * dx,
+             x - this.h * dx - this.b * dy, y - this.h * dy + this.b * dx);
   }
 }
 
@@ -1340,7 +1437,7 @@ function createFirePattern(data){
     })
     // kindは廃止。draw関連はshapeプロパティで操作するので。
     ptnArray.forEach((ptn) => {
-      createUnit(ptn, data.kind); // 形を指定する。基本的にWedge.
+      createUnit(ptn); // 形を指定する。基本的にWedge.
     })
     // お疲れさまでした。
   }

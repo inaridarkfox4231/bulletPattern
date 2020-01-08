@@ -23,6 +23,8 @@ const INDENT = 40;
 const AVERAGE_CALC_SPAN = 10;
 const TEXT_INTERVAL = 25;
 
+let ptnData; // パターンデータ
+
 let unitPool;
 let entity;
 let seedSet = {};
@@ -33,93 +35,32 @@ const STAR_FACTOR = 2.618033988749895; // 1 + 2 * cos(36).
 const COS_PENTA = [1, 0.30901699437494745, -0.8090169943749473, -0.8090169943749473, 0.30901699437494745];
 const SIN_PENTA = [0, 0.9510565162951535, 0.5877852522924732, -0.587785252292473, -0.9510565162951536];
 
-//let testCannon;
-
 function preload(){
-  /* NOTHING */
+	ptnData = loadJSON("https://inaridarkfox4231.github.io/gameData/ptn.json");
 }
 
 function setup(){
   createCanvas(AREA_WIDTH + 160, AREA_HEIGHT);
   angleMode(DEGREES);
   textSize(16);
-  //preparePattern(); // jsonからあれこれするみたい(?)
+
   unitPool = new ObjectPool(() => { return new Unit(); }, 1024);
   entity = new System();
   registUnitColors(); // 色を用意する。
   registUnitShapes(); // 形を用意する。
 
-  // FALさんの1
-  // 中心からばーっと乱射（タイル：濃い灰色）
-  seedSet.seed0 = {
-    colorName:"dkgrey", shotColorName:"black", bgColor:"grey",
-    x:0.5, y:0.5,
-    action:{
-      main:[{shotSpeed:["set", [3, 6]]}, {shotDirection:["set", [0, 360]]}, {fire:""},
-            {loop:2, back:-1}, {wait:1}, {loop:INF, back:-1}]
-    },
-  };
-  // FALさんの2
-  // カミソリ。（タイル：濃い緑）
-  seedSet.seed1 = {
-    colorName:"dkgreen", shotColorName:"green", bgColor:"ltgreen", shotShapeName:"wedgeMiddle",
-    x:0.5, y:0.5, shotSpeed:2,
-    action:{
-      main:[{shotDirection:["set", [0, 360]]}, {fire:"fire"}, {wait:60}, {loop:INF, back:-1}]
-    },
-    fireDef:{fire:{radial:{count:16}, nway:{count:7, interval:2}}}
-  };
-  // FALさんの3
-  // ぐらーーっ。（タイル：赤）
-  seedSet.seed2 = {
-    colorName:"red", shotColorName:"orange", bgColor: "plorange",
-    x:0.5, y:0.5, shotSpeed:2,
-    action:{
-      main:[{shotDirection:["add", 2]}, {short:"attack"},
-            {shotDirection:["add", -2]}, {short:"attack"}, {loop:INF, back:-1}]
-    },
-    short:{attack:[{fire:"radial16"}, {wait:4}, {loop:8, back:3}, {wait:16}]},
-    fireDef:{radial16:{radial:{count:16}}}
-  };
+  // FALさんの1. 中心からばーっと乱射（タイル：濃い灰色）
+  // FALさんの2. カミソリ。（タイル：濃い緑）
+  // FALさんの3. ぐらーーっ。（タイル：赤）
+  // FALさんの4. 回転しながら弾をばらまく。（タイル：青）
+  // FALさんの5. 回転方向が異なる。くるくる。（タイル：薄い緑）
 
-  // burstSweeping.(FALさんの4)
-  // 回転しながら弾をばらまく。（タイル：青）
-  // これでいいでしょ。角速度2πだから2秒で1周する。12°ずつ方向変化、速度は2.
-  seedSet.seed3 = {
-    x:0.5, y:0.5, shotSpeed:2*Math.PI, shotDirection:0, shotBehavior:["circle"],
-    action:{
-      main:[{shotAction:["set", "sweep"]}, {fire:"rad2"}, {wait:INF}],
-      sweep:[{hide:true}, {shotSpeed:["set", 2]}, {shotDirection:["add", 12]}, {fire:""}, {wait:1}, {loop:INF, back:-2}]
-    },
-    fireDef:{rad2:{formation:{type:"points", p:[[120, 0]]}, bend:90, radial:{count:2}}},
-    behaviorDef:{circle:["circular", {radius:120}]}
-  };
+  seedSet.seed0 = ptnData.seed0;
+  seedSet.seed1 = ptnData.seed1;
+  seedSet.seed2 = ptnData.seed2;
+  seedSet.seed3 = ptnData.seed3;
+  seedSet.seed4 = ptnData.seed4;
 
-
-  // FALさんの5
-  // kindをcannonに指定すると複数のcannonを生成してそれぞれに挙動させることができる
-  // （タイル：薄い緑）
-  seedSet.seed4 = {
-    bgColor:"plgreen",
-    x:0.5, y:0.3, shotSpeed:96*PI/180, shotDirection:90,
-    shotColorName:"plblue", shotShapeName:"squareMiddle",
-    action:{
-      main:[{shotColor:"green"},
-            {shotAction:["set", "cannon1"]}, {shotBehavior:["add", "circle"]}, {fire:"setCannon1"},
-            {shotBehavior:["clear"]}, {shotAction:["set", "cannon2"]}, {shotBehavior:["add", "circleInv"]},
-            {fire:"setCannon2"}, {vanish:1}
-           ],
-      cannon1:[{shotColor:"dkgreen"}, {shotShape:"wedgeSmall"}, {short:"cannonMain"}],
-      cannon2:[{shotColor:"dkgreen"}, {shotShape:"wedgeSmall"}, {wait:48}, {short:"cannonMain"}]
-    },
-    short:{cannonMain:[{shotSpeed:["set", 5]}, {aim:0}, {fire:"line7"}, {wait:4}, {loop:8, back:3},
-                        {wait:64}, {loop:INF, back:5}]},
-    fireDef:{setCannon1:{formation:{type:"points", p:[[48, 0]]}, bend:90, kind:"square"},
-             setCannon2:{formation:{type:"points", p:[[48, 0]]}, bend:-90, kind:"square"},
-             line7:{line:{count:7, upSpeed:0.3}}},
-    behaviorDef:{circle:["circular", {radius:96, clockwise:true}],
-                 circleInv:["circular", {radius:96, clockwise:false}]}
-  };
   // FALさんの6.
   // margin120であらぬ方向に3wayを発射して(interval45°)速さ5で30フレーム進んでから
   // margin30でこっちに向かって・・んー。2フレームに1発、0.5ずつ速くしていって飛ばす感じ。(??)
@@ -996,8 +937,8 @@ class SelfUnit{
 	  this.frameIn();
 	}
 	frameIn(){
-		this.position.x = constrain(this.position.x, 0, width);
-		this.position.y = constrain(this.position.y, 0, height);
+		this.position.x = constrain(this.position.x, 0, AREA_WIDTH);
+		this.position.y = constrain(this.position.y, 0, AREA_HEIGHT);
 	}
 	draw(){
 		const {x, y} = this.position;
@@ -1778,7 +1719,18 @@ function createFirePattern(data){
 
     // nwayとかradialとかする(data.decorateに情報が入っている)
     if(data.hasOwnProperty("nway")){
-      ptnArray = createNWay(data.nway, ptnArray); // とりあえずnway.
+      // data.nway.countが3とか7だったらそのままでいいけど[13, 2]とかの場合には
+      // 繰り返し適用する。その場合intervalも[8, 5]とかなってて対応させる感じ。
+      if(typeof(data.nway.count) === "number"){
+        ptnArray = createNWay(data.nway, ptnArray);
+      }else{
+        const kindNum = data.nway.count.length;
+        const wayData = data.nway;
+        for(let i = 0; i < kindNum; i++){
+          ptnArray = createNWay({count:wayData.count[i], interval:wayData.interval[i]}, ptnArray);
+        }
+      }
+      //ptnArray = createNWay(data.nway, ptnArray); // とりあえずnway.
     }
     if(data.hasOwnProperty("radial")){
       ptnArray = createRadial(data.radial, ptnArray); // とりあえずradial.
@@ -1812,7 +1764,7 @@ function createFirePattern(data){
     })
     // kindは廃止。draw関連はshapeプロパティで操作するので。
     ptnArray.forEach((ptn) => {
-      createUnit(ptn, data.kind); // 形を指定する。基本的にWedge.
+      createUnit(ptn); // 形を指定する。基本的にWedge.
     })
     // お疲れさまでした。
   }
@@ -2046,7 +1998,8 @@ function interpretCommand(data, command, index){
   }
   if(_type === "loop"){
     // {loop:10, back:5}のような形。
-    result.count = command.loop;
+    // ここでloop:-1とあるときはINFにする規約を設ける（jsonファイルでInfinityが使えないので）
+    result.count = (command.loop > 0 ? command.loop : INF);
     // たとえば-1なら先頭、のように負の場合はindex+1を加える感じ。
     result.back = (command.back >= 0 ? command.back : command.back + index + 1);
     return result;
