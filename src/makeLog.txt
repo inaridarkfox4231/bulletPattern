@@ -11,3 +11,18 @@
 「this.position.x += this.move.vx, this.move.vx += this.move.ax」
 的な？そういうのを・・んー。
 shotDirectionはこれとは別に。directionがないと表示の時に困るけどそれは適宜計算するのもあり・・とか？
+
+class FireCommand{
+  constructor(fireSeed, dict){
+    if(fireSeed === undefined){ this.fire = createFirePattern({}); }
+    else{
+      const fireData = interpretNestedData(fireSeed, dict);
+      this.fire = createFirePattern(fireData); // 変更
+    }
+  }
+  execute(unit){
+    this.fire(unit);
+    unit.actionIndex++;
+    return true;
+  }
+}

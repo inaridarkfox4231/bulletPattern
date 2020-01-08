@@ -272,6 +272,79 @@ function setup(){
     behaviorDef:{curve1:["curve", {a:1, b:4, c:3}], curve2:["curve", {a:-1, b:-4, c:3}]}
   }
 
+  // なんかx, yでformationのショートカット作ってあったの忘れてた（馬鹿？）。で、ランダム指定できるの？
+  // shotDirectionをデフォルトにすれば絶対指定で普通にあれ、そうなるよ。
+  // bendも指定できるようにすれば撃ちだしたあれをいろんな方向に飛ばせるね。
+  // fall: 5wayを放ちながら落ちていく感じ。raid: 両側から出てきて真ん中に消えていく。
+  // sweep: 扇状にぐるんぐるんして下へ。
+  // 何パターン追加してんの？？？？
+  // ボスなんか作ってる場合か
+  seedSet.seed13 = {
+    x:0, y:-0.1, shotSpeed:2,
+    action:{
+      main:[{hide:true}, {short:"square", color:"red"},
+            {shotAction:["set", "fall"]},
+            {fire:"set", x:[80, 400], y:0, bend:90}, {loop:10, back:1},
+            {wait:240}, {short:"square", color:"skblue"},
+            {shotSpeed:["set", 4]}, {shotAction:["set", "raid"]},
+            {fire:"set", x:0, y:0, bend:60}, {shotDelay:["add", 15]}, {loop:10, back:2},
+            {shotDelay:["set", 0]},
+            {fire:"set", x:480, y:0, bend:120}, {shotDelay:["add", 15]}, {loop:10, back:2},
+            {shotDelay:["set", 0]},
+            {wait:300}, {short:"square", color:"orange"},
+            {shotSpeed:["set", 8]}, {shotAction:["set", "sweep"]},
+            {fire:"straight", dist:80, count:5, itv:80, bend:90},
+            {wait:360}, {shotShape:"squareLarge"}, {shotColor:"blue"},
+            {shotSpeed:["set", 6]}, {shotAction:["set", "boss"]},
+            {fire:"set", x:240, y:0, bend:90}, {vanish:1}],
+      fall:[{short:"wedge", color:"dkred"},
+            {shotSpeed:["set", 4]}, {shotDirection:["set", 90]},
+            {aim:5}, {wait:30}, {fire:"way5"}, {loop:4, back:3}, {speed:["set", 8, 60]}],
+      raid:[{short:"wedge", color:"dkskblue"},
+            {aim:0}, {fire:"way7"}, {wait:30}, {loop:3, back:3},
+            {direction:["set", 90, 30]}, {fire:"way7"}, {speed:["set", 8, 30]}],
+      sweep:[{short:"wedge", color:"dkorange"},
+             {speed:["set", 1, 30]}, {shotSpeed:["set", 4]},
+             {short:"sweepShot", iniDir:60, diff:5, wait:4, count:13},
+             {wait:60},
+             {short:"sweepShot", iniDir:120, diff:-5, wait:4, count:13},
+             {speed:["set", 8, 60]}],
+      boss:[{shotShape:"wedgeMiddle"}, {shotColor:"dkblue"},
+            {speed:["set", 0, 60]}, {shotSpeed:["set", 4]},
+            {short:"sweepShot", iniDir:45, diff:5, wait:4, count:19}, {wait:60},
+            {aim:0}, {fire:"ways", count:25, interval:4}, {wait:30}, {loop:3, back:3},
+            {short:"sweepShot", iniDir:135, diff:-5, wait:4, count:19}, {wait:60},
+            {aim:0}, {fire:"lines", waycount:15, interval:12, linecount:3, up:0.5},
+            {wait:30}, {loop:3, back:3},
+            {direction:["set", 0]}, {speed:["set", 24]}, {wait:10},
+            {shotAction:["set", "decel"]}, {speed:["set", 4]},
+            {direction:["set", 180]}, {short:"curtain"}, {direction:["set", 0]}, {short:"curtain"},
+            {loop:2, back:10}, {direction:["set", 180]}, {speed:["set", 2]}, {wait:120},
+            {speed:["set", 0]},
+            {shotShape:"wedgeHuge"}, {shotDirection:["set", 90]}, {shotAction:["set", "burst"]},
+            {fire:""}, {wait:240}, {shotShape:"wedgeMiddle"}, {shotAction:["clear"]},
+            {loop:INF, back:-5}],
+      decel:[{speed:["set", 2, 60]}],
+      burst:[{speed:["set", 0, 60]}, {hide:true}, {shotSpeed:["set", 2]}, {short:"wedge", color:"black"},
+             {shotDirection:["set", [0, 360]]}, {fire:""}, {loop:120, back:2},
+             {wait:60}, {loop:3, back:4}, {vanish:1}]
+    },
+    short:{
+      square:[{shotShape:"squareMiddle"}, {shotColor:"$color"}],
+      wedge:[{shotShape:"wedgeSmall"}, {shotColor:"$color"}],
+      sweepShot:[{shotDirection:["set", "$iniDir"]}, {fire:""}, {shotDirection:["add", "$diff"]},
+                 {wait:"$wait"}, {loop:"$count", back:3}],
+      curtain:[{fire:""}, {wait:1}, {loop:105, back:2}, {wait:15}]
+    },
+    fireDef:{
+      set:{x:"$x", y:"$y", bend:"$bend"},
+      straight:{formation:{type:"frontHorizontal", count:"$count", distance:"$dist", interval:"$itv"}, bend:"$bend"},
+      way5:{nway:{count:5, interval:20}}, way7:{nway:{count:7, interval:5}},
+      ways:{nway:{count:"$count", interval:"$interval"}},
+      lines:{nway:{count:"$waycount", interval:"$interval"}, line:{count:"$linecount", upSpeed:"$up"}}
+    }
+  }
+
   // パターン総数の計算
   seedCapacity = Object.keys(seedSet).length;
 
@@ -741,7 +814,7 @@ class Unit{
         const command = this.action[this.actionIndex];
         continueFlag = execute(this, command); // flagがfalseを返すときに抜ける
         debug++; // デバッグモード
-        if(debug > 1000){
+        if(debug > 5000){
           console.log("INFINITE LOOP ERROR!!");
           console.log(command, this.actionIndex);
           noLoop(); break; } // デバッグモード
@@ -1341,7 +1414,7 @@ function createFirePattern(data){
       ptnArray = getFormation(data.formation);
     }else if(data.hasOwnProperty("x") && data.hasOwnProperty("y")){
       // 1点の場合
-      ptnArray = [{x:x, y:y}];
+      ptnArray = [{x:getNumber(data.x), y:getNumber(data.y)}]; // ランダム指定も可能
     }else{
       // デフォルト
       ptnArray = [{x:0, y:0}];
@@ -1608,6 +1681,8 @@ function createAction(data, targetAction){
 // speed, shotSpeed, direction, shotDirectionについては"set"と"add"... {speed:["set", [3, 7]]}
 // {behavior:["add", "circle1"]} {shotBehavior:["add", "spiral7"]} こういうの {shotBehavior:["clear"]}
 // {fire:"radial16way7"}とかね。
+
+// これがreturnするのがクラスになればいいのね。
 function interpretCommand(data, command, index){
   let result = {};
   const _type = getTopKey(command); // 最初のキーがそのままtypeになる。
@@ -1847,3 +1922,6 @@ function execute(unit, command){
 // グラデーション型はあるプロパティ（数）を徐々にその値に近付けていくもの。
 // "gradShotSpeed", 1, 30とか"gradSpeed", 1, 60の方がいいのかもね。別立てでとらえる感じ。
 // "grad"で始まるかどうかは文字列判定でできる。
+
+
+// interpretCommandでクラスにして実行はクラスにさせる感じにしたいんです。
