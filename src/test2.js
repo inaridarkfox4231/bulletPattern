@@ -1,8 +1,9 @@
 // SolidAetherのコピー練習帳
 
-// runTimeが完全にアウト
-
 // 当たり判定：hide:trueのものは除外。hitPointが無いか、あっても0のものは除外。inFrameを満たさなくても除外。
+
+// Particleは10個くらいの四角形（中身すっからかん）を色付けてふちだけのやつ回転しながら
+// ランダムで方向決めてスピードは4から0に減らす感じでゆっくりとばすみたいな。
 
 "use strict";
 
@@ -12,6 +13,13 @@ const INF = Infinity; // 長いので
 const AREA_WIDTH = 480;
 const AREA_HEIGHT = 600; // あとでCanvasSizeをこれよりおおきく・・もしくは横かもだけど。んー。
 // 1列に・・これだと15だから、パターン60個できるね！（しないけど）
+
+// 衝突判定用フラグ(collisionFlag)
+const DEFAULT = 0;  // たとえばボスとかフラグをオフにしたうえで大きいパーティクル作る、とか出来る（予定）
+const ENEMY_BULLET = 1;
+const PLAYER_BULLET = 2;
+const ENEMY = 3;
+const PLAYER = 4;
 
 // 今のままでいいからとりあえず関数化とか変数化、やる。
 
@@ -279,6 +287,7 @@ function setup(){
   // sweep: 扇状にぐるんぐるんして下へ。
   // 何パターン追加してんの？？？？
   // ボスなんか作ってる場合か
+  // 作るときだけ色や形指定することって出来ないのかなとか。テンポラリー的な？
   seedSet.seed13 = {
     x:0, y:-0.1, shotSpeed:2,
     action:{
@@ -538,6 +547,7 @@ function registUnitShapes(){
 class System{
 	constructor(){
     this.unitArray = new CrossReferenceArray();
+    this.particleArray = new SimpleCrossReferenceArray();
     this.backgroundColor = color(220, 220, 255); // デフォルト（薄い青）
     this.infoColor = color(0); // デフォルト（情報表示の色、黒）
     this.drawColor = {}; // 色の辞書
@@ -604,9 +614,11 @@ class System{
 	update(){
 		this.player.update();
     this.unitArray.loop("update");
+    this.particleArray.loopReverse("update");
 	}
   eject(){
     this.unitArray.loopReverse("eject");
+    this.particleArray.loopReverse("eject");
   }
 	draw(){
 		this.player.draw();
@@ -614,6 +626,9 @@ class System{
       fill(this.drawColor[colorName]);
       this.drawGroup[colorName].loop("draw"); // 色別に描画
     })
+    noFill();
+    strokeWeight(2.0);
+    this.particleArray.loop("draw");
 	}
   getCapacity(){
     return this.unitArray.length;
@@ -632,6 +647,13 @@ function createUnit(pattern){
   // 色、形についてはsetPatternで行う感じ。
 }
 
+function createParticle(unit){
+  const size = unit.drawModule.size;
+  const _color = entity.drawColor[unit.colorName];
+  let newParticle = new Particle(unit.position.x, unit.position.y, size, _color);
+  entity.particleArray.add(newParticle);
+}
+
 // ---------------------------------------------------------------------------------------- //
 // Player.
 
@@ -640,6 +662,7 @@ class SelfUnit{
 		this.position = createVector(0, 0);
     this.weapon = []; // 武器庫
     this.fire = undefined; // 関数を入れる
+    this.collisionFlag = PLAYER; // 衝突フラグ
     this.prepareWeapon();
 		this.initialize();
 	}
@@ -740,6 +763,8 @@ class Unit{
     this.vanishFlag = false; // trueなら、消す。
     this.hide = false; // 隠したいとき // appearでも作る？disappearとか。それも面白そうね。ステルス？・・・
     this.follow = false; // behaviorの直後、actionの直前のタイミングでshotDirectionをdirectionで更新する。
+    // 衝突判定フラグ
+    this.collisionFlag = ENEMY_BULLET; // default. ENEMY, PLAYER_BULLETの場合もある。
   }
   setPosition(x, y){
     this.position.set(x, y);
@@ -754,7 +779,7 @@ class Unit{
     this.drawFunction = f;
   }
   setPattern(ptn){
-    const {x, y, behavior, shotBehavior} = ptn;
+    const {x, y, behavior, shotBehavior, collisionFlag} = ptn;
     // この時点でもうx, yはキャンバス内のどこかだしspeedとかその辺もちゃんとした数だし(getNumber通し済み)
     // behaviorとshotBehaviorもちゃんと{name:関数, ...}形式になっている。
     this.position.set(x, y);
@@ -780,6 +805,9 @@ class Unit{
     if(shotBehavior !== undefined){
       Object.assign(this.shotBehavior, shotBehavior); // オブジェクトのコピー
     }
+    if(collisionFlag !== undefined){
+      this.collisionFlag = collisionFlag; // collisionFlagがENEMY_BULLETでない場合は別途指示する
+    }
     this.action = ptn.action; // action配列
   }
   eject(){
@@ -792,6 +820,8 @@ class Unit{
       this.belongingArrayList[i].remove(this);
     }
     if(this.belongingArrayList.length > 0){ console.log("REMOVE ERROR!"); noLoop(); } // 排除ミス
+    // ENEMYが消えたときにパーティクルを出力する。
+    if(this.collisionFlag === ENEMY){ createParticle(this); }
 
     unitPool.recycle(this); // 名称をunitPoolに変更
   }
@@ -860,6 +890,56 @@ class Unit{
 }
 
 // ---------------------------------------------------------------------------------------- //
+// particle.
+
+class Particle{
+	constructor(x, y, size, _color, life = 60, speed = 4, count = 20){
+    this.color = {r:red(_color), g:green(_color), b:blue(_color)};
+		this.center = {x:x, y:y};
+		this.size = size;
+		this.particleSet = [];
+		this.life = life;
+		this.speed = speed;
+		this.count = count + random(-5, 5);
+		this.rotationAngle = 0;
+		this.rotationSpeed = 4;
+		this.moveSet = [];
+		this.prepareMoveSet();
+		this.alive = true;
+	}
+	prepareMoveSet(){
+		for(let i = 0; i < this.count; i++){
+			this.moveSet.push({x:0, y:0, speed:this.speed + random(-2, 2), direction:random(360)});
+		}
+	}
+	update(){
+		if(!this.alive){ return; }
+		this.moveSet.forEach((z) => {
+			z.x += z.speed * cos(z.direction);
+			z.y += z.speed * sin(z.direction);
+			z.speed *= 0.9;
+		})
+		this.rotationAngle += this.rotationSpeed;
+		this.life--;
+		if(this.life === 0){ this.alive = false; }
+	}
+	draw(){
+		if(!this.alive){ return; }
+		stroke(this.color.r, this.color.g, this.color.b, this.life * 4);
+		const c = cos(this.rotationAngle) * this.size;
+		const s = sin(this.rotationAngle) * this.size;
+		this.moveSet.forEach((z) => {
+			const cx = this.center.x + z.x;
+			const cy = this.center.y + z.y;
+      quad(cx + c, cy + s, cx - s, cy + c, cx - c, cy - s, cx + s, cy - c);
+		})
+	}
+  eject(){
+    if(!this.alive){ this.vanish(); }
+  }
+}
+
+// ---------------------------------------------------------------------------------------- //
 // drawFunction. bullet, cannon用の描画関数.
 // もっと形増やしたい。剣とか槍とか手裏剣とか。3つ4つの三角形や四角形がくるくるしてるのとか面白いかも。
 // で、色とは別にすれば描画の負担が減るばかりかさらにバリエーションが増えて一石二鳥。
@@ -879,6 +959,7 @@ class DrawWedgeShape extends DrawShape{
     super();
     this.h = h; // 6
     this.b = b; // 3
+    this.size = (h + b) / 2;
   }
   set(unit){ return; }
   draw(unit){
@@ -1030,10 +1111,49 @@ class ObjectPool{
 }
 
 // ---------------------------------------------------------------------------------------- //
+// Simple Cross Reference Array.
+// 改造する前のやつ。
+
+class SimpleCrossReferenceArray extends Array{
+	constructor(){
+    super();
+	}
+  add(element){
+    this.push(element);
+    element.belongingArray = this; // 所属配列への参照
+  }
+  addMulti(elementArray){
+    // 複数の場合
+    elementArray.forEach((element) => { this.add(element); })
+  }
+  remove(element){
+    let index = this.indexOf(element, 0);
+    this.splice(index, 1); // elementを配列から排除する
+  }
+  loop(methodName){
+		if(this.length === 0){ return; }
+    // methodNameには"update"とか"display"が入る。まとめて行う処理。
+		for(let i = 0; i < this.length; i++){
+			this[i][methodName]();
+		}
+  }
+	loopReverse(methodName){
+		if(this.length === 0){ return; }
+    // 逆から行う。排除とかこうしないとエラーになる。もうこりごり。
+		for(let i = this.length - 1; i >= 0; i--){
+			this[i][methodName]();
+		}
+  }
+	clear(){
+		this.length = 0;
+	}
+}
+
+// ---------------------------------------------------------------------------------------- //
 // Cross Reference Array.
-// 使い方・・
 
 // 配列クラスを継承して、要素を追加するときに自動的に親への参照が作られるようにしたもの
+// 改造して複数の配列に所属できるようにした。
 class CrossReferenceArray extends Array{
 	constructor(){
     super();
