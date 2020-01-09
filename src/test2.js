@@ -352,6 +352,13 @@ function setup(){
       ways:{nway:{count:"$count", interval:"$interval"}},
       lines:{nway:{count:"$waycount", interval:"$interval"}, line:{count:"$linecount", upSpeed:"$up"}}
     }
+  };
+
+  seedSet.seed14 = {
+    x:0.5, y:0.5, shotShapeName:"rectSmall", shotDirection:90, shotSpeed:4,
+    action:{
+      main:[{fire:""}, {wait:4}, {shotDirection:["add", 4]}, {loop:INF, back:-1}]
+    }
   }
 
   // パターン総数の計算
@@ -533,7 +540,11 @@ function registUnitShapes(){
         .registShape("starMiddle", new DrawStarShape(6))
         .registShape("starLarge", new DrawStarShape(12))
         .registShape("starHuge", new DrawStarShape(24))
-        .registShape("diaSmall", new DrawDiaShape(8));
+        .registShape("diaSmall", new DrawDiaShape(8))
+        .registShape("rectSmall", new DrawRectShape(6, 4))
+        .registShape("rectMiddle", new DrawRectShape(9, 6))
+        .registShape("rectLarge", new DrawRectShape(12, 8))
+        .registShape("rectHuge", new DrawRectShape(24, 12));
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -945,6 +956,8 @@ class Particle{
 // で、色とは別にすれば描画の負担が減るばかりかさらにバリエーションが増えて一石二鳥。
 // サイズはsmall, middle, large, hugeの4種類。
 
+// colliderはDrawShapeをセットするときに初期設定する感じ。
+
 class DrawShape{
   constructor(){}
   set(unit){ /* drawParamに描画用のプロパティを準備 */}
@@ -952,8 +965,9 @@ class DrawShape{
 }
 
 // drawWedge
-// 三角形。(6, 3), (9, 4.5), (12, 6), (24, 12).
-// 三角形の高さの中心に(x, y)で高さの半分が6で底辺の長さの半分が3にあたる。
+// 三角形。(h, b) = (6, 3), (9, 4.5), (12, 6), (24, 12).
+// 三角形の高さの中心に(x, y)で, 頂点と底辺に向かってh, 底辺から垂直にb.
+// 当たり判定はsize=(h+b)/2半径の円。戻した。こっちのがくさびっぽいから。
 class DrawWedgeShape extends DrawShape{
   constructor(h, b){
     super();
@@ -975,6 +989,7 @@ class DrawWedgeShape extends DrawShape{
 
 // drawSquare.
 // 回転する四角形。10, 20, 30, 60.
+// 当たり判定はsize半径の円。
 class DrawSquareShape extends DrawShape{
   constructor(size){
     super();
@@ -995,6 +1010,7 @@ class DrawSquareShape extends DrawShape{
 // drawStar. 回転する星型。
 // 3, 6, 12, 24.
 // 三角形と鋭角四角形を組み合わせてさらに加法定理も駆使したらクソ速くなった。すげー。
+// 当たり判定はsize半径の円（コアの部分）だけど1.5倍の方がいいかもしれない。
 class DrawStarShape extends DrawShape{
   constructor(size){
     super();
@@ -1026,6 +1042,7 @@ class DrawStarShape extends DrawShape{
 }
 
 // いわゆるダイヤ型。8, 12, 16, 32.
+// 当たり判定はsize半径の・・0.75倍の方がいいかな。そういうのできるんだっけ？(知らねぇよ)
 class DrawDiaShape extends DrawShape{
   constructor(size){
     super();
@@ -1044,14 +1061,25 @@ class DrawDiaShape extends DrawShape{
 }
 
 // 長方形（指向性のある）
+// (6, 4), (9, 6), (12, 8), (24, 16).
 class DrawRectShape extends DrawShape{
-  constructor(size){
+  constructor(h, w){
     super();
-    this.size = size;
+    this.h = h;
+    this.w = w;
+    this.size = (h + w) / 2;
   }
   set(unit){}
   draw(unit){
     // unit.directionの方向に長い長方形
+    const {x, y} = unit.position;
+    const {direction} = unit;
+    const c = cos(direction);
+    const s = sin(direction);
+    quad(x + c * this.h + s * this.w, y + s * this.h - c * this.w,
+         x + c * this.h - s * this.w, y + s * this.h + c * this.w,
+         x - c * this.h - s * this.w, y - s * this.h + c * this.w,
+         x - c * this.h + s * this.w, y - s * this.h - c * this.w);
   }
 }
 

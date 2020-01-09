@@ -26,3 +26,10 @@ class FireCommand{
     return true;
   }
 }
+
+衝突判定の手順
+colliderを各オブジェクトに用意する（この場合UnitとSelfUnitに必要）、Shapeから設定できそう。
+colliderの衝突を判定する関数を用意する。quadTreeも用意する。
+colliderの更新が出来るようにする。
+colliderとは別にフラグを設けて事前に計算を回避できるようにする（ENEMY_BULLET同士は当たらないとか）。
+メインループにquadTreeの更新やらいろいろ組み込んで・・あとはまあ、色々と。
