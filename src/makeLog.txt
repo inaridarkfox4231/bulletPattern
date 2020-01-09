@@ -33,3 +33,12 @@ colliderの衝突を判定する関数を用意する。quadTreeも用意する�
 colliderの更新が出来るようにする。
 colliderとは別にフラグを設けて事前に計算を回避できるようにする（ENEMY_BULLET同士は当たらないとか）。
 メインループにquadTreeの更新やらいろいろ組み込んで・・あとはまあ、色々と。
+
+未指定の場合、ノードユニットをDEFAULTにして、撃ちだすユニットはENEMYにする。
+ENMEYだけ指定する場合、ENEMYで、撃ちだすユニットをENEMY_BULLETにする。
+両方指定（たとえばENEMYがENEMYを作るとかDEFAULTがDEFAULTを作るとか・・）のときは両方参照する。
+こういう場合は一番多い場合をデフォルトにするのが定石。でないといちいちめんどくさい。
+
+画面外で消えるときはcollisionFlagをOFFにしよう。
+パターンチェンジでunitを抹消するときもcollisionFlagをOFFにしよう。
+NOTHINGやめてOFFにする。了解！

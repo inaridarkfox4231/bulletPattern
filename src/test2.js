@@ -15,7 +15,7 @@ const AREA_HEIGHT = 600; // あとでCanvasSizeをこれよりおおきく・・
 // 1列に・・これだと15だから、パターン60個できるね！（しないけど）
 
 // 衝突判定用フラグ(collisionFlag)
-const DEFAULT = 0;  // たとえばボスとかフラグをオフにしたうえで大きいパーティクル作る、とか出来る（予定）
+const OFF = 0;  // たとえばボスとかフラグをオフにしたうえで大きいパーティクル作る、とか出来る（予定）
 const ENEMY_BULLET = 1;
 const PLAYER_BULLET = 2;
 const ENEMY = 3;
@@ -67,7 +67,7 @@ function setup(){
   // 省略の実験.
   // うまくいってるね。てかうまくいきすぎやん・・・
   seedSet.seed0 = {
-    x:0.5, y:0.3, shotSpeed:4, shotDirection:90,
+    x:0.5, y:0.3, shotSpeed:4, shotDirection:90, collisionFlag:ENEMY,
     action:{
       main:[{short:"waygun", count:3}, {short:"waygun", count:5},
             {short:"waygun", count:7}, {short:"waygun", count:9},
@@ -79,7 +79,7 @@ function setup(){
 
   // デモ画面1. 90°ずつ回転するやつ。
   seedSet.seed1 = {
-    x:0.5, y:0.5, shotSpeed:2, shotDirection:90,
+    x:0.5, y:0.5, shotSpeed:2, shotDirection:90, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "way3burst"]}, {fire:"rad2"}, {wait:8}, {loop:10, back:2}, {wait:32},
             {shotDirection:["add", 45]}, {loop:INF, back:-2}],
@@ -97,7 +97,7 @@ function setup(){
   // え、うそ、、circularで大きいradius指定するとそこまで広がっていくの。初めて知った。すげぇー。
   // ・・・何で挙動把握してないの。わぁすごい。INF? 単に方向変えてないだけだよ・・・
   seedSet.seed2 = {
-    x:0.5, y:0.5, shotSpeed:2,
+    x:0.5, y:0.5, shotSpeed:2, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "burst"]}, {fire:"rad24", bend:90}, {wait:90},
             {shotAction:["set", "burstInv"]}, {fire:"rad24", bend:-90}, {wait:90},
@@ -115,7 +115,7 @@ function setup(){
   // circular実験
   // 謎の挙動を始めてしまった。
   seedSet.seed3 = {
-    x:0.5, y:0.5, shotSpeed:2,
+    x:0.5, y:0.5, shotSpeed:2, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "burst"]}, {fire:"rad24", bend:90}, {vanish:1}],
       burst:[{behavior:["add", "circ120"]}, {wait:300}, {behavior:["clear"]},
@@ -130,7 +130,7 @@ function setup(){
   // ボスの攻撃
   // 20発ガトリングを13way, これを真ん中から放ったり、両脇から放ったり。
   seedSet.seed4 = {
-    x:0.5, y:0.2,
+    x:0.5, y:0.2, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "fire"]},
             {shotSpeed:["set", 0]}, {fire:""}, {wait:120},
@@ -162,7 +162,7 @@ function setup(){
 
   // デモ画面のカミソリrad8が4ずつ方向逆転するやつ
   seedSet.seed6 = {
-    x:0.5, y:0.5, shotSpeed:1, shotDirection:90,
+    x:0.5, y:0.5, shotSpeed:1, shotDirection:90, collisionFlag:ENEMY,
     action:{
       main:[{short:"routine", dirDiff:4}, {short:"routine", dirDiff:-4}, {loop:INF, back:-1}]
     },
@@ -197,7 +197,7 @@ function setup(){
 
   // 上下に4発ずつline飛ばして止めてから90°方向に8line飛ばして消滅するパターン
   seedSet.seed8 = {
-    x:0.5, y:0.5, shotSpeed:1, shotDirection:90,
+    x:0.5, y:0.5, shotSpeed:1, shotDirection:90, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "lin8"]}, {short:"linshot", angle:90}, {short:"linshot", angle:-90},
             {wait:30}, {shotDirection:["add", 45]}, {loop:INF, back:6}],
@@ -211,7 +211,7 @@ function setup(){
 
   // 13方向wayで角度10°でaim5で5lineを60間隔、3line2wayを90間隔で放つ感じ。
   seedSet.seed9 = {
-    x:0.5, y:0.1, shotSpeed:4,
+    x:0.5, y:0.1, shotSpeed:4, collisionFlag:ENEMY,
     action:{
       main:[{aim:0}, {fire:"weapon1"}, {wait:30}, {aim:0}, {fire:"weapon2"}, {wait:40},
             {loop:INF, back:-1}]
@@ -247,7 +247,7 @@ function setup(){
 
   // 何がしたいのか分からなくなってきた
   seedSet.seed11 = {
-    bgColor:"plgreen",
+    bgColor:"plgreen", collisionFlag:ENEMY,
     x:0.5, y:0.05, shotSpeed:3, shotBehavior:["brAc1"], colorName:"green", shotColorName:"dkgreen",
     action:{
       main:[{aim:0}, {fire:"way7"}, {wait:4}, {shotSpeed:["add", 0.5]}, {shotDirection:["add", 0.3]},
@@ -308,7 +308,7 @@ function setup(){
             {fire:"set", x:240, y:0, bend:90}, {vanish:1}],
       fall:[{short:"wedge", color:"dkred"},
             {shotSpeed:["set", 4]}, {shotDirection:["set", 90]},
-            {aim:5}, {wait:30}, {fire:"way5"}, {loop:4, back:3}, {speed:["set", 8, 60]}],
+            {aim:5}, {wait:30}, {fire:"way5"}, {loop:4, back:3}, {vanish:1}, {speed:["set", 8, 60]}],
       raid:[{short:"wedge", color:"dkskblue"},
             {aim:0}, {fire:"way7"}, {wait:30}, {loop:3, back:3},
             {direction:["set", 90, 30]}, {fire:"way7"}, {speed:["set", 8, 30]}],
@@ -355,9 +355,9 @@ function setup(){
   };
 
   seedSet.seed14 = {
-    x:0.5, y:0.5, shotShapeName:"rectSmall", shotDirection:90, shotSpeed:4,
+    x:0.5, y:0.5, shotShapeName:"rectSmall", shotDirection:90, shotSpeed:4, collisionFlag:ENEMY,
     action:{
-      main:[{fire:""}, {wait:4}, {shotDirection:["add", 4]}, {loop:INF, back:-1}]
+      main:[{fire:""}, {wait:4}, {shotDirection:["add", 4]}, {loop:12, back:-1}, {vanish:1}]
     }
   }
 
@@ -397,6 +397,8 @@ function showPerformanceInfo(runTime, updateTime, ejectTime, drawTime){
 	fill(entity.infoColor);
   y += TEXT_INTERVAL;
   displayInteger(entity.getCapacity(), INDENT, y, "using");
+  y += TEXT_INTERVAL;
+  displayInteger(entity.particleArray.length, INDENT, y, "particle");
 
   y += TEXT_INTERVAL;
   displayRealNumber(runTime, INDENT, y, "runTime");
@@ -608,7 +610,8 @@ class System{
   }
 	initialize(){
 		this.player.initialize();
-    this.unitArray.loopReverse("vanish"); // unitすべて戻す
+    this.unitArray.loopReverse("flagOff"); // 先にフラグを消す
+    this.unitArray.loopReverse("vanish");  // unitすべて戻す
     this.drawGroup = {};
     usingUnitMax = 0; // 毎回初期化する
     // 各種情報
@@ -640,6 +643,7 @@ class System{
     noFill();
     strokeWeight(2.0);
     this.particleArray.loop("draw");
+    noStroke();
 	}
   getCapacity(){
     return this.unitArray.length;
@@ -659,8 +663,8 @@ function createUnit(pattern){
 }
 
 function createParticle(unit){
-  const size = unit.drawModule.size;
-  const _color = entity.drawColor[unit.colorName];
+  const size = unit.drawModule.size / 2; // やや小さく
+  const _color = entity.drawColor[unit.colorName]; // 色は一緒で
   let newParticle = new Particle(unit.position.x, unit.position.y, size, _color);
   entity.particleArray.add(newParticle);
 }
@@ -674,6 +678,7 @@ class SelfUnit{
     this.weapon = []; // 武器庫
     this.fire = undefined; // 関数を入れる
     this.collisionFlag = PLAYER; // 衝突フラグ
+    this.shotCollisionFlag = PLAYER_BULLET; // ショットはPLAYER_BULLET.
     this.prepareWeapon();
 		this.initialize();
 	}
@@ -762,6 +767,7 @@ class Unit{
     this.shotDelay = 0;
     this.shotBehavior = {};
     this.shotAction = [];
+    this.shotCollisionFlag = ENEMY_BULLET; // 基本的にはショットのフラグは敵弾丸。いじるとき、いじる。
     // 色、形. デフォルトはこんな感じ。
     this.shapeName = "squareMiddle";
     this.colorName = "plblue";
@@ -790,7 +796,7 @@ class Unit{
     this.drawFunction = f;
   }
   setPattern(ptn){
-    const {x, y, behavior, shotBehavior, collisionFlag} = ptn;
+    const {x, y, behavior, shotBehavior, collisionFlag, shotCollisionFlag} = ptn;
     // この時点でもうx, yはキャンバス内のどこかだしspeedとかその辺もちゃんとした数だし(getNumber通し済み)
     // behaviorとshotBehaviorもちゃんと{name:関数, ...}形式になっている。
     this.position.set(x, y);
@@ -819,6 +825,9 @@ class Unit{
     if(collisionFlag !== undefined){
       this.collisionFlag = collisionFlag; // collisionFlagがENEMY_BULLETでない場合は別途指示する
     }
+    if(shotCollisionFlag !== undefined){
+      this.shotCollisionFlag = shotCollisionFlag;
+    }
     this.action = ptn.action; // action配列
   }
   eject(){
@@ -835,6 +844,10 @@ class Unit{
     if(this.collisionFlag === ENEMY){ createParticle(this); }
 
     unitPool.recycle(this); // 名称をunitPoolに変更
+  }
+  flagOff(){
+    // パーティクルが出ないよう、消滅前にフラグを消すことがある。(画面外で消えるときやパターン変更時)
+    this.collisionFlag = OFF;
   }
   update(){
     // ディレイ処理
@@ -947,6 +960,9 @@ class Particle{
 	}
   eject(){
     if(!this.alive){ this.vanish(); }
+  }
+  vanish(){
+    this.belongingArray.remove(this);
   }
 }
 
@@ -1277,7 +1293,10 @@ function directionDist(d1, d2){
 // 画面外で消える
 function frameOutBehavior(unit){
   const {x, y} = unit.position;
-  if(x < -AREA_WIDTH * 0.2 || x > AREA_WIDTH * 1.2 || y < -AREA_HEIGHT * 0.2 || y > AREA_HEIGHT * 1.2){ unit.vanishFlag = true; }
+  if(x < -AREA_WIDTH * 0.2 || x > AREA_WIDTH * 1.2 || y < -AREA_HEIGHT * 0.2 || y > AREA_HEIGHT * 1.2){
+    unit.flagOff();
+    unit.vanishFlag = true;
+  }
 }
 
 // 速度の方向に進む
@@ -1655,6 +1674,14 @@ function createFirePattern(data){
       // 基本的に自分の複製をする(Commandで変更可能)
       ptn.shotColorName = ptn.colorName;
       ptn.shotShapeName = ptn.shapeName;
+      // collisionFlag.
+      ptn.collisionFlag = unit.shotCollisionFlag; // 当然。
+      // ENEMY_BULLETの分裂で出来るのはENEMY_BULLET, PLAYER_BULLETの分裂でできるのはPLAYER_BULLET.
+      if(ptn.collisionFlag === ENEMY_BULLET){ ptn.shotCollisionFlag = ENEMY_BULLET; }
+      if(ptn.collisionFlag === PLAYER_BULLET){ ptn.shotCollisionFlag = PLAYER_BULLET; }
+      // ※shotCollisionFlagのデフォルトはENEMY_BULLETです。
+      // たとえばOFFがENEMYを作るときとか、collisionFlagはENEMYでこの上の2行は無視される。で、ENEMY_BULLETになる。
+      // PLAYERが出す場合はcollisionFlagのところがPLAYERになることがそもそもありえないのでありえない感じ。
     })
     // kindは廃止。draw関連はshapeプロパティで操作するので。
     ptnArray.forEach((ptn) => {
@@ -1743,6 +1770,21 @@ function parsePatternSeed(seed){
     })
     // 実行形式内のbehaviorは普通にセッター部分だから問題ないけど。
     // あとはactionを作って完成。seedをいろいろいじる。
+  }
+  // デフォルトのcollisionFlagね・・敵を出すだけならOFFにするべきよねぇ。
+  // 一応hideと枠外の場合は判定しないことにしてるけど。
+  if(seed.collisionFlag === undefined){
+    // collisionFlagが未指定の場合はOFF-ENEMY.
+    ptn.collisionFlag = OFF;
+    ptn.shotCollisionFlag = ENEMY;
+  }else if(seed.shotCollisionFlag === undefined){
+    // collisionFlagのみ指定の場合は何であっても(""や-1であっても)ENEMY-ENEMY_BULLET.
+    ptn.collisionFlag = ENEMY;
+    ptn.shotCollisionFlag = ENEMY_BULLET;
+  }else{
+    // 両方指定の場合は両方指定
+    ptn.collisionFlag = seed.collisionFlag;
+    ptn.shotCollisionFlag = seed.collisionFlag;
   }
 
   // ここでseed.actionのキー配列を取得
@@ -1844,8 +1886,8 @@ function interpretCommand(data, command, index){
     return result;
   }
 
-  // 色、形関連
-  if(["shotColor", "shotShape"].includes(_type)){
+  // 色、形、衝突フラグ関連
+  if(["shotColor", "shotShape", "collisionFlag", "shotCollisionFlag"].includes(_type)){
     result.style = command[_type]; // 文字列
     return result;
   }
@@ -1992,6 +2034,12 @@ function execute(unit, command){
   // 色、形.
   if(["shotColor", "shotShape"].includes(_type)){
     unit[_type + "Name"] = command.style;
+    unit.actionIndex++;
+    return true; // ループは抜けない
+  }
+  // 衝突フラグ、ショットの衝突フラグ
+  if(["collisionFlag", "shotCollisionFlag"].includes(_type)){
+    unit[_type] = command.style;
     unit.actionIndex++;
     return true; // ループは抜けない
   }
