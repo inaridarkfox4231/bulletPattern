@@ -57,11 +57,12 @@ function setup(){
   createCanvas(AREA_WIDTH + 160, AREA_HEIGHT);
   angleMode(DEGREES);
   textSize(16);
-  unitPool = new ObjectPool(() => { return new Unit(); }, 1024);
   entity = new System();
   registUnitColors(); // 色を用意する。
   registUnitShapes(); // 形を用意する。
   entity.createPlayer();
+  // これでentity経由で色や形の情報を取得できる
+  unitPool = new ObjectPool(() => { return new Unit(); }, 1024);
 
   seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.3, shotSpeed:4, shotDirection:90, collisionFlag:ENEMY,
@@ -268,7 +269,7 @@ function setup(){
   // 何がしたいのか分からなくなってきた
   seedSet["seed" + (seedCapacity++)] = {
     bgColor:"plgreen", collisionFlag:ENEMY,
-    x:0.5, y:0.05, shotSpeed:3, shotBehavior:["brAc1"], colorName:"green", shotColorName:"dkgreen",
+    x:0.5, y:0.05, shotSpeed:3, shotBehavior:["brAc1"], color:"green", shotColor:"dkgreen",
     action:{
       main:[{aim:0}, {fire:"way7"}, {wait:4}, {shotSpeed:["add", 0.5]}, {shotDirection:["add", 0.3]},
             {loop:20, back:4}, {wait:90}, {shotSpeed:["set", 3]}, {loop:INF, back:-1}]
@@ -375,7 +376,7 @@ function setup(){
   };
 
   seedSet["seed" + (seedCapacity++)] = {
-    x:0.5, y:0.5, shotShapeName:"rectSmall", shotDirection:90, shotSpeed:4, collisionFlag:ENEMY,
+    x:0.5, y:0.5, shotShape:"rectSmall", shotDirection:90, shotSpeed:4, collisionFlag:ENEMY,
     action:{
       main:[{fire:""}, {wait:4}, {shotDirection:["add", 4]}, {loop:12, back:-1}, {vanish:1}]
     }
@@ -451,8 +452,8 @@ function showPerformanceInfo(runTime, updateTime, ejectTime, drawTime){
 
   // 色について内訳表示
   y += TEXT_INTERVAL * 2;
-  Object.keys(entity.drawGroup).forEach((colorName) => {
-    displayInteger(entity.drawGroup[colorName].length, INDENT, y, colorName);
+  Object.keys(entity.drawGroup).forEach((name) => {
+    displayInteger(entity.drawGroup[name].length, INDENT, y, name);
     y += TEXT_INTERVAL;
   })
 }
@@ -621,11 +622,15 @@ class System{
     // プレイヤーになんかしないの？って話。
   }
   registDrawGroup(unit){
-    const {colorName} = unit;
-    if(!this.drawGroup.hasOwnProperty(colorName)){
-      this.drawGroup[colorName] = new CrossReferenceArray();
+    // colorから名前を引き出す。
+    //console.log(unit.color);
+    //console.log(unit.color.name);
+    const name = unit.color.name;
+
+    if(!this.drawGroup.hasOwnProperty(name)){
+      this.drawGroup[name] = new CrossReferenceArray();
     }
-    this.drawGroup[colorName].add(unit);
+    this.drawGroup[name].add(unit);
   }
 	initialize(){
 		this.player.initialize();
@@ -637,6 +642,7 @@ class System{
     runTimeMax = 0;
 	}
   registColor(name, _color){
+    _color.name = name; // 色の名前を.nameで参照できるようにしておく。
     this.drawColor[name] = _color;
     return this; // こういうのはメソッドチェーンで書くといい
   }
@@ -663,10 +669,11 @@ class System{
   }
 	draw(){
 		this.player.draw();
-    Object.keys(this.drawGroup).forEach((colorName) => {
-      fill(this.drawColor[colorName]);
-      this.drawGroup[colorName].loop("draw"); // 色別に描画
+    Object.keys(this.drawGroup).forEach((name) => {
+      fill(this.drawColor[name]);
+      this.drawGroup[name].loop("draw"); // 色別に描画
     })
+    // particleの描画(noStroke()を忘れないこと)
     noFill();
     strokeWeight(2.0);
     this.particleArray.loop("draw");
@@ -683,15 +690,20 @@ class System{
 function createUnit(pattern){
   let newUnit = unitPool.use();
   newUnit.initialize();
+  //console.log(newUnit.color);
+  //console.log(newUnit.color.name);
   newUnit.setPattern(pattern);
+  //console.log(newUnit.color);
+  //console.log(newUnit.color.name);
   entity.unitArray.add(newUnit);
   entity.registDrawGroup(newUnit);
   // 色、形についてはsetPatternで行う感じ。
 }
 
 function createParticle(unit){
-  const size = unit.drawModule.size / 2; // やや小さく
-  const _color = entity.drawColor[unit.colorName]; // 色は一緒で
+  const size = unit.shape.size / 2; // やや小さく
+  //const _color = entity.drawColor[unit.colorName]; // 色は一緒で
+  const _color = unit.color;
   let newParticle = new Particle(unit.position.x, unit.position.y, size, _color);
   entity.particleArray.add(newParticle);
 }
@@ -725,9 +737,9 @@ class SelfUnit{
     this.shotDirection = -90;
     this.shotBehavior = {};
     this.shotAction = [];
-    this.shotColorName = "black";
-    this.bodyColor = entity.drawColor[this.shotColorName];
-    this.shotShapeName = "wedgeSmall";
+    this.shotColor = entity.drawColor["black"];
+    this.bodyColor = entity.drawColor[this.shotColor.name];
+    this.shotShape = entity.drawShape["wedgeSmall"];
     this.shotDelay = 0;
 	}
 	setPosition(x, y){
@@ -801,11 +813,15 @@ class Unit{
     this.shotAction = [];
     this.shotCollisionFlag = ENEMY_BULLET; // 基本的にはショットのフラグは敵弾丸。いじるとき、いじる。
     // 色、形. デフォルトはこんな感じ。
-    this.shapeName = "squareMiddle";
-    this.colorName = "plblue";
-    this.shotShapeName = "wedgeSmall";
-    this.shotColorName = "blue";
-    this.drawModule = undefined; // 描画用クラス
+    //this.shapeName = "squareMiddle";
+    //this.colorName = "plblue";
+    //this.shotShapeName = "wedgeSmall";
+    //this.shotColorName = "blue";
+    this.shape = entity.drawShape["squareMiddle"]; // これ使ってdrawするからね。
+    this.color = entity.drawColor["plblue"];
+    this.shotShape = entity.drawShape["wedgeSmall"];
+    this.shotColor = entity.drawColor["blue"];
+    //this.drawModule = undefined; // 描画用クラス
     this.drawParam = {}; // 描画用付加データは毎回初期化する
     // その他の挙動を制御する固有のプロパティ
     this.properFrameCount = 0;
@@ -824,27 +840,47 @@ class Unit{
   velocityUpdate(){
     this.velocity.set(this.speed * cos(this.direction), this.speed * sin(this.direction));
   }
-  setDrawFunction(f){
-    this.drawFunction = f;
-  }
   setPattern(ptn){
     const {x, y, behavior, shotBehavior, collisionFlag, shotCollisionFlag} = ptn;
     // この時点でもうx, yはキャンバス内のどこかだしspeedとかその辺もちゃんとした数だし(getNumber通し済み)
     // behaviorとshotBehaviorもちゃんと{name:関数, ...}形式になっている。
     this.position.set(x, y);
     const moveProperties = ["speed", "direction", "delay", "shotSpeed", "shotDirection", "shotDelay"];
-    moveProperties.forEach((name) => {
-      if(ptn[name] !== undefined){ this[name] = ptn[name]; } // 確定は済んでる
+    moveProperties.forEach((propName) => {
+      if(ptn[propName] !== undefined){ this[propName] = ptn[propName]; } // 確定は済んでる
     })
 
-    const figureProperties = ["colorName", "shotColorName", "shapeName", "shotShapeName"]
-    figureProperties.forEach((name) => {
-      if(ptn[name] !== undefined){ this[name] = ptn[name]; } // 文字列
+    //console.log(this.color);
+    //console.log(this.color.name);
+
+    // ここ注意。ptn.colorやptn.shotColorなどはオブジェクト。だからそのまま放り込む。
+    // ただし、ノードユニットを作る大元などはもちろん文字列で指定してある（でないとjsonに落とせないので）。
+    // そういうのはparseの段階で文字列からオブジェクトに変換するので問題ないよ。
+    // actionでshotColorやshotShapeをいじる場合ももちろん文字列指定、適切にparseを行う。
+
+    // ノンデフォルトの場合に変更します
+    const colorProperties = ["color", "shotColor"]
+    colorProperties.forEach((propName) => {
+      if(ptn[propName] !== undefined){
+        //this[name] = ptn[name];
+        this[propName] = ptn[propName];
+      } // オブジェクト
     })
 
-    // drawModuleの設定とセッティング
-    this.drawModule = entity.drawShape[this.shapeName]; // drawShapeにクラスが入ってる
-    this.drawModule.set(this);
+    //console.log(this.color);
+    //console.log(this.color.name);
+
+    // ノンデフォルトの場合に変更。
+    const shapeProperties = ["shape", "shotShape"]
+    shapeProperties.forEach((propName) => {
+      if(ptn[propName] !== undefined){
+        //this[name] = ptn[name];
+        this[propName] = ptn[propName];
+      } // オブジェクト
+    })
+
+    // shapeのセッティング忘れてた・・・・・・・できた！
+    this.shape.set(this);
 
     this.velocityUpdate(); // 速度が決まる場合を考慮する
     if(behavior !== undefined){
@@ -946,7 +982,8 @@ class Unit{
   }
   draw(){
     if(this.hide){ return; } // hide === trueのとき描画しない
-    this.drawModule.draw(this);
+    //this.drawModule.draw(this);
+    this.shape.draw(this);
   }
 }
 
@@ -1889,11 +1926,11 @@ function createFirePattern(data){
       ptn.shotBehavior = {}; // デフォルト
       ptn.action = unit.shotAction; // 無くても[]が入るだけ
       // 色、形関連
-      ptn.colorName = unit.shotColorName;
-      ptn.shapeName = unit.shotShapeName;
+      ptn.color = unit.shotColor;
+      ptn.shape = unit.shotShape;
       // 基本的に自分の複製をする(Commandで変更可能)
-      ptn.shotColorName = ptn.colorName;
-      ptn.shotShapeName = ptn.shapeName;
+      ptn.shotColor = ptn.color;
+      ptn.shotShape = ptn.shape;
       // collisionFlag.
       ptn.collisionFlag = unit.shotCollisionFlag; // 当然。
       // ENEMY_BULLETの分裂で出来るのはENEMY_BULLET, PLAYER_BULLETの分裂でできるのはPLAYER_BULLET.
@@ -1905,6 +1942,8 @@ function createFirePattern(data){
 
       // <<---重要--->> parentの設定。createUnitのときに設定される。
       ptn.parent = unit;
+
+      //console.log(ptn.color.name);
 
     })
     // kindは廃止。draw関連はshapeプロパティで操作するので。
@@ -1951,10 +1990,15 @@ function parsePatternSeed(seed){
     if(seed[propName] !== undefined){ ptn[propName] = getNumber(seed[propName]); }
   })
   // 色、形関連
-
-  const figureProperties = ["colorName", "shotColorName", "shapeName", "shotShapeName"];
-  figureProperties.forEach((propName) => {
-    if(seed[propName] !== undefined){ ptn[propName] = seed[propName]; }
+  // ここでオブジェクトにしてしまう（色や形はこのタイミングでは登録済み）
+  // seed[propName]は文字列（キー）なのでこれを元にオブジェクトを召喚する。
+  const colorProperties = ["color", "shotColor"];
+  colorProperties.forEach((propName) => {
+    if(seed[propName] !== undefined){ ptn[propName] = entity.drawColor[seed[propName]]; }
+  })
+  const shapeProperties = ["shape", "shotShape"];
+  shapeProperties.forEach((propName) => {
+    if(seed[propName] !== undefined){ ptn[propName] = entity.drawShape[seed[propName]]; }
   })
   // fireDef, behaviorDefの展開
   // Defを展開してdata.fire, data.behaviorにnameの形で放り込む
@@ -2263,8 +2307,10 @@ function execute(unit, command){
     return loopAdvanceFlag; // フラグによる
   }
   // 色、形.
+  // styleには文字列が入ってるのでentity経由でオブジェクトを召喚する。
   if(["shotColor", "shotShape"].includes(_type)){
-    unit[_type + "Name"] = command.style;
+    if(_type === "shotColor"){ unit.shotColor = entity.drawColor[command.style]; }
+    else if(_type === "shotShape"){ unit.shotShape = entity.drawShape[command.style]; }
     unit.actionIndex++;
     return true; // ループは抜けない
   }
