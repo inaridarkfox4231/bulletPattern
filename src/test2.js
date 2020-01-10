@@ -57,16 +57,13 @@ function setup(){
   createCanvas(AREA_WIDTH + 160, AREA_HEIGHT);
   angleMode(DEGREES);
   textSize(16);
-  //preparePattern(); // jsonからあれこれするみたい(?)
   unitPool = new ObjectPool(() => { return new Unit(); }, 1024);
   entity = new System();
   registUnitColors(); // 色を用意する。
   registUnitShapes(); // 形を用意する。
   entity.createPlayer();
 
-  // 省略の実験.
-  // うまくいってるね。てかうまくいきすぎやん・・・
-  seedSet.seed0 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.3, shotSpeed:4, shotDirection:90, collisionFlag:ENEMY,
     action:{
       main:[{short:"waygun", count:3}, {short:"waygun", count:5},
@@ -78,7 +75,7 @@ function setup(){
   };
 
   // デモ画面1. 90°ずつ回転するやつ。
-  seedSet.seed1 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.5, shotSpeed:2, shotDirection:90, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "way3burst"]}, {fire:"rad2"}, {wait:8}, {loop:10, back:2}, {wait:32},
@@ -96,7 +93,7 @@ function setup(){
 
   // え、うそ、、circularで大きいradius指定するとそこまで広がっていくの。初めて知った。すげぇー。
   // ・・・何で挙動把握してないの。わぁすごい。INF? 単に方向変えてないだけだよ・・・
-  seedSet.seed2 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.5, shotSpeed:2, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "burst"]}, {fire:"rad24", bend:90}, {wait:90},
@@ -114,7 +111,7 @@ function setup(){
 
   // circular実験
   // 謎の挙動を始めてしまった。
-  seedSet.seed3 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.5, shotSpeed:2, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "burst"]}, {fire:"rad24", bend:90}, {vanish:1}],
@@ -129,7 +126,7 @@ function setup(){
 
   // ボスの攻撃
   // 20発ガトリングを13way, これを真ん中から放ったり、両脇から放ったり。
-  seedSet.seed4 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.2, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "fire"]},
@@ -143,7 +140,7 @@ function setup(){
   };
 
   // ランダムに9匹？
-  seedSet.seed5 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:-0.1,
     action:{
       main:[{hide:true}, {shotAction:["set", "fireGo"]}, {shotShape:"squareMiddle"}, {shotColor:"grey"},
@@ -161,7 +158,7 @@ function setup(){
   };
 
   // デモ画面のカミソリrad8が4ずつ方向逆転するやつ
-  seedSet.seed6 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.5, shotSpeed:1, shotDirection:90, collisionFlag:ENEMY,
     action:{
       main:[{short:"routine", dirDiff:4}, {short:"routine", dirDiff:-4}, {loop:INF, back:-1}]
@@ -173,7 +170,7 @@ function setup(){
   };
 
   // 折り返して15匹、パターンを変える。
-  seedSet.seed7 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.2, y:0, speed:4, direction:0, shotSpeed:8, shotDirection:90,
     action:{
       main:[{hide:true}, {shotShape:"squareMiddle"}, {shotColor:"black"},
@@ -196,7 +193,7 @@ function setup(){
   };
 
   // 上下に4発ずつline飛ばして止めてから90°方向に8line飛ばして消滅するパターン
-  seedSet.seed8 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.5, shotSpeed:1, shotDirection:90, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "lin8"]}, {short:"linshot", angle:90}, {short:"linshot", angle:-90},
@@ -210,7 +207,7 @@ function setup(){
   };
 
   // 13方向wayで角度10°でaim5で5lineを60間隔、3line2wayを90間隔で放つ感じ。
-  seedSet.seed9 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.1, shotSpeed:4, collisionFlag:ENEMY,
     action:{
       main:[{aim:0}, {fire:"weapon1"}, {wait:30}, {aim:0}, {fire:"weapon2"}, {wait:40},
@@ -222,7 +219,7 @@ function setup(){
   };
 
   // 敵がいっぱい
-  seedSet.seed10 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:-0.1, y:0.1,
     action:{
       main:[{hide:true}, {shotShape:"squareMiddle"},
@@ -246,7 +243,7 @@ function setup(){
   };
 
   // 何がしたいのか分からなくなってきた
-  seedSet.seed11 = {
+  seedSet["seed" + (seedCapacity++)] = {
     bgColor:"plgreen", collisionFlag:ENEMY,
     x:0.5, y:0.05, shotSpeed:3, shotBehavior:["brAc1"], colorName:"green", shotColorName:"dkgreen",
     action:{
@@ -260,7 +257,7 @@ function setup(){
   };
 
   // カーブを使ってみる
-  seedSet.seed12 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.1, shotSpeed:200,
     action:{
       main:[{hide:true}, {shotDirection:["set", 0]}, {shotAction:["set", "right"]}, {fire:""},
@@ -288,7 +285,7 @@ function setup(){
   // 何パターン追加してんの？？？？
   // ボスなんか作ってる場合か
   // 作るときだけ色や形指定することって出来ないのかなとか。テンポラリー的な？
-  seedSet.seed13 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0, y:-0.1, shotSpeed:2,
     action:{
       main:[{hide:true}, {short:"square", color:"red"},
@@ -354,15 +351,12 @@ function setup(){
     }
   };
 
-  seedSet.seed14 = {
+  seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.5, shotShapeName:"rectSmall", shotDirection:90, shotSpeed:4, collisionFlag:ENEMY,
     action:{
       main:[{fire:""}, {wait:4}, {shotDirection:["add", 4]}, {loop:12, back:-1}, {vanish:1}]
     }
   }
-
-  // パターン総数の計算
-  seedCapacity = Object.keys(seedSet).length;
 
   // どうする？？
   entity.setPattern(DEFAULT_PATTERN_INDEX);
@@ -610,7 +604,7 @@ class System{
   }
 	initialize(){
 		this.player.initialize();
-    this.unitArray.loopReverse("flagOff"); // 先にフラグを消す
+    this.unitArray.loopReverse("flagOff"); // 先に衝突フラグを消す
     this.unitArray.loopReverse("vanish");  // unitすべて戻す
     this.drawGroup = {};
     usingUnitMax = 0; // 毎回初期化する
@@ -713,6 +707,7 @@ class SelfUnit{
 		else if(keyIsDown(UP_ARROW)){ this.position.y -= this.speed; }
 		else if(keyIsDown(DOWN_ARROW)){ this.position.y += this.speed; }
     if(this.wait > 0){ this.wait--; }
+    // 以下の部分をexecuteとして切り離す
     if(keyIsDown(32) && this.wait === 0){
       this.fire(this);
       this.wait = 4;
@@ -860,7 +855,8 @@ class Unit{
     this.defaultBehavior.forEach((behavior) => { behavior(this); })
     // followがtrueの場合はshotDirectionをいじる
     if(this.follow){ this.shotDirection = this.direction; }
-    // アクションの実行（処理が終了しているときは
+    // 以下の部分をexecuteとして切り離す
+    // アクションの実行（処理が終了しているときは何もしない）
     if(this.action.length > 0 && this.actionIndex < this.action.length){
       let debug = 0; // デバッグモード
       let continueFlag = true;
@@ -1103,6 +1099,227 @@ class DrawRectShape extends DrawShape{
 // 先端とunit.positionとの距離を指定してコンストラクトする。剣先からなんか出す場合の参考にする。
 
 // レーザーは撃ちだし元との間に直線を引くのでそこら辺の処理とかも重要（posデータを渡す）
+
+// ---------------------------------------------------------------------------------------- //
+// ここからしばらく衝突判定関連
+// ---------------------------------------------------------------------------------------- //
+// quadTree関連。
+class LinearQuadTreeSpace {
+  constructor(_width, _height, level){
+    this._width = _width;
+    this._height = _height;
+    this.data = [null];
+    this._currentLevel = 0;
+
+    // 入力レベルまでdataを伸長する。
+    while(this._currentLevel < level){
+      this._expand();
+    }
+  }
+
+  // dataをクリアする。
+  clear() {
+    this.data.fill(null);
+  }
+
+  // 要素をdataに追加する。
+  // 必要なのは、要素と、レベルと、レベル内での番号。
+  _addNode(node, level, index){
+    // オフセットは(4^L - 1)/3で求まる。
+    // それにindexを足せば線形四分木上での位置が出る。
+    const offset = ((4 ** level) - 1) / 3;
+    const linearIndex = offset + index;
+
+    // もしdataの長さが足りないなら拡張する。
+    while(this.data.length <= linearIndex){
+      this._expandData();
+    }
+
+    // セルの初期値はnullとする。
+    // しかし上の階層がnullのままだと面倒が発生する。
+    // なので要素を追加する前に親やその先祖すべてを
+    // 空配列で初期化する。
+    let parentCellIndex = linearIndex;
+    while(this.data[parentCellIndex] === null){
+      this.data[parentCellIndex] = [];
+
+      parentCellIndex = Math.floor((parentCellIndex - 1) / 4);
+      if(parentCellIndex >= this.data.length){
+        break;
+      }
+    }
+
+    // セルに要素を追加する。
+    const cell = this.data[linearIndex];
+    cell.push(node);
+  }
+
+  // Actorを線形四分木に追加する。
+  // Actorのコリジョンからモートン番号を計算し、
+  // 適切なセルに割り当てる。
+  addActor(actor){
+    const collider = actor.collider;
+
+    // モートン番号の計算。
+    const leftTopMorton = this._calc2DMortonNumber(collider.left, collider.top);
+    const rightBottomMorton = this._calc2DMortonNumber(collider.right, collider.bottom);
+
+    // 左上も右下も-1（画面外）であるならば、
+    // レベル0として扱う。
+    // なおこの処理には気をつける必要があり、
+    // 画面外に大量のオブジェクトがあるとレベル0に
+    // オブジェクトが大量配置され、当たり判定に大幅な処理時間がかかる。
+    // 実用の際にはここをうまく書き換えて、あまり負担のかからない
+    // 処理に置き換えるといい。
+    if(leftTopMorton === -1 && rightBottomMorton === -1){
+      this._addNode(actor, 0, 0);
+      return;
+    }
+
+    // 左上と右下が同じ番号に所属していたら、
+    // それはひとつのセルに収まっているということなので、
+    // 特に計算もせずそのまま現在のレベルのセルに入れる。
+    if(leftTopMorton === rightBottomMorton){
+      this._addNode(actor, this._currentLevel, leftTopMorton);
+      return;
+    }
+
+    // 左上と右下が異なる番号（＝境界をまたいでいる）の場合、
+    // 所属するレベルを計算する。
+    const level = this._calcLevel(leftTopMorton, rightBottomMorton);
+
+    // そのレベルでの所属する番号を計算する。
+    // モートン番号の代表値として大きい方を採用する。
+    // これは片方が-1の場合、-1でない方を採用したいため。
+    const larger = Math.max(leftTopMorton, rightBottomMorton);
+    const cellNumber = this._calcCell(larger, level);
+
+    // 線形四分木に追加する。
+    this._addNode(actor, level, cellNumber);
+  }
+  // addActorsは要らない。個別に放り込む。
+
+  // 線形四分木の長さを伸ばす。
+  _expand(){
+    const nextLevel = this._currentLevel + 1;
+    const length = ((4 ** (nextLevel + 1)) - 1) / 3;
+
+    while(this.data.length < length) {
+      this.data.push(null);
+    }
+
+    this._currentLevel++;
+  }
+
+  // 16bitの数値を1bit飛ばしの32bitにする。
+  _separateBit32(n){
+    n = (n|(n<<8)) & 0x00ff00ff;
+    n = (n|(n<<4)) & 0x0f0f0f0f;
+    n = (n|(n<<2)) & 0x33333333;
+    return (n|(n<<1)) & 0x55555555;
+  }
+
+  // x, y座標からモートン番号を算出する。
+  _calc2DMortonNumber(x, y){
+    // 空間の外の場合-1を返す。
+    if(x < 0 || y < 0){
+      return -1;
+    }
+
+    if(x > this._width || y > this._height){
+      return -1;
+    }
+
+    // 空間の中の位置を求める。
+    const xCell = Math.floor(x / (this._width / (2 ** this._currentLevel)));
+    const yCell = Math.floor(y / (this._height / (2 ** this._currentLevel)));
+
+    // x位置とy位置をそれぞれ1bit飛ばしの数にし、
+    // それらをあわせてひとつの数にする。
+    // これがモートン番号となる。
+    return (this._separateBit32(xCell) | (this._separateBit32(yCell)<<1));
+  }
+
+  // オブジェクトの所属レベルを算出する。
+  // XORを取った数を2bitずつ右シフトして、
+  // 0でない数が捨てられたときのシフト回数を採用する。
+  _calcLevel(leftTopMorton, rightBottomMorton){
+    const xorMorton = leftTopMorton ^ rightBottomMorton;
+    let level = this._currentLevel - 1;
+    let attachedLevel = this._currentLevel;
+
+    for(let i = 0; level >= 0; i++){
+      const flag = (xorMorton >> (i * 2)) & 0x3;
+      if(flag > 0){
+        attachedLevel = level;
+      }
+
+      level--;
+    }
+
+    return attachedLevel;
+  }
+
+  // 階層を求めるときにシフトした数だけ右シフトすれば
+  // 空間の位置がわかる。
+  _calcCell(morton, level){
+    const shift = ((this._currentLevel - level) * 2);
+    return morton >> shift;
+  }
+}
+
+// ---------------------------------------------------------------------------------------- //
+// collider関連。
+// 今回は全部円なので円判定のみ。
+// unitの場合は最初に作ったものをinitializeや毎フレームのアップデートで変えていく感じ（余計に作らない）
+// 衝突判定のタイミングは考え中。
+
+class Collider{
+	constructor(){
+		this.type = "";
+	}
+}
+
+class CircleCollider extends Collider{
+	constructor(x, y, r){
+    super();
+		this.type = "circle";
+		this.x = x;
+		this.y = y;
+		this.r = r;
+	}
+	get left(){ return this.x - this.r; }
+	get right(){ return this.x + this.r; }
+	get top(){ return this.y - this.r; }
+	get bottom(){ return this.y + this.r; }
+  inFrame(){
+    // trueを返さなければTreeには入れない。
+    const flag1 = (this.x - this.r > 0 && this.x + this.r < AREA_WIDTH);
+    const flag2 = (this.y - this.r > 0 && this.y + this.r < AREA_HEIGHT);
+    return flag1 && flag2;
+  }
+	update(x, y, r){
+		this.x = x;
+		this.y = y;
+		this.r = r;
+	}
+}
+
+class CollisionDetector {
+  // 当たり判定を検出する。
+  detectCollision(collider1, collider2) {
+    if(collider1.type == 'circle' && collider2.type == 'circle'){
+      return this.detectCircleCollision(collider1, collider2);
+    }
+		return false;
+  }
+  // 円形同士
+  detectCircleCollision(circle1, circle2){
+    const distance = Math.sqrt((circle1.x - circle2.x) ** 2 + (circle1.y - circle2.y) ** 2);
+    const sumOfRadius = circle1.r + circle2.r;
+    return (distance < sumOfRadius);
+  }
+}
 
 // ---------------------------------------------------------------------------------------- //
 // ObjectPool.
