@@ -86,43 +86,66 @@ function setup(){
     fireDef:{way3:{nway:{count:3, interval:90}}, rad2:{radial:{count:2}}}
   };
 
-  // clear忘れてたのね。
-  // でもcircularとspiral組み合わせるとこうなるんだ・・ちょっと面白いかも。
-  // まあそもそもbehaviorは組み合わせることが前提だし（ちっとも組み合わせてない）
-  // bendいじると面白いな。どうしてこうなるのか分からん（おい）
-
-  // え、うそ、、circularで大きいradius指定するとそこまで広がっていくの。初めて知った。すげぇー。
-  // ・・・何で挙動把握してないの。わぁすごい。INF? 単に方向変えてないだけだよ・・・
+  // 新しいcircularの実験中。FALさんの4を書き直し。
+  // shotDirectionの初期設定は撃ちだした瞬間の進行方向。
   seedSet["seed" + (seedCapacity++)] = {
-    x:0.5, y:0.5, shotSpeed:2, collisionFlag:ENEMY,
+    x:0.5, y:0.3, shotSpeed:10,
     action:{
-      main:[{shotAction:["set", "burst"]}, {fire:"rad24", bend:90}, {wait:90},
-            {shotAction:["set", "burstInv"]}, {fire:"rad24", bend:-90}, {wait:90},
-            {loop:INF, back:-1}],
-      burst:[{behavior:["add", "circ"]}, {wait:60}, {behavior:["clear"]}, {behavior:["add", "spir"]}],
-      burstInv:[{behavior:["add", "circInv"]}, {wait:60}, {behavior:["clear"]}, {behavior:["add", "spirInv"]}]
+      main:[{shotAction:["set", "sweeping"]}, {fire:"rad2"}],
+      sweeping:[{speed:["set", 0.001, 30]}, {behavior:["add", "circ"]}, {shotDirection:["rel", 0]},
+                {shotSpeed:["set", 2]}, {fire:""}, {wait:1}, {shotDirection:["add", 12]}, {loop:INF, back:3}]
     },
-    fireDef:{rad24:{formation:{type:"points", p:[[60, 0]]}, bend:"$bend", radial:{count:24}}},
-    behaviorDef:{
-      circ:["circular", {radius:60}], circInv:["circular", {radius:60, clockwise:false}],
-      spir:["spiral", {radius:60, radiusIncrement:1}],
-      spirInv:["spiral", {radius:60, radiusIncrement:1, clockwise:false}]}
+    fireDef:{rad2:{radial:{count:2}}},
+    behaviorDef:{circ:["circular", {bearing:-3}]}
   };
 
-  // circular実験
-  // 謎の挙動を始めてしまった。
+  // FALさんの8を書き直し。
+  // followとかbendとか面倒な事をしない場合、射出方向は撃ちだしたときのshotDirection(この場合0)を
+  // radialで回転させたものに、要するに配置時の中心から外側への方向。それが固定されたままくるくる回る仕組み。
+  // それがあのthis.bearingの意味だとすればこれでよいのだろうね。(つまり各unitのshotDirectionは固定！)
   seedSet["seed" + (seedCapacity++)] = {
-    x:0.5, y:0.5, shotSpeed:2, collisionFlag:ENEMY,
+    x:0.5, y:0.3,
     action:{
-      main:[{shotAction:["set", "burst"]}, {fire:"rad24", bend:90}, {vanish:1}],
-      burst:[{behavior:["add", "circ120"]}, {wait:300}, {behavior:["clear"]},
-             {behavior:["add", "circ60"]}, {wait:300}, {behavior:["clear"]}, {loop:INF, back:-1}]
+      main:[{shotAction:["set", "flower"]}, {fire:"set"}],
+      flower:[{behavior:["add", "circ"]}, {shotSpeed:["set", 2]},
+              {fire:"way2"}, {wait:6}, {loop:4, back:2}, {wait:16}, {loop:INF, back:4}]
     },
-    fireDef:{rad24:{formation:{type:"points", p:[[60, 0]]}, bend:"$bend", radial:{count:24}}},
-    behaviorDef:{
-      circ60:["circular", {radius:60}], circ120:["circular", {radius:120}]
-    }
-  };
+    fireDef:{set:{x:120, y:0, radial:{count:16}}, way2:{nway:{count:2, interval:120}}},
+    behaviorDef:{circ:["circular", {bearing:0.5}]}
+  }
+
+  // FALさんの13を書き直し。バリケード。もう過去には戻れない・・
+  seedSet["seed" + (seedCapacity++)] = {
+    x:0.5, y:0.3, shotDirection:45,
+    action:{
+      main:[{shotAction:["set", "barricade"]}, {fire:"set"}],
+      barricade:[{behavior:["add", "circ"]}, {shotSpeed:["set", 10]},
+                 {fire:"rad4"}, {wait:1}, {loop:INF, back:2}]
+    },
+    fireDef:{set:{x:120, y:0, radial:{count:3}}, rad4:{radial:{count:4}}},
+    behaviorDef:{circ:["circular", {bearing:1}]}
+  }
+
+  // FALさんの17書き直し。これで最後。radiusDiffを使うと螺旋軌道を実現できる。
+  // 射出方向はその時の親→自分ベクトルに+15または-15したもの。
+  // いぇーい＾＾
+  seedSet["seed" + (seedCapacity++)] = {
+    x:0.5, y:0.3, shotDirection:90,
+    action:{
+      main:[{shotAction:["set", "scatter"]}, {fire:"set"}, {wait:120},
+            {shotAction:["set", "scatterInv"]}, {fire:"set"}, {wait:120}, {loop:INF, back:-1}],
+      scatter:[{short:"scatter", behavior:"spiral", dirDiff:15}],
+      scatterInv:[{short:"scatter", behavior:"spiralInv", dirDiff:-15}],
+      trap:[{wait:60}, {speed:["set", 3, 120]}]
+    },
+    short:{
+      scatter:[{behavior:["add", "$behavior"]}, {wait:30}, {shotAction:["set","trap"]}, {shotSpeed:["set", 0.0001]},
+               {shotDirection:["fromParent", "$dirDiff"]}, {fire:""}, {wait:4}, {loop:INF, back:3}]
+    },
+    fireDef:{set:{x:50, y:0, radial:{count:2}}},
+    behaviorDef:{spiral:["circular", {bearing:1.5, radiusDiff:1}],
+                 spiralInv:["circular", {bearing:-1.5, radiusDiff:1}]}
+  }
 
   // ボスの攻撃
   // 20発ガトリングを13way, これを真ん中から放ったり、両脇から放ったり。
@@ -356,17 +379,6 @@ function setup(){
     action:{
       main:[{fire:""}, {wait:4}, {shotDirection:["add", 4]}, {loop:12, back:-1}, {vanish:1}]
     }
-  };
-
-  seedSet["seed" + (seedCapacity++)] = {
-    x:0.5, y:0.5, shotSpeed:10,
-    action:{
-      main:[{shotAction:["set", "sweeping"]}, {fire:"rad2"}],
-      sweeping:[{speed:["set", 0.001, 30]}, {behavior:["add", "circ"]}, {shotDirection:["rel", 0]},
-                {shotSpeed:["set", 2]}, {fire:""}, {wait:1}, {shotDirection:["add", 12]}, {loop:INF, back:3}]
-    },
-    fireDef:{rad2:{radial:{count:2}}},
-    behaviorDef:{circ:["newCircular", {bearing:-3}]}
   };
 
   // どうする？？
@@ -1005,7 +1017,7 @@ class DrawWedgeShape extends DrawShape{
   set(unit){ return; }
   draw(unit){
     const {x, y} = unit.position;
-    const direction = (unit.speed > 0 ? unit.direction : unit.direction + 180);
+    const direction = unit.direction;
     const dx = cos(direction);
     const dy = sin(direction);
     triangle(x + this.h * dx,          y + this.h * dy,
@@ -1585,49 +1597,25 @@ function brakeAccellBehavior(param){
 
 // レイド（近付くと加速）・・スマートじゃないので一旦さくじょ。
 
-// circularとspiralがイミフなのでなんとかして（汗
-
-// formationで速度の方向を円の接線方向にしてradiusで増やせばそれっぽくなるよ。
-// 円の接線方向に発射される弾丸を中心の周りに巻き付ける処理ですね。
-// radius, clockwise.
-
 // circular変える。
 // step1:parentの位置との距離を計測 step2:parent→selfの方向を計測 step3:そこにいくつか足す(3とか-2とか)
 // step4:新しい位置が確定するので更新 step5:directionは元の位置→新しい位置. 以上。
-function newCircularBehavior(param){
-  // param.bearing:3とか-2とか
+// radiusDiffで半径も変えられるので実質spiralの機能も併せ持つ。
+function circularBehavior(param){
+  // param.bearing:3とか-2とか. radiusDiff: 0.5とか-0.5とか。
+  if(!param.hasOwnProperty("radiusDiff")){ param.radiusDiff = 0; }
   return (unit) => {
     const {x, y} = unit.position;
     const {x:px, y:py} = unit.parent.position;
     const r = dist(x, y, px, py);
     const dir = atan2(y - py, x - px);
-    const newX = px + r * cos(dir + param.bearing);
-    const newY = py + r * sin(dir + param.bearing);
+    const newX = px + (r + param.radiusDiff) * cos(dir + param.bearing);
+    const newY = py + (r + param.radiusDiff) * sin(dir + param.bearing);
     unit.direction = atan2(newY - y, newX - x);
     unit.setPosition(newX, newY);
   }
 }
-function circularBehavior(param){
-  if(!param.hasOwnProperty("clockwise")){ param.clockwise = true; }
-  const clockwiseFactor = (param.clockwise ? 1 : -1);
-  return (unit) => {
-    unit.direction += asin(unit.speed / param.radius) * clockwiseFactor;
-    unit.velocityUpdate();
-  }
-}
 
-// 螺旋を描きながら発散するやつ。
-// 半径が線型に増加していく、速さは一定。
-// radius, radiusIncrement, clockwise
-function spiralBehavior(param){
-  if(!param.hasOwnProperty("clockwise")){ param.clockwise = true; }
-  const clockwiseFactor = (param.clockwise ? 1 : -1);
-  return (unit) => {
-    const r = param.radius + unit.properFrameCount * param.radiusIncrement;
-    unit.direction += asin(unit.speed / r) * clockwiseFactor;
-    unit.velocityUpdate();
-  }
-}
 // 多彩な曲線
 function curveBehavior(param){
 	return (unit) => {
@@ -2245,6 +2233,13 @@ function execute(unit, command){
       // たとえば["rel", 40]で自分のdirection+40がshotDirectionに設定される。
       if(_type === "shotSpeed"){ unit[_type] = unit.speed + newParameter; }
       if(_type === "shotDirection"){ unit[_type] = unit.direction + newParameter; }
+    }else if(command.mode === "fromParent"){
+      // shotDirection限定。親から自分に向かう方向に対していくつか足してそれを自分のshotDirectionとする。
+      // つまり0なら親から自分に向かう方向ってことね。180だと逆。
+      const {x:px, y:py} = unit.parent.position;
+      if(_type === "shotDirection"){
+        unit[_type] = atan2(unit.position.y - py, unit.position.x - px) + newParameter;
+      }
     }
     if(["speed", "direction"].includes(_type)){ unit.velocityUpdate(); }
     // インデックスを増やすかどうか（countがあるならカウント進める）
