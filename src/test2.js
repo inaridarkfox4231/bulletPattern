@@ -356,7 +356,18 @@ function setup(){
     action:{
       main:[{fire:""}, {wait:4}, {shotDirection:["add", 4]}, {loop:12, back:-1}, {vanish:1}]
     }
-  }
+  };
+
+  seedSet["seed" + (seedCapacity++)] = {
+    x:0.5, y:0.5, shotSpeed:10,
+    action:{
+      main:[{shotAction:["set", "sweeping"]}, {fire:"rad2"}],
+      sweeping:[{speed:["set", 0.001, 30]}, {behavior:["add", "circ"]}, {shotDirection:["rel", 0]},
+                {shotSpeed:["set", 2]}, {fire:""}, {wait:1}, {shotDirection:["add", 12]}, {loop:INF, back:3}]
+    },
+    fireDef:{rad2:{radial:{count:2}}},
+    behaviorDef:{circ:["newCircular", {bearing:-3}]}
+  };
 
   // どうする？？
   entity.setPattern(DEFAULT_PATTERN_INDEX);
@@ -756,6 +767,8 @@ class Unit{
     this.actionIndex = 0; // 処理中のcommandのインデックス
     this.loopCounter = []; // loopCounterIndex === lengthの際に0をpushするように仕向ける。
     this.loopCounterIndex = 0; // 処理中のloopCounterのインデックス
+    this.parent = undefined; // 自分を生み出したunitに関する情報。ノードでなければ何かしら設定される。
+    // ↑circularに使ったり、やられたときの最後っ屁に使ったり用途は様々。
     // bulletを生成する際に使うプロパティ
     this.shotSpeed = 0;
     this.shotDirection = 0;
@@ -824,6 +837,8 @@ class Unit{
       this.shotCollisionFlag = shotCollisionFlag;
     }
     this.action = ptn.action; // action配列
+    // parentの設定(用途様々)
+    if(ptn.parent !== undefined){ this.parent = ptn.parent; }
   }
   eject(){
     if(this.vanishFlag){ this.vanish(); }
@@ -1565,47 +1580,33 @@ function brakeAccellBehavior(param){
 
 // ホーミングの仕様を変えたい。徐々に角度がこっちを向くように変化していく、具体的には
 // 1°ずつとか、0.5°ずつとかそんな風に。2°ずつとか。今の仕様だと180°いきなりがちゃん！って感じだから。
-// そこをね・・あと、ある程度それやったらもう角度変えないとかそういう感じにするのもあり。
-// そういうホーミングをレイドと組み合わせると強力なショットに（以下略）
 
-// ホーミング。徐々にこちらに方向を揃えてくる。
-// rotationSpeed(1フレーム当たりの回転角の上限), threshold(角度変化が行われる範囲).
-function homingBehavior(param){
-  const {rotationSpeed, threshold} = param;
-  return (unit) => {
-    if(unit.properFrameCount > threshold){ return; }
-    const targetDir = getPlayerDirection(unit.position);
-    const currentDir = unit.direction;
-    if(directionDist(targetDir, currentDir) < rotationSpeed){
-      unit.direction = targetDir;
-    }else{
-      if(directionDist(targetDir, currentDir + rotationSpeed) < directionDist(targetDir, currentDir)){
-        unit.direction += rotationSpeed;
-      }else{
-        unit.direction -= rotationSpeed;
-      }
-    }
-    unit.velocityUpdate();
-  }
-}
+// ホーミング。徐々にこちらに方向を揃えてくる。一旦さくじょ。
 
-// レイド（近付くと加速）
-// 2乗の値を設定（10000なら100以内みたいな）
-// raidDistSquare, accelleration
-function raidBehavior(param){
-  return (unit) => {
-    if(getPlayerDistSquare(unit.position) < param.raidDistSquare){
-      unit.speed += param.accelleration;
-      unit.velocityUpdate();
-    }
-  }
-}
+// レイド（近付くと加速）・・スマートじゃないので一旦さくじょ。
 
 // circularとspiralがイミフなのでなんとかして（汗
 
 // formationで速度の方向を円の接線方向にしてradiusで増やせばそれっぽくなるよ。
 // 円の接線方向に発射される弾丸を中心の周りに巻き付ける処理ですね。
 // radius, clockwise.
+
+// circular変える。
+// step1:parentの位置との距離を計測 step2:parent→selfの方向を計測 step3:そこにいくつか足す(3とか-2とか)
+// step4:新しい位置が確定するので更新 step5:directionは元の位置→新しい位置. 以上。
+function newCircularBehavior(param){
+  // param.bearing:3とか-2とか
+  return (unit) => {
+    const {x, y} = unit.position;
+    const {x:px, y:py} = unit.parent.position;
+    const r = dist(x, y, px, py);
+    const dir = atan2(y - py, x - px);
+    const newX = px + r * cos(dir + param.bearing);
+    const newY = py + r * sin(dir + param.bearing);
+    unit.direction = atan2(newY - y, newX - x);
+    unit.setPosition(newX, newY);
+  }
+}
 function circularBehavior(param){
   if(!param.hasOwnProperty("clockwise")){ param.clockwise = true; }
   const clockwiseFactor = (param.clockwise ? 1 : -1);
@@ -1899,6 +1900,10 @@ function createFirePattern(data){
       // ※shotCollisionFlagのデフォルトはENEMY_BULLETです。
       // たとえばOFFがENEMYを作るときとか、collisionFlagはENEMYでこの上の2行は無視される。で、ENEMY_BULLETになる。
       // PLAYERが出す場合はcollisionFlagのところがPLAYERになることがそもそもありえないのでありえない感じ。
+
+      // <<---重要--->> parentの設定。createUnitのときに設定される。
+      ptn.parent = unit;
+
     })
     // kindは廃止。draw関連はshapeプロパティで操作するので。
     ptnArray.forEach((ptn) => {
