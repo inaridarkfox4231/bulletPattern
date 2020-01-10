@@ -391,6 +391,8 @@ function draw(){
 	const runStart = performance.now();
 	const updateStart = performance.now();
   entity.update(); // 更新
+  entity.collisionCheck(); // 衝突判定
+  entity.execute(); // 行動
 	const updateEnd = performance.now();
 	const ejectStart = performance.now();
   entity.eject(); // 排除
@@ -647,6 +649,14 @@ class System{
     this.unitArray.loop("update");
     this.particleArray.loopReverse("update");
 	}
+  collisionCheck(){
+    return;
+    // やることをまとめます。
+  }
+  execute(){
+    this.player.execute();
+    this.unitArray.loop("execute");
+  }
   eject(){
     this.unitArray.loopReverse("eject");
     this.particleArray.loopReverse("eject");
@@ -729,14 +739,16 @@ class SelfUnit{
 		else if(keyIsDown(RIGHT_ARROW)){ this.position.x += this.speed; }
 		else if(keyIsDown(UP_ARROW)){ this.position.y -= this.speed; }
 		else if(keyIsDown(DOWN_ARROW)){ this.position.y += this.speed; }
+    this.frameIn();
+	}
+  execute(){
+    // 主にfireなど。
     if(this.wait > 0){ this.wait--; }
-    // 以下の部分をexecuteとして切り離す
     if(keyIsDown(32) && this.wait === 0){
       this.fire(this);
       this.wait = 4;
     }
-	  this.frameIn();
-	}
+  }
 	frameIn(){
 		this.position.x = constrain(this.position.x, 0, AREA_WIDTH);
 		this.position.y = constrain(this.position.y, 0, AREA_HEIGHT);
@@ -779,8 +791,8 @@ class Unit{
     this.actionIndex = 0; // 処理中のcommandのインデックス
     this.loopCounter = []; // loopCounterIndex === lengthの際に0をpushするように仕向ける。
     this.loopCounterIndex = 0; // 処理中のloopCounterのインデックス
+    // 親の情報（bearingや親がやられたときの発動など用途様々）
     this.parent = undefined; // 自分を生み出したunitに関する情報。ノードでなければ何かしら設定される。
-    // ↑circularに使ったり、やられたときの最後っ屁に使ったり用途は様々。
     // bulletを生成する際に使うプロパティ
     this.shotSpeed = 0;
     this.shotDirection = 0;
@@ -874,24 +886,26 @@ class Unit{
   update(){
     // ディレイ処理
     if(this.delay > 0){ this.delay--; return; }
+    // followがtrueの場合はshotDirectionをいじる
+    if(this.follow){ this.shotDirection = this.direction; }
     // ビヘイビアの実行
     Object.values(this.behavior).forEach((behavior) => {
       behavior(this);
     })
     // デフォルトビヘイビア実行
     this.defaultBehavior.forEach((behavior) => { behavior(this); })
-    // followがtrueの場合はshotDirectionをいじる
-    if(this.follow){ this.shotDirection = this.direction; }
+  }
+  execute(){
     // 以下の部分をexecuteとして切り離す
-    // アクションの実行（処理が終了しているときは何もしない）
-    if(this.action.length > 0 && this.actionIndex < this.action.length){
+    // アクションの実行（処理が終了しているときは何もしない）（vanish待ちのときも何もしない）
+    if(this.action.length > 0 && this.actionIndex < this.action.length && !this.vanishFlag){
       let debug = 0; // デバッグモード
       let continueFlag = true;
       while(continueFlag){
         const command = this.action[this.actionIndex];
         continueFlag = execute(this, command); // flagがfalseを返すときに抜ける
         debug++; // デバッグモード
-        if(debug > 5000){
+        if(debug > 10000){
           console.log("INFINITE LOOP ERROR!!");
           console.log(command, this.actionIndex);
           noLoop(); break; } // デバッグモード
@@ -1299,7 +1313,7 @@ class LinearQuadTreeSpace {
 // collider関連。
 // 今回は全部円なので円判定のみ。
 // unitの場合は最初に作ったものをinitializeや毎フレームのアップデートで変えていく感じ（余計に作らない）
-// 衝突判定のタイミングは考え中。
+// 衝突判定のタイミングはactionの直前、behaviorの直後にする。
 
 class Collider{
 	constructor(){

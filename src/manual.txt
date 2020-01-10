@@ -1,0 +1,3 @@
+circularBehavior:
+  撃ちだしたユニットの周りを距離を一定に保ちながら周回、あるいはその距離を広げていく感じ。
+ellipserBehavior: 楕円バージョン？？
