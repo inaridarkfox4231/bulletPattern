@@ -90,10 +90,10 @@ function setup(){
   // 新しいcircularの実験中。FALさんの4を書き直し。
   // shotDirectionの初期設定は撃ちだした瞬間の進行方向。
   seedSet["seed" + (seedCapacity++)] = {
-    x:0.5, y:0.3, shotSpeed:10,
+    x:0.5, y:0.3, shotSpeed:10, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "sweeping"]}, {fire:"rad2"}],
-      sweeping:[{speed:["set", 0.001, 30]}, {behavior:["add", "circ"]}, {shotDirection:["rel", 0]},
+      sweeping:[{speed:["set", 0.001, 30]}, {behavior:["add", "circ"]}, {bind:true}, {shotDirection:["rel", 0]},
                 {shotSpeed:["set", 2]}, {fire:""}, {wait:1}, {shotDirection:["add", 12]}, {loop:INF, back:3}]
     },
     fireDef:{rad2:{radial:{count:2}}},
@@ -105,10 +105,10 @@ function setup(){
   // radialで回転させたものに、要するに配置時の中心から外側への方向。それが固定されたままくるくる回る仕組み。
   // それがあのthis.bearingの意味だとすればこれでよいのだろうね。(つまり各unitのshotDirectionは固定！)
   seedSet["seed" + (seedCapacity++)] = {
-    x:0.5, y:0.3,
+    x:0.5, y:0.3, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "flower"]}, {fire:"set"}],
-      flower:[{behavior:["add", "circ"]}, {shotSpeed:["set", 2]},
+      flower:[{behavior:["add", "circ"]}, {bind:true}, {shotSpeed:["set", 2]},
               {fire:"way2"}, {wait:6}, {loop:4, back:2}, {wait:16}, {loop:INF, back:4}]
     },
     fireDef:{set:{x:120, y:0, radial:{count:16}}, way2:{nway:{count:2, interval:120}}},
@@ -117,10 +117,10 @@ function setup(){
 
   // FALさんの13を書き直し。バリケード。もう過去には戻れない・・
   seedSet["seed" + (seedCapacity++)] = {
-    x:0.5, y:0.3, shotDirection:45,
+    x:0.5, y:0.3, shotDirection:45, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "barricade"]}, {fire:"set"}],
-      barricade:[{behavior:["add", "circ"]}, {shotSpeed:["set", 10]},
+      barricade:[{behavior:["add", "circ"]}, {bind:true}, {shotSpeed:["set", 10]},
                  {fire:"rad4"}, {wait:1}, {loop:INF, back:2}]
     },
     fireDef:{set:{x:120, y:0, radial:{count:3}}, rad4:{radial:{count:4}}},
@@ -131,7 +131,7 @@ function setup(){
   // 射出方向はその時の親→自分ベクトルに+15または-15したもの。
   // いぇーい＾＾
   seedSet["seed" + (seedCapacity++)] = {
-    x:0.5, y:0.3, shotDirection:90,
+    x:0.5, y:0.3, shotDirection:90, collisionFlag:ENEMY,
     action:{
       main:[{shotAction:["set", "scatter"]}, {fire:"set"}, {wait:120},
             {shotAction:["set", "scatterInv"]}, {fire:"set"}, {wait:120}, {loop:INF, back:-1}],
@@ -140,7 +140,8 @@ function setup(){
       trap:[{wait:60}, {speed:["set", 3, 120]}]
     },
     short:{
-      scatter:[{behavior:["add", "$behavior"]}, {wait:30}, {shotAction:["set","trap"]}, {shotSpeed:["set", 0.0001]},
+      scatter:[{behavior:["add", "$behavior"]}, {bind:true},
+               {wait:30}, {shotAction:["set","trap"]}, {shotSpeed:["set", 0.0001]},
                {shotDirection:["fromParent", "$dirDiff"]}, {fire:""}, {wait:4}, {loop:INF, back:3}]
     },
     fireDef:{set:{x:50, y:0, radial:{count:2}}},
@@ -375,6 +376,7 @@ function setup(){
     }
   };
 
+  // 長方形出してから自滅
   seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.5, shotShape:"rectSmall", shotDirection:90, shotSpeed:4, collisionFlag:ENEMY,
     action:{
@@ -644,8 +646,10 @@ class System{
     // 各種情報
     runTimeMax = 0;
 	}
-  registColor(name, _color){
+  registColor(name, _color, damageFactor = 1, lifeFactor = 1){
     _color.name = name; // 色の名前を.nameで参照できるようにしておく。
+    _color.damageFactor = damageFactor; // ダメージファクター
+    _color.lifeFactor = lifeFactor; // ライフファクター
     this.drawColor[name] = _color;
     return this; // こういうのはメソッドチェーンで書くといい
   }
@@ -667,6 +671,7 @@ class System{
       const u = this.unitArray[i];
       if(!u.collider.inFrame()){ continue; } // inFrame「でない」ならば考慮しない
       if(u.vanishFlag){ continue; } // vanishFlag「である」ならば考慮しない
+      if(u.hide){ continue; } // hide状態なら考慮しない
       this._qTree.addActor(u);
     }
     this._hitTest();
@@ -756,7 +761,7 @@ class System{
         const hit = this._detector.detectCollision(collider1, collider2);
 
         if(hit) {
-          if(!obj.vanishFlag && !cellObj.vanshFlag){
+          if(!obj.vanishFlag && !cellObj.vanishFlag){
             obj.hit(cellObj);
             cellObj.hit(obj);
           }
@@ -803,18 +808,14 @@ class System{
 function createUnit(pattern){
   let newUnit = unitPool.use();
   newUnit.initialize();
-  //console.log(newUnit.color);
-  //console.log(newUnit.color.name);
   newUnit.setPattern(pattern);
-  //console.log(newUnit.color);
-  //console.log(newUnit.color.name);
   entity.unitArray.add(newUnit);
   entity.registDrawGroup(newUnit);
   // 色、形についてはsetPatternで行う感じ。
 }
 
 function createParticle(unit){
-  const size = unit.shape.size / 2; // やや小さく
+  const size = unit.shape.size * 0.7; // やや小さく
   //const _color = entity.drawColor[unit.colorName]; // 色は一緒で
   const _color = unit.color;
   let newParticle = new Particle(unit.position.x, unit.position.y, size, _color);
@@ -835,6 +836,9 @@ class SelfUnit{
     this.collisionFlag = PLAYER; // 衝突フラグ
     this.shotCollisionFlag = PLAYER_BULLET; // ショットはPLAYER_BULLET.
     this.collider = new CircleCollider();
+    this.maxLife = 10;
+    this.life = this.maxLife;
+    this.vanishFlag = false;
     this.prepareWeapon();
 		this.initialize();
 	}
@@ -860,11 +864,16 @@ class SelfUnit{
     this.shotDelay = 0;
     // collider.
     this.collider.update(this.position.x, this.position.y, 5, 5);
+    // life関連（クラスにした方がいいのかなぁ）
+    this.maxLife = 10;
+    this.life = this.maxLife;
+    this.vanishFlag = false;
 	}
 	setPosition(x, y){
 		this.position.set(x, y);
 	}
 	update(){
+    if(this.vanishFlag){ return; }
 		this.rotationAngle += this.rotationSpeed;
 	  if(keyIsDown(LEFT_ARROW)){ this.position.x -= this.speed; }
 		else if(keyIsDown(RIGHT_ARROW)){ this.position.x += this.speed; }
@@ -873,12 +882,24 @@ class SelfUnit{
     this.inFrame();
     this.collider.update(this.position.x, this.position.y); // circle限定なので普通にupdate.
 	}
+  lifeUpdate(diff){
+    this.life += diff;
+    if(this.life > this.maxLife){ this.life = this.maxLife; }
+    if(this.life > 0){ return; }
+    // パーティクル出して。
+    const newParticle = new Particle(this.position.x, this.position.y, 20, this.bodyColor);
+    entity.particleArray.add(newParticle);
+    this.life = 0;
+    this.vanishFlag = true;
+  }
   hit(unit){
     console.log("player hit!");
     // unitからダメージ量を計算してhitPointをupdateして0以下になるようなら消滅する（vanishFlag必要）。
     // unitと違って単にエフェクト出して描画されなくなるだけにする。
+    this.lifeUpdate(-unit.damage);
   }
   execute(){
+    if(this.vanishFlag){ return; }
     // 主にfireなど。
     if(this.wait > 0){ this.wait--; }
     if(keyIsDown(32) && this.wait === 0){
@@ -892,6 +913,7 @@ class SelfUnit{
 		this.position.y = constrain(this.position.y, 5, AREA_HEIGHT - 5);
 	}
 	draw(){
+    if(this.vanishFlag){ return; }
 		const {x, y} = this.position;
 		const c = cos(this.rotationAngle) * 20;
 		const s = sin(this.rotationAngle) * 20;
@@ -955,6 +977,8 @@ class Unit{
     // colliderがcircleでなくなってる場合は新たにCircleColliderを生成して当てはめる。
     if(this.collider.type !== "circle"){ this.collider = new CircleCollider(); }
     else{ /* Check(必要なら) */ this.collider.update(0, 0, 0); }
+    // bindプロパティがtrueの場合、parentがvanishしたらactionをしないでvanishして切り上げる
+    this.bind = false;
   }
   setPosition(x, y){
     this.position.set(x, y);
@@ -1019,6 +1043,14 @@ class Unit{
     this.action = ptn.action; // action配列
     // parentの設定(用途様々)
     if(ptn.parent !== undefined){ this.parent = ptn.parent; }
+    // lifeとdamage
+    if(this.collisionFlag === ENEMY_BULLET || this.collisionFlag === PLAYER_BULLET){
+      this.damage = calcDamage(this.shape, this.color); // shape:基礎ダメージ、color:倍率
+    }
+    if(this.collisionFlag === ENEMY){
+      this.maxLife = calcLife(this.shape, this.color); // shape:基礎ライフ、color:倍率
+      this.life = this.maxLife;
+    }
   }
   eject(){
     if(this.vanishFlag){ this.vanish(); }
@@ -1040,6 +1072,7 @@ class Unit{
     this.collisionFlag = OFF;
   }
   update(){
+    if(this.vanishFlag){ return; }
     // ディレイ処理
     if(this.delay > 0){ this.delay--; return; }
     // followがtrueの場合はshotDirectionをいじる
@@ -1053,23 +1086,39 @@ class Unit{
     // ColliderのUpdate(typeによって分けるけどとりあえずcircleだからね・・)
     if(this.collider.type == "circle"){ this.collider.update(this.position.x, this.position.y); }
   }
+  lifeUpdate(diff){
+    this.life += diff;
+    if(this.life > this.maxLife){ this.life = this.maxLife; }
+    if(this.life > 0){ return; }
+    // パーティクル出力
+    this.life = 0;
+    this.vanishFlag = true;
+  }
   hit(unit){
     switch(this.collisionFlag){
       case ENEMY_BULLET:
         console.log("I'm enemy bullet!");
+        // 小さめのパーティクル
         this.vanishFlag = true; break;
       case PLAYER_BULLET:
         console.log("I'm player bullet!");
+        // 小さめのパーティクル
         this.vanishFlag = true; break;
       case ENEMY:
-        console.log("I'm enemy!"); break;
+        console.log("I'm enemy! my life:" + this.life + ", frameCount:" + frameCount);
         // HPを減らして0になるようならvanishさせる。unitからダメージ量を取得する。
+        this.lifeUpdate(-unit.damage); break;
     }
   }
   execute(){
+    if(this.vanishFlag){ return; }
+    if(this.bind){
+      // bindの場合、親が死んだら死ぬ。
+      if(this.parent.vanishFlag){ this.vanishFlag = true; return; }
+    }
     // 以下の部分をexecuteとして切り離す
     // アクションの実行（処理が終了しているときは何もしない）（vanish待ちのときも何もしない）
-    if(this.action.length > 0 && this.actionIndex < this.action.length && !this.vanishFlag){
+    if(this.action.length > 0 && this.actionIndex < this.action.length){
       let debug = 0; // デバッグモード
       let continueFlag = true;
       while(continueFlag){
@@ -1116,7 +1165,7 @@ class Unit{
     this.actionIndex -= back; // 戻すのは最後。コードの可読性を上げるため。
   }
   draw(){
-    if(this.hide){ return; } // hide === trueのとき描画しない
+    if(this.hide || this.vanishFlag){ return; } // hide === trueのとき描画しない
     //this.drawModule.draw(this);
     this.shape.draw(this);
   }
@@ -1202,6 +1251,7 @@ class DrawWedgeShape extends DrawShape{
     this.h = h; // 6
     this.b = b; // 3
     this.size = (h + b) / 2;
+    this.damage = 1; // 基礎ダメージ。sizeで変えたい感じ。
   }
   set(unit){
     // colliderInitialize.
@@ -1219,6 +1269,61 @@ class DrawWedgeShape extends DrawShape{
   }
 }
 
+// いわゆるダイヤ型。8, 12, 16, 32.
+// 当たり判定はsize半径の・・0.75倍の方がいいかな。そういうのできるんだっけ？(知らねぇよ)
+class DrawDiaShape extends DrawShape{
+  constructor(size){
+    super();
+    this.colliderType = "circle";
+    this.size = size;
+    this.damage = 1; // 基礎ダメージ。サイズで変えたい・・
+  }
+  set(unit){
+    // colliderInitialize.
+    unit.collider.update(unit.position.x, unit.position.y, this.size * 0.75);
+  }
+  draw(unit){
+    const {x, y} = unit.position;
+    const {direction} = unit;
+    const c = cos(direction);
+    const s = sin(direction);
+    const r = this.size;
+    quad(x + r * c, y + r * s, x + 0.5 * r * s, y - 0.5 * r * c,
+         x - r * c, y - r * s, x - 0.5 * r * s, y + 0.5 * r * c);
+  }
+}
+
+// 長方形（指向性のある）
+// (6, 4), (9, 6), (12, 8), (24, 16).
+// 当たり判定はsizeで・・
+// 弾丸にしよかな・・円弧と長方形組み合わせるの。
+class DrawRectShape extends DrawShape{
+  constructor(h, w){
+    super();
+    this.colliderType = "circle";
+    this.h = h;
+    this.w = w;
+    this.size = (h + w) / 2;
+    this.damage = 1; // 基礎ダメージ。
+  }
+  set(unit){
+    // colliderInitialize.
+    unit.collider.update(unit.position.x, unit.position.y, this.size);
+  }
+  draw(unit){
+    // unit.directionの方向に長い長方形
+    const {x, y} = unit.position;
+    const {direction} = unit;
+    const c = cos(direction);
+    const s = sin(direction);
+    quad(x + c * this.h + s * this.w, y + s * this.h - c * this.w,
+         x + c * this.h - s * this.w, y + s * this.h + c * this.w,
+         x - c * this.h - s * this.w, y - s * this.h + c * this.w,
+         x - c * this.h + s * this.w, y - s * this.h - c * this.w);
+  }
+}
+
+
 // drawSquare.
 // 回転する四角形。10, 20, 30, 60.
 // 当たり判定はsize半径の円。
@@ -1227,6 +1332,7 @@ class DrawSquareShape extends DrawShape{
     super();
     this.colliderType = "circle";
     this.size = size;
+    this.life = 10; // 基礎ライフ。
   }
   set(unit){
     // colliderInitialize.
@@ -1251,6 +1357,7 @@ class DrawStarShape extends DrawShape{
     super();
     this.colliderType = "circle";
     this.size = size;
+    this.life = 15; // 基礎ライフ。
   }
   set(unit){
     // colliderInitialize.
@@ -1279,62 +1386,19 @@ class DrawStarShape extends DrawShape{
   }
 }
 
-// いわゆるダイヤ型。8, 12, 16, 32.
-// 当たり判定はsize半径の・・0.75倍の方がいいかな。そういうのできるんだっけ？(知らねぇよ)
-class DrawDiaShape extends DrawShape{
-  constructor(size){
-    super();
-    this.colliderType = "circle";
-    this.size = size;
-  }
-  set(unit){
-    // colliderInitialize.
-    unit.collider.update(unit.position.x, unit.position.y, this.size * 0.75);
-  }
-  draw(unit){
-    const {x, y} = unit.position;
-    const {direction} = unit;
-    const c = cos(direction);
-    const s = sin(direction);
-    const r = this.size;
-    quad(x + r * c, y + r * s, x + 0.5 * r * s, y - 0.5 * r * c,
-         x - r * c, y - r * s, x - 0.5 * r * s, y + 0.5 * r * c);
-  }
-}
-
-// 長方形（指向性のある）
-// (6, 4), (9, 6), (12, 8), (24, 16).
-// 当たり判定はsizeで・・
-class DrawRectShape extends DrawShape{
-  constructor(h, w){
-    super();
-    this.colliderType = "circle";
-    this.h = h;
-    this.w = w;
-    this.size = (h + w) / 2;
-  }
-  set(unit){
-    // colliderInitialize.
-    unit.collider.update(unit.position.x, unit.position.y, this.size);
-  }
-  draw(unit){
-    // unit.directionの方向に長い長方形
-    const {x, y} = unit.position;
-    const {direction} = unit;
-    const c = cos(direction);
-    const s = sin(direction);
-    quad(x + c * this.h + s * this.w, y + s * this.h - c * this.w,
-         x + c * this.h - s * this.w, y + s * this.h + c * this.w,
-         x - c * this.h - s * this.w, y - s * this.h + c * this.w,
-         x - c * this.h + s * this.w, y - s * this.h - c * this.w);
-  }
-}
-
 // 剣みたいなやつ。
 // 先端とunit.positionとの距離を指定してコンストラクトする。剣先からなんか出す場合の参考にする。
 
 // レーザーはparent使おうかな
 
+// ダメージ計算
+function calcDamage(_shape, _color){
+  return _shape.damage * _color.damageFactor;
+}
+// ライフ計算
+function calcLife(_shape, _color){
+  return _shape.life * _color.lifeFactor;
+}
 // ---------------------------------------------------------------------------------------- //
 // ここからしばらく衝突判定関連
 // ---------------------------------------------------------------------------------------- //
@@ -2384,6 +2448,10 @@ function interpretCommand(data, command, index){
     // followをonoffにする
     result.flag = command.follow; return result;
   }
+  if(_type === "bind"){
+    // bindをtruefalseにする
+    result.flag = command.bind; return result;
+  }
 }
 
 // fireのところに変数使ってて、それを翻訳する関数。
@@ -2550,6 +2618,11 @@ function execute(unit, command){
   }
   if(_type === "follow"){
     unit.follow = command.flag;
+    unit.actionIndex++;
+    return true; // ループは抜けない
+  }
+  if(_type === "bind"){
+    unit.bind = command.flag;
     unit.actionIndex++;
     return true; // ループは抜けない
   }
