@@ -30,6 +30,7 @@ let runTimeSum = 0;
 let runTimeAverage = 0;
 let runTimeMax = 0;
 let updateTimeAtMax = 0;
+let collisionCheckTimeAtMax = 0;
 let ejectTimeAtMax = 0;
 let drawTimeAtMax = 0;
 let usingUnitMax = 0;
@@ -348,11 +349,11 @@ function setup(){
             {aim:0}, {fire:"lines", waycount:15, interval:12, linecount:3, up:0.5},
             {wait:30}, {loop:3, back:3},
             {direction:["set", 0]}, {speed:["set", 24]}, {wait:10},
-            {shotAction:["set", "decel"]}, {speed:["set", 4]},
+            {shotAction:["set", "decel"]}, {speed:["set", 4]}, {shotDirection:["set", 90]},
             {direction:["set", 180]}, {short:"curtain"}, {direction:["set", 0]}, {short:"curtain"},
             {loop:2, back:10}, {direction:["set", 180]}, {speed:["set", 2]}, {wait:120},
             {speed:["set", 0]},
-            {shotShape:"wedgeHuge"}, {shotDirection:["set", 90]}, {shotAction:["set", "burst"]},
+            {shotShape:"wedgeHuge"}, {shotAction:["set", "burst"]},
             {fire:""}, {wait:240}, {shotShape:"wedgeMiddle"}, {shotAction:["clear"]},
             {loop:INF, back:-5}],
       decel:[{speed:["set", 2, 60]}],
@@ -394,7 +395,9 @@ function draw(){
 	const runStart = performance.now();
 	const updateStart = performance.now();
   entity.update(); // 更新
+  const collisionCheckStart = performance.now();
   entity.collisionCheck(); // 衝突判定
+  const collisionCheckEnd = performance.now();
   entity.execute(); // 行動
 	const updateEnd = performance.now();
 	const ejectStart = performance.now();
@@ -405,7 +408,7 @@ function draw(){
 	const drawEnd = performance.now();
   const runEnd = performance.now();
 
-	if(showInfo){ showPerformanceInfo(runEnd - runStart,
+	if(showInfo){ showPerformanceInfo(runEnd - runStart, collisionCheckEnd - collisionCheckStart,
                                     updateEnd - updateStart, ejectEnd - ejectStart, drawEnd - drawStart); }
   drawConfig();
 }
@@ -413,7 +416,7 @@ function draw(){
 // ---------------------------------------------------------------------------------------- //
 // PerformanceInfomation.
 
-function showPerformanceInfo(runTime, updateTime, ejectTime, drawTime){
+function showPerformanceInfo(runTime, collisionCheckTime, updateTime, ejectTime, drawTime){
   let y = 0; // こうすれば新しいデータを挿入しやすくなる。指定しちゃうといろいろとね・・
   // ほんとは紐付けとかしないといけないんだろうけど。
 	fill(entity.infoColor);
@@ -434,6 +437,7 @@ function showPerformanceInfo(runTime, updateTime, ejectTime, drawTime){
   displayRealNumber(runTimeAverage, INDENT, y, "runTimeAverage");
   if(runTimeMax < runTime){
     runTimeMax = runTime;
+    collisionCheckTimeAtMax = collisionCheckTime;
     updateTimeAtMax = updateTime;
     ejectTimeAtMax = ejectTime;
     drawTimeAtMax = drawTime;
@@ -441,11 +445,13 @@ function showPerformanceInfo(runTime, updateTime, ejectTime, drawTime){
   y += TEXT_INTERVAL;
   displayRealNumber(runTimeMax, INDENT, y, "runTimeMax");
   y += TEXT_INTERVAL;
-  displayRealNumber(updateTimeAtMax, INDENT, y, "---update");
+  displayRealNumber(updateTimeAtMax, INDENT, y, "--update");
   y += TEXT_INTERVAL;
-  displayRealNumber(ejectTimeAtMax, INDENT, y, "---eject");
+  displayRealNumber(collisionCheckTimeAtMax, INDENT, y, "----collision");
   y += TEXT_INTERVAL;
-  displayRealNumber(drawTimeAtMax, INDENT, y, "---draw");
+  displayRealNumber(ejectTimeAtMax, INDENT, y, "--eject");
+  y += TEXT_INTERVAL;
+  displayRealNumber(drawTimeAtMax, INDENT, y, "--draw");
   // 別にいいけど、runTimeMaxになった時だけあれ、内訳を更新して表示してもいいと思う。--とか付けて。
 
   if(usingUnitMax < entity.getCapacity()){ usingUnitMax = entity.getCapacity(); }
@@ -628,8 +634,6 @@ class System{
   }
   registDrawGroup(unit){
     // colorから名前を引き出す。
-    //console.log(unit.color);
-    //console.log(unit.color.name);
     const name = unit.color.name;
 
     if(!this.drawGroup.hasOwnProperty(name)){
@@ -893,7 +897,7 @@ class SelfUnit{
     this.vanishFlag = true;
   }
   hit(unit){
-    console.log("player hit!");
+    //console.log("player hit!");
     // unitからダメージ量を計算してhitPointをupdateして0以下になるようなら消滅する（vanishFlag必要）。
     // unitと違って単にエフェクト出して描画されなくなるだけにする。
     this.lifeUpdate(-unit.damage);
@@ -1097,15 +1101,15 @@ class Unit{
   hit(unit){
     switch(this.collisionFlag){
       case ENEMY_BULLET:
-        console.log("I'm enemy bullet!");
+        //console.log("I'm enemy bullet!");
         // 小さめのパーティクル
         this.vanishFlag = true; break;
       case PLAYER_BULLET:
-        console.log("I'm player bullet!");
+        //console.log("I'm player bullet!");
         // 小さめのパーティクル
         this.vanishFlag = true; break;
       case ENEMY:
-        console.log("I'm enemy! my life:" + this.life + ", frameCount:" + frameCount);
+        //console.log("I'm enemy! my life:" + this.life + ", frameCount:" + frameCount);
         // HPを減らして0になるようならvanishさせる。unitからダメージ量を取得する。
         this.lifeUpdate(-unit.damage); break;
     }
