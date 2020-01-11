@@ -516,6 +516,7 @@ function drawConfig(){
 
 // ---------------------------------------------------------------------------------------- //
 // registUnitColors.
+// ダメージも付けるか・・？追加プロパティ、nameの他にも、ってこと。
 
 function registUnitColors(){
   entity.registColor("black", color(0))
@@ -591,6 +592,8 @@ class System{
     // で、そこにも登録し、vanishのときにそこからはじく、パターンチェンジの際にもこれらの内容を破棄する。
     // 破棄するときはunitをPoolに戻すのはやってるから単にclearでいい。unitArrayをclearしちゃうとPoolに戻らないので駄目。
     this.patternIndex = 0;
+    this._qTree = new LinearQuadTreeSpace(AREA_WIDTH, AREA_HEIGHT, 3);
+    this._detector = new CollisionDetector();
 	}
   createPlayer(){
     this.player = new SelfUnit();
@@ -656,9 +659,119 @@ class System{
     this.particleArray.loopReverse("update");
 	}
   collisionCheck(){
-    return;
-    // やることをまとめます。
+    //return;
+    // やることは簡単。_qTreeをクリアして、actor放り込んで、hitTestするだけ。
+    this._qTree.clear();
+    this._qTree.addActor(this.player);
+    for(let i = 0; i < this.unitArray.length; i++){
+      const u = this.unitArray[i];
+      if(!u.collider.inFrame()){ continue; } // inFrame「でない」ならば考慮しない
+      if(u.vanishFlag){ continue; } // vanishFlag「である」ならば考慮しない
+      this._qTree.addActor(u);
+    }
+    this._hitTest();
   }
+  _hitTest(currentIndex = 0, objList = []){
+    // 衝突判定のメインコード。これと、このあとセルごとの下位関数、更にvalidationを追加して一応Systemは完成とする。
+  	const currentCell = this._qTree.data[currentIndex];
+
+    // 現在のセルの中と、衝突オブジェクトリストとで
+    // 当たり判定を取る。
+    this._hitTestInCell(currentCell, objList);
+
+    // 次に下位セルを持つか調べる。
+    // 下位セルは最大4個なので、i=0から3の決め打ちで良い。
+    let hasChildren = false;
+    for(let i = 0; i < 4; i++) {
+      const nextIndex = currentIndex * 4 + 1 + i;
+
+      // 下位セルがあったら、
+      const hasChildCell = (nextIndex < this._qTree.data.length) && (this._qTree.data[nextIndex] !== null);
+      hasChildren = hasChildren || hasChildCell;
+      if(hasChildCell) {
+        // 衝突オブジェクトリストにpushして、
+        objList.push(...currentCell);
+        // 下位セルで当たり判定を取る。再帰。
+        this._hitTest(nextIndex, objList);
+      }
+    }
+    // 終わったら追加したオブジェクトをpopする。
+    if(hasChildren) {
+      const popNum = currentCell.length;
+      for(let i = 0; i < popNum; i++) {
+        objList.pop();
+      }
+    }
+  }
+  _hitTestInCell(cell, objList) {
+    // セルの中。総当たり。
+    const length = cell.length;
+    const cellColliderCahce = new Array(length); // globalColliderのためのキャッシュ。
+    if(length > 0){ cellColliderCahce[0] = cell[0].collider; }
+
+    for(let i = 0; i < length - 1; i++){
+      const obj1 = cell[i];
+      const collider1  = cellColliderCahce[i]; // キャッシュから取ってくる。
+      for(let j = i + 1; j < length; j++){
+        const obj2 = cell[j];
+
+        // キャッシュから取ってくる。
+        // ループ初回は直接取得してキャッシュに入れる。
+        let collider2;
+        if(i === 0) {
+          collider2 = obj2.collider;
+          cellColliderCahce[j] = collider2;
+        }else{
+          collider2 = cellColliderCahce[j];
+        }
+        // Cahceへの代入までスルーしちゃうとまずいみたい
+        // ここでobj1, obj2のcollisionFlagでバリデーションかけてfalseならcontinue.
+        if(!this.validation(obj1.collisionFlag, obj2.collisionFlag)){ continue; }
+
+        const hit = this._detector.detectCollision(collider1, collider2);
+
+        if(hit) {
+          // 両方ともvanishFlagがfalseならば判定する。
+          if(!obj1.vanishFlag && !obj2.vanishFlag){
+            obj1.hit(obj2);
+            obj2.hit(obj1);
+          }
+        }
+      }
+    }
+
+    // 衝突オブジェクトリストと。
+    const objLength = objList.length;
+    const cellLength = cell.length;
+    for(let i = 0; i < objLength; i++) {
+      const obj = objList[i];
+      const collider1 = obj.collider; // 直接取得する。
+      for(let j = 0; j < cellLength; j++) {
+        const cellObj = cell[j];
+
+        // objとcellobjの性質からバリデーションかけてfalseならcontinue.
+        if(!this.validation(obj.collisionFlag, cellObj.collisionFlag)){ continue; }
+
+        const collider2 = cellColliderCahce[j]; // キャッシュから取ってくる。
+        const hit = this._detector.detectCollision(collider1, collider2);
+
+        if(hit) {
+          if(!obj.vanishFlag && !cellObj.vanshFlag){
+            obj.hit(cellObj);
+            cellObj.hit(obj);
+          }
+        }
+      }
+    }
+  }
+  validation(flag1, flag2){
+		// ENEMYとPLAYER_BULLET, ENEMY_BULLETとPLAYERのときのみtrueを返す。
+		if(flag1 === ENEMY_BULLET && flag2 === PLAYER){ return true; }
+		if(flag1 === PLAYER && flag2 === ENEMY_BULLET){ return true; }
+		if(flag1 === ENEMY && flag2 === PLAYER_BULLET){ return true; }
+		if(flag1 === PLAYER_BULLET && flag2 === ENEMY){ return true; }
+		return false;
+	}
   execute(){
     this.player.execute();
     this.unitArray.loop("execute");
@@ -710,6 +823,9 @@ function createParticle(unit){
 
 // ---------------------------------------------------------------------------------------- //
 // Player.
+// 今は黒い四角形がくるくるしてるだけ。
+// パッシブスキルを色付きの回転多角形で表現したいんだけどまだまだ先の話。
+// 回転する四角形の色：ショットの色、伸縮する青い楕円：常時HP回復、みたいな。オレンジの六角形でHP表示とか面白そう。
 
 class SelfUnit{
 	constructor(){
@@ -718,6 +834,7 @@ class SelfUnit{
     this.fire = undefined; // 関数を入れる
     this.collisionFlag = PLAYER; // 衝突フラグ
     this.shotCollisionFlag = PLAYER_BULLET; // ショットはPLAYER_BULLET.
+    this.collider = new CircleCollider();
     this.prepareWeapon();
 		this.initialize();
 	}
@@ -730,7 +847,7 @@ class SelfUnit{
 		this.position.set(AREA_WIDTH * 0.5, AREA_HEIGHT * 0.875);
 		this.speed = 4;
 		this.rotationAngle = 0;
-		this.rotationSpeed = 2;
+		this.rotationSpeed = -2;
     this.wait = 0; // fire時のwaitTime. 連射を防ぐ感じ。
     // ショット関連
     this.shotSpeed = 8;
@@ -741,6 +858,8 @@ class SelfUnit{
     this.bodyColor = entity.drawColor[this.shotColor.name];
     this.shotShape = entity.drawShape["wedgeSmall"];
     this.shotDelay = 0;
+    // collider.
+    this.collider.update(this.position.x, this.position.y, 5, 5);
 	}
 	setPosition(x, y){
 		this.position.set(x, y);
@@ -751,8 +870,14 @@ class SelfUnit{
 		else if(keyIsDown(RIGHT_ARROW)){ this.position.x += this.speed; }
 		else if(keyIsDown(UP_ARROW)){ this.position.y -= this.speed; }
 		else if(keyIsDown(DOWN_ARROW)){ this.position.y += this.speed; }
-    this.frameIn();
+    this.inFrame();
+    this.collider.update(this.position.x, this.position.y); // circle限定なので普通にupdate.
 	}
+  hit(unit){
+    console.log("player hit!");
+    // unitからダメージ量を計算してhitPointをupdateして0以下になるようなら消滅する（vanishFlag必要）。
+    // unitと違って単にエフェクト出して描画されなくなるだけにする。
+  }
   execute(){
     // 主にfireなど。
     if(this.wait > 0){ this.wait--; }
@@ -761,21 +886,22 @@ class SelfUnit{
       this.wait = 4;
     }
   }
-	frameIn(){
-		this.position.x = constrain(this.position.x, 0, AREA_WIDTH);
-		this.position.y = constrain(this.position.y, 0, AREA_HEIGHT);
+	inFrame(){
+    // 当たり判定を考慮して5のマージンを設ける。
+		this.position.x = constrain(this.position.x, 5, AREA_WIDTH - 5);
+		this.position.y = constrain(this.position.y, 5, AREA_HEIGHT - 5);
 	}
 	draw(){
 		const {x, y} = this.position;
-		const c = cos(this.rotationAngle) * 16;
-		const s = sin(this.rotationAngle) * 16;
+		const c = cos(this.rotationAngle) * 20;
+		const s = sin(this.rotationAngle) * 20;
 		stroke(this.bodyColor);
 		noFill();
 		strokeWeight(2);
 		quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
-		strokeWeight(4);
-		point(x, y);
     noStroke();
+    fill(this.bodyColor);
+    ellipse(x, y, 10, 10); // 直径10. 半径は5. ここが当たり判定。
 	}
 }
 
@@ -926,6 +1052,19 @@ class Unit{
     this.defaultBehavior.forEach((behavior) => { behavior(this); })
     // ColliderのUpdate(typeによって分けるけどとりあえずcircleだからね・・)
     if(this.collider.type == "circle"){ this.collider.update(this.position.x, this.position.y); }
+  }
+  hit(unit){
+    switch(this.collisionFlag){
+      case ENEMY_BULLET:
+        console.log("I'm enemy bullet!");
+        this.vanishFlag = true; break;
+      case PLAYER_BULLET:
+        console.log("I'm player bullet!");
+        this.vanishFlag = true; break;
+      case ENEMY:
+        console.log("I'm enemy!"); break;
+        // HPを減らして0になるようならvanishさせる。unitからダメージ量を取得する。
+    }
   }
   execute(){
     // 以下の部分をexecuteとして切り離す
@@ -1194,7 +1333,7 @@ class DrawRectShape extends DrawShape{
 // 剣みたいなやつ。
 // 先端とunit.positionとの距離を指定してコンストラクトする。剣先からなんか出す場合の参考にする。
 
-// レーザーは撃ちだし元との間に直線を引くのでそこら辺の処理とかも重要（posデータを渡す）
+// レーザーはparent使おうかな
 
 // ---------------------------------------------------------------------------------------- //
 // ここからしばらく衝突判定関連
