@@ -788,6 +788,7 @@ class Unit{
     this.position = createVector();
     this.velocity = createVector();
     this.defaultBehavior = [goBehavior, frameOutBehavior]; // デフォルト。固定。
+    this.collider = new CircleCollider(); // 最初に1回だけ作って使いまわす。種類が変わるときだけいじる。基本update.
     this.initialize();
   }
   initialize(){
@@ -813,23 +814,21 @@ class Unit{
     this.shotAction = [];
     this.shotCollisionFlag = ENEMY_BULLET; // 基本的にはショットのフラグは敵弾丸。いじるとき、いじる。
     // 色、形. デフォルトはこんな感じ。
-    //this.shapeName = "squareMiddle";
-    //this.colorName = "plblue";
-    //this.shotShapeName = "wedgeSmall";
-    //this.shotColorName = "blue";
-    this.shape = entity.drawShape["squareMiddle"]; // これ使ってdrawするからね。
+    this.shape = entity.drawShape["squareMiddle"]; // これ使ってdrawするからね。描画用クラス。
     this.color = entity.drawColor["plblue"];
     this.shotShape = entity.drawShape["wedgeSmall"];
     this.shotColor = entity.drawColor["blue"];
-    //this.drawModule = undefined; // 描画用クラス
     this.drawParam = {}; // 描画用付加データは毎回初期化する
     // その他の挙動を制御する固有のプロパティ
     this.properFrameCount = 0;
     this.vanishFlag = false; // trueなら、消す。
     this.hide = false; // 隠したいとき // appearでも作る？disappearとか。それも面白そうね。ステルス？・・・
     this.follow = false; // behaviorの直後、actionの直前のタイミングでshotDirectionをdirectionで更新する。
-    // 衝突判定フラグ
+    // 衝突判定関連
     this.collisionFlag = ENEMY_BULLET; // default. ENEMY, PLAYER_BULLETの場合もある。
+    // colliderがcircleでなくなってる場合は新たにCircleColliderを生成して当てはめる。
+    if(this.collider.type !== "circle"){ this.collider = new CircleCollider(); }
+    else{ /* Check(必要なら) */ this.collider.update(0, 0, 0); }
   }
   setPosition(x, y){
     this.position.set(x, y);
@@ -850,9 +849,6 @@ class Unit{
       if(ptn[propName] !== undefined){ this[propName] = ptn[propName]; } // 確定は済んでる
     })
 
-    //console.log(this.color);
-    //console.log(this.color.name);
-
     // ここ注意。ptn.colorやptn.shotColorなどはオブジェクト。だからそのまま放り込む。
     // ただし、ノードユニットを作る大元などはもちろん文字列で指定してある（でないとjsonに落とせないので）。
     // そういうのはparseの段階で文字列からオブジェクトに変換するので問題ないよ。
@@ -867,9 +863,6 @@ class Unit{
       } // オブジェクト
     })
 
-    //console.log(this.color);
-    //console.log(this.color.name);
-
     // ノンデフォルトの場合に変更。
     const shapeProperties = ["shape", "shotShape"]
     shapeProperties.forEach((propName) => {
@@ -880,6 +873,7 @@ class Unit{
     })
 
     // shapeのセッティング忘れてた・・・・・・・できた！
+    // ここでcolliderの初期設定、違うcolliderになる場合は違うものにする。
     this.shape.set(this);
 
     this.velocityUpdate(); // 速度が決まる場合を考慮する
@@ -930,6 +924,8 @@ class Unit{
     })
     // デフォルトビヘイビア実行
     this.defaultBehavior.forEach((behavior) => { behavior(this); })
+    // ColliderのUpdate(typeによって分けるけどとりあえずcircleだからね・・)
+    if(this.collider.type == "circle"){ this.collider.update(this.position.x, this.position.y); }
   }
   execute(){
     // 以下の部分をexecuteとして切り離す
@@ -1049,7 +1045,9 @@ class Particle{
 // colliderはDrawShapeをセットするときに初期設定する感じ。
 
 class DrawShape{
-  constructor(){}
+  constructor(){
+    this.colliderType = "";
+  }
   set(unit){ /* drawParamに描画用のプロパティを準備 */}
   draw(unit){ /* 形の描画関数 */ }
 }
@@ -1061,11 +1059,16 @@ class DrawShape{
 class DrawWedgeShape extends DrawShape{
   constructor(h, b){
     super();
+    this.colliderType = "circle";
     this.h = h; // 6
     this.b = b; // 3
     this.size = (h + b) / 2;
   }
-  set(unit){ return; }
+  set(unit){
+    // colliderInitialize.
+    unit.collider.update(unit.position.x, unit.position.y, this.size);
+    return;
+  }
   draw(unit){
     const {x, y} = unit.position;
     const direction = unit.direction;
@@ -1083,9 +1086,12 @@ class DrawWedgeShape extends DrawShape{
 class DrawSquareShape extends DrawShape{
   constructor(size){
     super();
+    this.colliderType = "circle";
     this.size = size;
   }
   set(unit){
+    // colliderInitialize.
+    unit.collider.update(unit.position.x, unit.position.y, this.size);
     unit.drawParam = {rotationAngle:0, rotationSpeed:2};
   }
   draw(unit){
@@ -1104,9 +1110,12 @@ class DrawSquareShape extends DrawShape{
 class DrawStarShape extends DrawShape{
   constructor(size){
     super();
+    this.colliderType = "circle";
     this.size = size;
   }
   set(unit){
+    // colliderInitialize.
+    unit.collider.update(unit.position.x, unit.position.y, this.size * 1.2); // ちょっと大きく
     unit.drawParam = {rotationAngle:0, rotationSpeed:2};
   }
   draw(unit){
@@ -1136,9 +1145,13 @@ class DrawStarShape extends DrawShape{
 class DrawDiaShape extends DrawShape{
   constructor(size){
     super();
+    this.colliderType = "circle";
     this.size = size;
   }
-  set(unit){}
+  set(unit){
+    // colliderInitialize.
+    unit.collider.update(unit.position.x, unit.position.y, this.size * 0.75);
+  }
   draw(unit){
     const {x, y} = unit.position;
     const {direction} = unit;
@@ -1152,14 +1165,19 @@ class DrawDiaShape extends DrawShape{
 
 // 長方形（指向性のある）
 // (6, 4), (9, 6), (12, 8), (24, 16).
+// 当たり判定はsizeで・・
 class DrawRectShape extends DrawShape{
   constructor(h, w){
     super();
+    this.colliderType = "circle";
     this.h = h;
     this.w = w;
     this.size = (h + w) / 2;
   }
-  set(unit){}
+  set(unit){
+    // colliderInitialize.
+    unit.collider.update(unit.position.x, unit.position.y, this.size);
+  }
   draw(unit){
     // unit.directionの方向に長い長方形
     const {x, y} = unit.position;
@@ -1376,11 +1394,19 @@ class CircleCollider extends Collider{
     const flag2 = (this.y - this.r > 0 && this.y + this.r < AREA_HEIGHT);
     return flag1 && flag2;
   }
-	update(x, y, r){
+	update(x, y, r = -1){
 		this.x = x;
 		this.y = y;
-		this.r = r;
+		if(r > 0){ this.r = r; } // rをupdateしたくないときは(x, y)と記述してくださいね！それでスルーされるので！
 	}
+}
+
+class Segment extends Collider{
+  constructor(){
+    super();
+    this.type = "segment";
+  }
+  // leftとかtopは端点のminやmaxを・・ただ、画面外に出そうなときは切り詰める感じ。
 }
 
 class CollisionDetector {
