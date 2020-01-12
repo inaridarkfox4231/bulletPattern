@@ -390,6 +390,56 @@ function setup(){
     }
   };
 
+  // 課題1: parentがやられたら破裂。成功。
+  seedSet["seed" + (seedCapacity++)] = {
+    x:0.5, y:0.3, collisionFlag:ENEMY, shotDirection:90, shotSpeed:4,
+    shotShape:"wedgeMiddle", shotColor:"red", color:"dkred",
+    action:{
+      main:[{shotAction:["set", "burst"]},
+            {shotDirection:["add", [-10, 10]]}, {fire:""}, {wait:16}, {loop:INF, back:3}],
+      burst:[{signal:"vanish"}, {shotShape:"wedgeSmall"}, {shotColor:"dkred"},
+             {aim:5}, {fire:"rad8"}, {vanish:1}]
+    },
+    fireDef:{rad8:{radial:{count:8}}}
+  }
+
+  // 課題2: 自機のsizeの5倍以内に近付いたらaimしてぎゅーん。
+  seedSet["seed" + (seedCapacity++)] = {
+    x:0.5, y:0.5, collisionFlag:ENEMY, shotDirection:90, shotSpeed:1, shotColor:"red", color:"dkred",
+    action:{
+      main:[{shotAction:["set", "raid"]},
+            {shotDirection:["add", 10]}, {fire:""}, {wait:32}, {loop:INF, back:3}],
+      raid:[{signal:"approach"}, {direction:["aim", 0]}, {speed:["set", 8, 30]}]
+    }
+  }
+
+  // 課題3: 敵が、倒れたときに自機狙いを3発発射するやつ。
+  // signal:"vanish", option:"follow"で自動的に親の位置に移動する。
+  // 迫力がないので8発にしました。こら
+  seedSet["seed" + (seedCapacity++)] = {
+    x:0, y:0.1, shotColor:"green", shotShape:"squareMiddle", shotSpeed:1,
+    action:{
+      main:[{hide:true}, {shotAction:["set", "dieAndShot"]},
+            {fire:"set", x:[80, 400], y:40}, {wait:60}, {loop:INF, back:2}],
+      dieAndShot:[{shotSpeed:["set", 0]}, {shotAction:["set", "aim8"]}, {fire:""}, {shotAction:["clear"]},
+                  {shotShape:"wedgeSmall"}, {shotSpeed:["set", 4]}, {shotDirection:["set", 90]},
+                  {fire:""}, {wait:32}, {loop:INF, back:2}],
+      aim8:[{hide:true}, {signal:"vanish", option:"follow"},
+            {shotShape:"wedgeSmall"}, {shotColor:"dkgreen"}, {shotSpeed:["set", 8]},
+            {aim:0}, {fire:""}, {wait:8}, {loop:8, back:3}, {vanish:1}]
+    },
+    fireDef:{set:{x:"$x", y:"$y", bend:90}}
+  }
+  // 課題4: 壁で3回反射したらそのまま直進して消える。
+  seedSet["seed" + (seedCapacity++)] = {
+    x:0.5, y:0.2, collisionFlag:ENEMY, shotSpeed:4,
+    action:{
+      main:[{shotAction:["set", "ref3"]}, {aim:0}, {fire:"rad32"}, {wait:240}, {loop:INF, back:3}],
+      ref3:[{signal:"reflect"}, {loop:3, back:1}]
+    },
+    fireDef:{rad32:{radial:{count:32}}}
+  }
+
   // どうする？？
   entity.setPattern(DEFAULT_PATTERN_INDEX);
 }
@@ -2501,8 +2551,14 @@ function interpretCommand(data, command, index){
   if(_type === "signal"){
     // signalプロパティにはmodeが入っててそれにより指示が決まる。
     // "vanish": parentがvanishしてなければ離脱、vanishしたらカウントを進めて抜けない。
-    result.mode = command.signal; return result;
-    // 自機に近付いたら次へ、みたいな場合は数を指定するかもしれない。基本的な仕様はwaitOrGoだから同じ。
+    // "approach": 自機のサイズx2まで近づいたら次へ、とか？
+    // "reflect": 壁に接触したら方向変えるやつ。たとえば3回反射で消える、とかはこれで実装できるはず。
+    result.mode = command.signal;
+    // option文字列がある場合はそれを付与する。
+    // たとえばsignal:"vanish", option:"follow"で自動的にparentの位置に移動する。
+    if(command.hasOwnProperty("option")){ result.option = command.option; }
+    return result;
+    // 自機に近付いたら次へ、みたいな場合は数を指定するかも？
   }
 }
 
@@ -2543,6 +2599,7 @@ function interpretNestedData(data, dict){
 // execute.
 
 function execute(unit, command){
+  //console.log(command);
   const _type = command.type;
   if(["speed", "direction", "shotSpeed", "shotDirection", "shotDelay"].includes(_type)){
     // speedとかshotDirectionとかいじる
@@ -2569,8 +2626,12 @@ function execute(unit, command){
         unit[_type] += newParameter; // ターンを消費しないで普通に足す
       }
     }else if(command.mode === "mirror"){
-      // 角度限定。角度をθ → 2a-θにする。speedやdelayでは使わないでね。
-      unit[_type] = 2 * newParameter - unit[_type];
+      // direction限定。角度をθ → 2a-θにする。speedやdelayでは使わないでね。
+      unit.direction = 2 * newParameter - unit[_type];
+    }else if(command.mode === "aim"){
+      // direction限定。意味は、わかるよね。
+      unit.direction = getPlayerDirection(unit.position, newParameter);
+      unit.velocityUpdate();
     }else if(command.mode === "rel"){
       // shotSpeedとshotDirectionで、unit自身のspeed, directionを使いたいときに使う。普通にaddする。
       // たとえば["rel", 40]で自分のdirection+40がshotDirectionに設定される。
@@ -2681,12 +2742,47 @@ function execute(unit, command){
   if(_type === "signal"){
     if(command.mode === "vanish"){
       // parentのvanishFlagを参照してfalseならそのまま抜けるがtrueなら次へ進む
-      if(!unit.parent.vanishFlag){
-        return false; // 停止！
+      if(unit.parent.vanishFlag){
+        unit.actionIndex++;
+        // followオプションで親の位置に移動する
+        if(command.option === "follow"){ unit.setPosition(unit.parent.position.x, unit.parent.position.y); }
+        return true; // ループは抜けない。すすめ。
       }else{
+        return false; // なにもしない
+      }
+    }else if(command.mode === "approach"){
+      // 自機のsize*5に近付いたら挙動を進める
+      // 5とか10とかはオプションでなんとかならないかな。close, farみたいに。ひとつくらい、いいでしょ。
+      const {x, y} = entity.player.position;
+      const size = entity.player.size;
+      if(dist(x, y, unit.position.x, unit.position.y) < size * 5){
         unit.actionIndex++;
         return true; // ループは抜けない。すすめ。
+      }else{
+        return false; // なにもしない
+      }
+    }else if(command.mode === "reflect"){
+      // 壁で反射する
+      const {x, y} = unit.position;
+      if(x < 0 || x > AREA_WIDTH || y < 0 || y > AREA_HEIGHT){
+        reflection(x, y, unit);
+        unit.actionIndex++; // やべぇactionIndex増やすの忘れてたわわわ・・・
+        return true; // すすめ
+      }else{
+        return false;
       }
     }
   }
+}
+
+// 反射
+function reflection(x, y, unit){
+  if(x < 0 || x > AREA_WIDTH){
+    unit.direction = 180 - unit.direction;
+    if(x < 0){ unit.setPosition(-x, y); }else{ unit.setPosition(AREA_WIDTH * 2 - x, y); }
+  }else if(y < 0 || y > AREA_HEIGHT){
+    unit.direction = 360 - unit.direction;
+    if(y < 0){ unit.setPosition(x, -y); }else{ unit.setPosition(x, AREA_HEIGHT * 2 - y); }
+  }
+  unit.velocityUpdate();
 }
