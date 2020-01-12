@@ -723,11 +723,21 @@ class System{
     const cellColliderCahce = new Array(length); // globalColliderのためのキャッシュ。
     if(length > 0){ cellColliderCahce[0] = cell[0].collider; }
 
+    let enemyOrPlayerExist = false;
+    // キャッシュを作る必要があるのでi=0のループだけは回さないといけない。
+    // とりあえずenemyもplayerもいない場合は判定しないようにしました。item作る場合、それも考慮しなきゃ・・
+
     for(let i = 0; i < length - 1; i++){
+      if(i > 0 && !enemyOrPlayerExist){ break; } // enemyもplayerもいなければ何もしない
       const obj1 = cell[i];
+      if(obj1.collisionFlag === PLAYER || obj1.collisionFlag === ENEMY){ enemyOrPlayerExist = true; }
       const collider1  = cellColliderCahce[i]; // キャッシュから取ってくる。
       for(let j = i + 1; j < length; j++){
+        // i=0に対してjが全部動く。それで出尽くすので、その時点で、
+        // 1.enemyもplayerもいなければbreak;
+        // 2.enemyやplayerがいるとして、collisionFlagが1種類ならbreak; を追加する。
         const obj2 = cell[j];
+        if(obj2.collisionFlag === PLAYER || obj2.collisionFlag === ENEMY){ enemyOrPlayerExist = true; }
 
         // キャッシュから取ってくる。
         // ループ初回は直接取得してキャッシュに入れる。
@@ -757,7 +767,19 @@ class System{
     // 衝突オブジェクトリストと。
     const objLength = objList.length;
     const cellLength = cell.length;
+
+    if(!enemyOrPlayerExist){
+      // cellの中にenemyやplayerがいるならそのまま実行、いない場合はこのフラグがfalseなので、
+      // 引き続きfalseなのかどうかを見るためobjListを走査する。
+      for(let j = 0; j < objLength; j++){
+        const f = objList[j].collisionFlag;
+        if(f === ENEMY || f === PLAYER){ enemyOrPlayerExist = true; break; }
+      }
+    }
+
+    // これはもう最初に一通りobjListとcellをさらってplayerもenemyもいなければそのままスルー・・
     for(let i = 0; i < objLength; i++) {
+      if(!enemyOrPlayerExist){ break; } // enemyもplayerもいなければ何もしない
       const obj = objList[i];
       const collider1 = obj.collider; // 直接取得する。
       for(let j = 0; j < cellLength; j++) {

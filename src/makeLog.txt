@@ -147,3 +147,9 @@ maxHitPointとhitPointですね。それをね。damageは、作らない。作�
 
 bindはBehaviorじゃない方がいい。プロパティにして、actionの中で、bind===trueでparentが
 vanishのときは自分をvanishさせて消える、ってやるべき。
+
+TODO:
+itemどうするか、現時点でのアイデアをまとめておく。collisionFlag:item は playerとのみ衝突するunit.
+playerへの作用とか、動き方は指定するとして・・うーん。難しいな。behaviorとして定義するなら、
+自分を登録するときのキー、それにより時間経過で外す処理などが必要でしょうね。
+たとえば攻撃力アップやHPの自動回復なんかが考えられるかな。
