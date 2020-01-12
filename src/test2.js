@@ -328,7 +328,7 @@ function setup(){
             {wait:300}, {short:"square", color:"orange"},
             {shotSpeed:["set", 8]}, {shotAction:["set", "sweep"]},
             {fire:"straight", dist:80, count:5, itv:80, bend:90},
-            {wait:360}, {shotShape:"squareLarge"}, {shotColor:"blue"},
+            {wait:360}, {shotShape:"squareLarge"}, {shotColor:"bossBlue"},
             {shotSpeed:["set", 6]}, {shotAction:["set", "boss"]},
             {fire:"set", x:240, y:0, bend:90}, {vanish:1}],
       fall:[{short:"wedge", color:"dkred"},
@@ -527,6 +527,7 @@ function drawConfig(){
 // ---------------------------------------------------------------------------------------- //
 // registUnitColors.
 // ダメージも付けるか・・？追加プロパティ、nameの他にも、ってこと。
+// 第3引数：damageFactor, 第4引数：lifeFactor.
 
 function registUnitColors(){
   entity.registColor("black", color(0), 1, 1)
@@ -555,7 +556,8 @@ function registUnitColors(){
         .registColor("plgrey", color(200), 1, 1)
         .registColor("grey", color(128), 1, 1)
         .registColor("ltgreen", color(181, 230, 29), 1, 1)
-        .registColor("pink", color(255, 55, 120), 1, 1);
+        .registColor("pink", color(255, 55, 120), 1, 1)
+        .registColor("bossBlue", color(57, 86, 125), 1, 50); // ボス用（急遽）。とりあえず500にしといて。
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -846,6 +848,7 @@ class SelfUnit{
     this.maxLife = 50;
     this.life = this.maxLife;
     this.vanishFlag = false;
+    this.size = 20;
     this.prepareWeapon();
 		this.initialize();
 	}
@@ -922,16 +925,18 @@ class SelfUnit{
 	draw(){
     if(this.vanishFlag){ return; }
 		const {x, y} = this.position;
-		const c = cos(this.rotationAngle) * 20;
-		const s = sin(this.rotationAngle) * 20;
+		const c = cos(this.rotationAngle) * this.size;
+		const s = sin(this.rotationAngle) * this.size;
 		stroke(this.bodyColor);
 		noFill();
 		strokeWeight(2);
 		quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
-    arc(x, y, 80, 80, -90, -90 + 360 * this.life / this.maxLife);
     noStroke();
     fill(this.bodyColor);
     ellipse(x, y, 10, 10); // 直径10. 半径は5. ここが当たり判定。
+    // ライフゲージ。
+    const l = this.life * this.size * 2 / this.maxLife;
+    rect(this.position.x - l / 2, this.position.y + this.size * 1.5, l, 5);
 	}
 }
 
@@ -1070,8 +1075,10 @@ class Unit{
       this.belongingArrayList[i].remove(this);
     }
     if(this.belongingArrayList.length > 0){ console.log("REMOVE ERROR!"); noLoop(); } // 排除ミス
-    // ENEMYが消えたときにパーティクルを出力する。
-    if(this.collisionFlag === ENEMY){ createParticle(this); }
+    // ENEMYが消えたときにパーティクルを出力する。hide状態なら出力しない。
+    if(this.collisionFlag === ENEMY && this.hide === false){
+      createParticle(this);
+    }
 
     unitPool.recycle(this); // 名称をunitPoolに変更
   }
@@ -1176,6 +1183,11 @@ class Unit{
     if(this.hide || this.vanishFlag){ return; } // hide === trueのとき描画しない
     //this.drawModule.draw(this);
     this.shape.draw(this);
+    if(this.collisionFlag === ENEMY){
+      // ライフゲージ（割合表示）
+      const l = this.life * this.shape.size * 2 / this.maxLife;
+      rect(this.position.x - l / 2, this.position.y + this.shape.size * 1.5, l, 5);
+    }
   }
 }
 
@@ -1335,6 +1347,7 @@ class DrawRectShape extends DrawShape{
 // drawSquare.
 // 回転する四角形。10, 20, 30, 60.
 // 当たり判定はsize半径の円。
+// 重なるの嫌だからちょっと変えようかな。白い線入れたい。
 class DrawSquareShape extends DrawShape{
   constructor(size){
     super();
