@@ -379,11 +379,14 @@ function setup(){
     }
   };
 
-  // 長方形出してから自滅
+  // 長方形出してから自滅。
+  // せっかくだからsignal使ってみる。できた！面白ぇ！！！
   seedSet["seed" + (seedCapacity++)] = {
     x:0.5, y:0.5, shotShape:"rectSmall", shotDirection:90, shotSpeed:4, collisionFlag:ENEMY,
     action:{
-      main:[{fire:""}, {wait:4}, {shotDirection:["add", 4]}, {loop:12, back:-1}, {vanish:1}]
+      main:[{shotAction:["set", "bendto90"]},
+            {fire:""}, {wait:4}, {shotDirection:["add", 4]}, {loop:12, back:-1}, {vanish:1}],
+      bendto90:[{signal:"vanish"}, {direction:["set", 90]}]
     }
   };
 
@@ -2495,6 +2498,12 @@ function interpretCommand(data, command, index){
     // bindをtruefalseにする
     result.flag = command.bind; return result;
   }
+  if(_type === "signal"){
+    // signalプロパティにはmodeが入っててそれにより指示が決まる。
+    // "vanish": parentがvanishしてなければ離脱、vanishしたらカウントを進めて抜けない。
+    result.mode = command.signal; return result;
+    // 自機に近付いたら次へ、みたいな場合は数を指定するかもしれない。基本的な仕様はwaitOrGoだから同じ。
+  }
 }
 
 // fireのところに変数使ってて、それを翻訳する関数。
@@ -2668,5 +2677,16 @@ function execute(unit, command){
     unit.bind = command.flag;
     unit.actionIndex++;
     return true; // ループは抜けない
+  }
+  if(_type === "signal"){
+    if(command.mode === "vanish"){
+      // parentのvanishFlagを参照してfalseならそのまま抜けるがtrueなら次へ進む
+      if(!unit.parent.vanishFlag){
+        return false; // 停止！
+      }else{
+        unit.actionIndex++;
+        return true; // ループは抜けない。すすめ。
+      }
+    }
   }
 }
