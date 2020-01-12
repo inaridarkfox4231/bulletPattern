@@ -283,8 +283,9 @@ function setup(){
   };
 
   // カーブを使ってみる
+  // 設定ミスでdamageがINFになってたのを修正した。まあいいや・・気を付けないとね。
   seedSet["seed" + (seedCapacity++)] = {
-    x:0.5, y:0.1, shotSpeed:200,
+    x:0.5, y:0.1, shotSpeed:200, collisionFlag:OFF, shotCollisionFlag:OFF,
     action:{
       main:[{hide:true}, {shotDirection:["set", 0]}, {shotAction:["set", "right"]}, {fire:""},
             {shotDirection:["set", 180]}, {shotAction:["set", "left"]}, {fire:""}, {vanish:1}],
@@ -294,7 +295,8 @@ function setup(){
               {aim:5}, {fire:"way3"}, {wait:16}, {loop:8, back:3}]
     },
     short:{
-      preparate:[{speed:["set", 0]}, {shotShape:"squareMiddle"},
+      preparate:[{shotCollisionFlag:ENEMY},
+                 {speed:["set", 0]}, {shotShape:"squareMiddle"},
                  {shotBehavior:["add", "$behavior"]}, {shotAction:["set", "attack"]},
                  {shotDirection:["set", "$dir"]}, {shotSpeed:["set", 6]}],
       fire1:[{fire:""}, {wait:8}, {loop:8, back:2}]
@@ -331,7 +333,7 @@ function setup(){
             {fire:"set", x:240, y:0, bend:90}, {vanish:1}],
       fall:[{short:"wedge", color:"dkred"},
             {shotSpeed:["set", 4]}, {shotDirection:["set", 90]},
-            {aim:5}, {wait:30}, {fire:"way5"}, {loop:4, back:3}, {vanish:1}, {speed:["set", 8, 60]}],
+            {aim:5}, {wait:30}, {fire:"way5"}, {loop:4, back:3}, {speed:["set", 8, 60]}],
       raid:[{short:"wedge", color:"dkskblue"},
             {aim:0}, {fire:"way7"}, {wait:30}, {loop:3, back:3},
             {direction:["set", 90, 30]}, {fire:"way7"}, {speed:["set", 8, 30]}],
@@ -527,32 +529,33 @@ function drawConfig(){
 // ダメージも付けるか・・？追加プロパティ、nameの他にも、ってこと。
 
 function registUnitColors(){
-  entity.registColor("black", color(0))
-        .registColor("blue", color(63, 72, 204))
-        .registColor("dkblue", color(35, 43, 131))
-        .registColor("skblue", color(0, 128, 255))
-        .registColor("dkskblue", color(0, 107, 153))
-        .registColor("plskblue", color(159, 226, 255))
-        .registColor("plblue", color(125, 133, 221))
-        .registColor("red", color(237, 28, 36))
-        .registColor("plred", color(247, 153, 157))
-        .registColor("dkred", color(146, 12, 18))
-        .registColor("yellow", color(255, 242, 0))
-        .registColor("dkyellow", color(142, 135, 0))
-        .registColor("dkgreen", color(17, 91, 39))
-        .registColor("green", color(34, 177, 76))
-        .registColor("plgreen", color(108, 227, 145))
-        .registColor("brown", color(128, 64, 0))
-        .registColor("purple", color(163, 73, 164))
-        .registColor("dkpurple", color(95, 41, 95))
-        .registColor("plorange", color(255, 179, 128))
-        .registColor("orange", color(255, 127, 39))
-        .registColor("dkorange", color(180, 70, 0))
-        .registColor("gold", color(128, 128, 0))
-        .registColor("dkgrey", color(64))
-        .registColor("plgrey", color(200))
-        .registColor("grey", color(128))
-        .registColor("ltgreen", color(181, 230, 29));
+  entity.registColor("black", color(0), 1, 1)
+        .registColor("blue", color(63, 72, 204), 1, 1)
+        .registColor("dkblue", color(35, 43, 131), 1, 1)
+        .registColor("skblue", color(0, 128, 255), 1, 1)
+        .registColor("dkskblue", color(0, 107, 153),1, 1)
+        .registColor("plskblue", color(159, 226, 255), 1, 1)
+        .registColor("plblue", color(125, 133, 221), 1, 1)
+        .registColor("red", color(237, 28, 36), 1, 1)
+        .registColor("plred", color(247, 153, 157), 1, 1)
+        .registColor("dkred", color(146, 12, 18), 1, 1)
+        .registColor("yellow", color(255, 242, 0), 1, 1)
+        .registColor("dkyellow", color(142, 135, 0), 1, 1)
+        .registColor("dkgreen", color(17, 91, 39), 1, 1)
+        .registColor("green", color(34, 177, 76), 1, 1)
+        .registColor("plgreen", color(108, 227, 145), 1, 1)
+        .registColor("brown", color(128, 64, 0), 1, 1)
+        .registColor("purple", color(163, 73, 164), 1, 1)
+        .registColor("dkpurple", color(95, 41, 95), 1, 1)
+        .registColor("plorange", color(255, 179, 128), 1, 1)
+        .registColor("orange", color(255, 127, 39), 1, 1)
+        .registColor("dkorange", color(180, 70, 0), 1, 1)
+        .registColor("gold", color(128, 128, 0), 1, 1)
+        .registColor("dkgrey", color(64), 1, 1)
+        .registColor("plgrey", color(200), 1, 1)
+        .registColor("grey", color(128), 1, 1)
+        .registColor("ltgreen", color(181, 230, 29), 1, 1)
+        .registColor("pink", color(255, 55, 120), 1, 1);
 }
 
 // ---------------------------------------------------------------------------------------- //
@@ -840,7 +843,7 @@ class SelfUnit{
     this.collisionFlag = PLAYER; // 衝突フラグ
     this.shotCollisionFlag = PLAYER_BULLET; // ショットはPLAYER_BULLET.
     this.collider = new CircleCollider();
-    this.maxLife = 10;
+    this.maxLife = 50;
     this.life = this.maxLife;
     this.vanishFlag = false;
     this.prepareWeapon();
@@ -869,7 +872,7 @@ class SelfUnit{
     // collider.
     this.collider.update(this.position.x, this.position.y, 5, 5);
     // life関連（クラスにした方がいいのかなぁ）
-    this.maxLife = 10;
+    this.maxLife = 50;
     this.life = this.maxLife;
     this.vanishFlag = false;
 	}
@@ -925,6 +928,7 @@ class SelfUnit{
 		noFill();
 		strokeWeight(2);
 		quad(x + c, y + s, x - s, y + c, x - c, y - s, x + s, y - c);
+    arc(x, y, 80, 80, -90, -90 + 360 * this.life / this.maxLife);
     noStroke();
     fill(this.bodyColor);
     ellipse(x, y, 10, 10); // 直径10. 半径は5. ここが当たり判定。
@@ -2631,12 +2635,3 @@ function execute(unit, command){
     return true; // ループは抜けない
   }
 }
-
-// セッター型はunitのあるプロパティをある値（文字列だったりboolだったり数だったり）にするもの。
-// アド型はあるプロパティ（数）にある値を足す（もしくは、引く）。
-// グラデーション型はあるプロパティ（数）を徐々にその値に近付けていくもの。
-// "gradShotSpeed", 1, 30とか"gradSpeed", 1, 60の方がいいのかもね。別立てでとらえる感じ。
-// "grad"で始まるかどうかは文字列判定でできる。
-
-
-// interpretCommandでクラスにして実行はクラスにさせる感じにしたいんです。
