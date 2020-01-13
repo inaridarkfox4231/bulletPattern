@@ -200,9 +200,9 @@ function setup(){
 
   // 折り返して15匹、パターンを変える。
   seedSet["seed" + (seedCapacity++)] = {
-    x:0.2, y:0, speed:4, direction:0, shotSpeed:8, shotDirection:90,
+    x:0.2, y:0, speed:4, direction:0, shotSpeed:8, shotDirection:90, bgColor:"plorange",
     action:{
-      main:[{hide:true}, {shotShape:"squareMiddle"}, {shotColor:"black"},
+      main:[{hide:true}, {shotShape:"squareMiddle"}, {shotColor:"orange"},
             {shotAction:["set", "attack1"]}, {short:"createEnemy"},
             {speed:["set", 0]}, {wait:240}, {speed:["set", 4]},
             {shotAction:["set", "attack2"]}, {short:"createEnemy"}, {vanish:1}],
@@ -213,7 +213,7 @@ function setup(){
     short:{
       createEnemy:[{fire:""}, {wait:12}, {loop:7, back:2}, {fire:""}, {direction:["mirror", 90]},
                     {wait:12}, {fire:""}, {loop:7, back:2}, {direction:["mirror", 90]}],
-      pattern:[{shotShape:"wedgeSmall"}, {shotColor:"red"}, {shotSpeed:["set", 4]},
+      pattern:[{shotShape:"wedgeSmall"}, {shotColor:"dkorange"}, {shotSpeed:["set", 4]},
                {speed:["set", 1, 30]}, {aim:5}, {fire:"$fire"}, {wait:60}, {loop:3, back:2},
                {speed:["set", 8, 30]}]
     },
@@ -614,7 +614,7 @@ function registUnitColors(){
         .registColor("brown", color(128, 64, 0), 1, 1)
         .registColor("purple", color(163, 73, 164), 1, 1)
         .registColor("dkpurple", color(95, 41, 95), 1, 1)
-        .registColor("plorange", color(255, 179, 128), 1, 1)
+        .registColor("plorange", color(255, 191, 149), 1, 1)
         .registColor("orange", color(255, 127, 39), 1, 1)
         .registColor("dkorange", color(180, 70, 0), 1, 1)
         .registColor("gold", color(128, 128, 0), 1, 1)
@@ -911,11 +911,18 @@ function createUnit(pattern){
   // 色、形についてはsetPatternで行う感じ。
 }
 
+// life = 60, speed = 4, count = 20がデフォルト。
 function createParticle(unit){
   const size = unit.shape.size * 0.7; // やや小さく
-  //const _color = entity.drawColor[unit.colorName]; // 色は一緒で
   const _color = unit.color;
   let newParticle = new Particle(unit.position.x, unit.position.y, size, _color);
+  entity.particleArray.add(newParticle);
+}
+
+function createSmallParticle(unit){
+  const size = unit.shape.size * 2.0;
+  const _color = unit.color;
+  let newParticle = new Particle(unit.position.x, unit.position.y, size, _color, 30, 4, 5);
   entity.particleArray.add(newParticle);
 }
 
@@ -1202,10 +1209,12 @@ class Unit{
       case ENEMY_BULLET:
         //console.log("I'm enemy bullet!");
         // 小さめのパーティクル
+        if(!this.hide){ createSmallParticle(this); }
         this.vanishFlag = true; break;
       case PLAYER_BULLET:
         //console.log("I'm player bullet!");
         // 小さめのパーティクル
+        if(!this.hide){ createSmallParticle(this); }
         this.vanishFlag = true; break;
       case ENEMY:
         //console.log("I'm enemy! my life:" + this.life + ", frameCount:" + frameCount);
