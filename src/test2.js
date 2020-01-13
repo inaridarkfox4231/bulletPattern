@@ -1,4 +1,7 @@
-// SolidAetherのコピー練習帳
+
+// quadTreeを用いた衝突判定のコードは、
+// 古都ことさん（@kfurumiya）のブログ（https://sbfl.net/blog/2017/12/03/javascript-collision/）
+// を参考にしました。感謝します。
 
 // 当たり判定：hide:trueのものは除外。hitPointが無いか、あっても0のものは除外。inFrameを満たさなくても除外。
 
@@ -438,6 +441,16 @@ function setup(){
       ref3:[{signal:"reflect"}, {loop:3, back:1}]
     },
     fireDef:{rad32:{radial:{count:32}}}
+  }
+
+  // ディレイに問題があった（updateからexecuteを切り離した）ので修正。
+  seedSet["seed" + (seedCapacity++)] = {
+    x:0.1, y:0.1, shotSpeed:4, shotDirection:90, speed:8, shotDelay:90,
+    action:{
+      main:[{shotAction:["set", "scatter"]}, {shotDelay:["add", -10]}, {fire:""}, {wait:10}, {loop:INF, back:3}],
+      scatter:[{shotDirection:["set", 0]}, {fire:""}, {wait:4}, {shotDirection:["add", 10]},
+            {loop:36, back:3}]
+    }
   }
 
   // どうする？？
@@ -1162,16 +1175,17 @@ class Unit{
     this.collisionFlag = OFF;
   }
   update(){
+    // vanishのときはスルー
     if(this.vanishFlag){ return; }
-    // ディレイ処理
-    if(this.delay > 0){ this.delay--; return; }
+    // delay処理（カウントはexecuteの方で減らす・・分離されてしまっているので。）
+    if(this.delay > 0){ return; }
     // followがtrueの場合はshotDirectionをいじる
     if(this.follow){ this.shotDirection = this.direction; }
-    // ビヘイビアの実行
+    // behaviorの実行
     Object.values(this.behavior).forEach((behavior) => {
       behavior(this);
     })
-    // デフォルトビヘイビア実行
+    // defaultBehaviorの実行
     this.defaultBehavior.forEach((behavior) => { behavior(this); })
     // ColliderのUpdate(typeによって分けるけどとりあえずcircleだからね・・)
     if(this.collider.type == "circle"){ this.collider.update(this.position.x, this.position.y); }
@@ -1180,7 +1194,6 @@ class Unit{
     this.life += diff;
     if(this.life > this.maxLife){ this.life = this.maxLife; }
     if(this.life > 0){ return; }
-    // パーティクル出力
     this.life = 0;
     this.vanishFlag = true;
   }
@@ -1201,7 +1214,10 @@ class Unit{
     }
   }
   execute(){
+    // vanishのときはスルー
     if(this.vanishFlag){ return; }
+    // delay処理. カウントはこっちで減らす。
+    if(this.delay > 0){ this.delay--; return; }
     if(this.bind){
       // bindの場合、親が死んだら死ぬ。
       if(this.parent.vanishFlag){ this.vanishFlag = true; return; }
@@ -1914,7 +1930,7 @@ function directionDist(d1, d2){
 function frameOutBehavior(unit){
   const {x, y} = unit.position;
   if(x < -AREA_WIDTH * 0.2 || x > AREA_WIDTH * 1.2 || y < -AREA_HEIGHT * 0.2 || y > AREA_HEIGHT * 1.2){
-    unit.flagOff();
+    unit.flagOff(); // これにより外側で消えたときにパーティクルが出現するのを防ぐ
     unit.vanishFlag = true;
   }
 }
