@@ -417,7 +417,7 @@ function setup(){
   }
 
   // 課題3: 敵が、倒れたときに自機狙いを3発発射するやつ。
-  // signal:"vanish", option:"follow"で自動的に親の位置に移動する。
+  // signal:"vanish", follow:trueで自動的に親の位置に移動する。
   // 迫力がないので8発にしました。こら
   seedSet["seed" + (seedCapacity++)] = {
     x:0, y:0.1, shotColor:"green", shotShape:"squareMiddle", shotSpeed:1,
@@ -427,7 +427,7 @@ function setup(){
       dieAndShot:[{shotSpeed:["set", 0]}, {shotAction:["set", "aim8"]}, {fire:""}, {shotAction:["clear"]},
                   {shotShape:"wedgeSmall"}, {shotSpeed:["set", 4]}, {shotDirection:["set", 90]},
                   {fire:""}, {wait:32}, {loop:INF, back:2}],
-      aim8:[{hide:true}, {signal:"vanish", option:"follow"},
+      aim8:[{hide:true}, {signal:"vanish", follow:true},
             {shotShape:"wedgeSmall"}, {shotColor:"dkgreen"}, {shotSpeed:["set", 8]},
             {aim:0}, {fire:""}, {wait:8}, {loop:8, back:3}, {vanish:1}]
     },
@@ -2528,6 +2528,7 @@ function interpretCommand(data, command, index){
     // dict.eeeで置き換える。そんな感じ。dictって言ってもcommandの中のfire以外のプロパティのことだけど。
     // 具体例
     // fireDef:{ways:{nway:{count:"$count", interval:30}}} で {fire:"ways", count:4} みたいなね。
+    // dataにはactionも入っている？？
     if(data.fire[command.fire] === undefined){ result.fire = createFirePattern({}); }
     else{
       //result.fire = data.fire[command.fire];
@@ -2576,13 +2577,17 @@ function interpretCommand(data, command, index){
   }
   if(_type === "signal"){
     // signalプロパティにはmodeが入っててそれにより指示が決まる。
+    // 基本的に、modeには「それが為されたら次ね」といった内容が入る（消滅したらとか近付いたらとか）
     // "vanish": parentがvanishしてなければ離脱、vanishしたらカウントを進めて抜けない。
     // "approach": 自機のサイズx2まで近づいたら次へ、とか？
     // "reflect": 壁に接触したら方向変えるやつ。たとえば3回反射で消える、とかはこれで実装できるはず。
+    //
     result.mode = command.signal;
-    // option文字列がある場合はそれを付与する。
-    // たとえばsignal:"vanish", option:"follow"で自動的にparentの位置に移動する。
-    if(command.hasOwnProperty("option")){ result.option = command.option; }
+    // 付加データがある場合はそれも・・
+    if(result.mode === "vanish"){
+      // たとえばvanishによって解除時に親の位置に移動するかどうかを定める。デフォはfalse.
+      result.follow = (command.hasOwnProperty("follow") ? command.follow : false);
+    }
     return result;
     // 自機に近付いたら次へ、みたいな場合は数を指定するかも？
   }
@@ -2726,7 +2731,7 @@ function execute(unit, command){
     if(unit.loopCheck(command.count)){
       unit.actionIndex++;
     }
-    return false; // ループを抜ける
+    return false; // waitは常にループを抜ける
   }
   if(_type === "loop"){
     if(unit.loopCheck(command.count)){
@@ -2770,8 +2775,8 @@ function execute(unit, command){
       // parentのvanishFlagを参照してfalseならそのまま抜けるがtrueなら次へ進む
       if(unit.parent.vanishFlag){
         unit.actionIndex++;
-        // followオプションで親の位置に移動する
-        if(command.option === "follow"){ unit.setPosition(unit.parent.position.x, unit.parent.position.y); }
+        // follow===trueなら親の位置に移動する
+        if(command.follow){ unit.setPosition(unit.parent.position.x, unit.parent.position.y); }
         return true; // ループは抜けない。すすめ。
       }else{
         return false; // なにもしない
