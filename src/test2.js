@@ -445,9 +445,10 @@ function setup(){
 
   // ディレイに問題があった（updateからexecuteを切り離した）ので修正。
   seedSet["seed" + (seedCapacity++)] = {
-    x:0.1, y:0.1, shotSpeed:4, shotDirection:90, speed:8, shotDelay:90,
+    x:0.1, y:0.1, shotSpeed:4, shotDirection:90, speed:8, shotDelay:90, collisionFlag:ENEMY,
     action:{
-      main:[{shotAction:["set", "scatter"]}, {shotDelay:["add", -10]}, {fire:""}, {wait:10}, {loop:INF, back:3}],
+      main:[{shotAction:["set", "scatter"]}, {shotDelay:["add", -10]},
+            {fire:""}, {wait:10}, {loop:INF, back:3}],
       scatter:[{shotDirection:["set", 0]}, {fire:""}, {wait:4}, {shotDirection:["add", 10]},
             {loop:36, back:3}]
     }
